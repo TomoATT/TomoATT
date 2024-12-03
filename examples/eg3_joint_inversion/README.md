@@ -1,9 +1,10 @@
 # joint inversion
 
-This is a toy model to simultaneously update model parameters and locate earthquakes (Paper XXX, Figure 8e.)
+This is a toy model to simultaneously update model parameters and locate earthquakes (Figure 8e.)
 
 Reference:
-citation
+[1] J. Chen, M. Nagaso, M. Xu, and P. Tong, TomoATT: An open-source package for Eikonal equation-based adjoint-state traveltime tomography for seismic velocity and azimuthal anisotropy, submitted.
+https://doi.org/10.48550/arXiv.2412.00031
 
 Python modules are required to initiate the inversion and to plot final results:
 - h5py
