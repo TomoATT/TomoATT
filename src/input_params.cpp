@@ -352,8 +352,10 @@ InputParams::InputParams(std::string& input_file){
                     getNodeValue(config["model_update"], "dep_inv", dep_inv[i], i);
                 }
             } else {
-                std::cout << "dep_inv is not defined. stop." << std::endl;
-                exit(1);
+                if (!uniform_inv_grid_dep){
+                    std::cout << "dep_inv is not defined. stop." << std::endl;
+                    exit(1);
+                }
             }
             if (config["model_update"]["lat_inv"]) {
                 n_inv_t_flex = config["model_update"]["lat_inv"].size();
@@ -362,8 +364,10 @@ InputParams::InputParams(std::string& input_file){
                     getNodeValue(config["model_update"], "lat_inv", lat_inv[i], i);
                 }
             } else {
-                std::cout << "lat_inv is not defined. stop." << std::endl;
-                exit(1);
+                if (!uniform_inv_grid_lat){
+                    std::cout << "lat_inv is not defined. stop." << std::endl;
+                    exit(1);
+                }
             }
             if (config["model_update"]["lon_inv"]) {
                 n_inv_p_flex = config["model_update"]["lon_inv"].size();
@@ -372,8 +376,10 @@ InputParams::InputParams(std::string& input_file){
                     getNodeValue(config["model_update"], "lon_inv", lon_inv[i], i);
                 }
             } else {
-                std::cout << "lon_inv is not defined. stop." << std::endl;
-                exit(1);
+                if (!uniform_inv_grid_lon){
+                    std::cout << "lon_inv is not defined. stop." << std::endl;
+                    exit(1);
+                }
             }
             if (config["model_update"]["trapezoid"]) {
                 for (int i = 0; i < n_trapezoid; i++){
