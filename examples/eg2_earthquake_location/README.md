@@ -1,9 +1,10 @@
 # earthquake location
 
-This is a toy model to invert traveltimes for locating earthquakes (Paper XXX, Figure 8a.)
+This is a toy model to invert traveltimes for locating earthquakes (Figure 8a.)
 
 Reference:
-citation
+[1] J. Chen, M. Nagaso, M. Xu, and P. Tong, TomoATT: An open-source package for Eikonal equation-based adjoint-state traveltime tomography for seismic velocity and azimuthal anisotropy, submitted.
+https://doi.org/10.48550/arXiv.2412.00031
 
 Python modules are required to initiate the inversion and to plot final results:
 - h5py

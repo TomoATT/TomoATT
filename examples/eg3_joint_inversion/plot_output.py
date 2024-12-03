@@ -23,7 +23,7 @@ model = ATTModel.read(data_file, par_file)
 ckb_model = model.to_xarray()
 
 # initial model
-depth = 20.0
+depth = 10.0
 vel_init = initial_model.interp_dep(depth, field='vel')
 start = [1.25,0]; end = [1.25,2]
 vel_init_sec = initial_model.interp_sec(start, end, field='vel', val = 1)
