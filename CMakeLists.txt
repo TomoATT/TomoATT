@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 
 # set the project name
 set(CMAKE_PROJECT_NAME "TOMOATT")
@@ -53,6 +53,7 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 set(BUILD_TESTING OFF)
+set(Force_download_externel_libs OFF)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_ADDITIONAL_FLAGS}")
 
@@ -149,7 +150,7 @@ add_definitions(-DFREQ_SYNC_GHOST)
 # submodules
 # yaml parser
 find_package(yaml-cpp 1.0 QUIET)
-if (yaml-cpp_FOUND)
+if (yaml-cpp_FOUND AND NOT ${Force_download_externel_libs})
   message(STATUS "yaml-cpp found")
   message(STATUS "YAML_CPP_INCLUDE_DIR: ${YAML_CPP_INCLUDE_DIR}")
   message(STATUS "YAML_CPP_LIBRARIES: ${YAML_CPP_LIBRARIES}")
