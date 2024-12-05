@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 
 # set the project name
 set(CMAKE_PROJECT_NAME "TOMOATT")
-project(${CMAKE_PROJECT_NAME} VERSION 1.0.0 LANGUAGES C CXX )
+project(${CMAKE_PROJECT_NAME} VERSION 1.0.1 LANGUAGES C CXX )
 
 # set install directory
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -261,6 +261,8 @@ foreach( execsourcefile ${APP_SOURCES} )
 
 endforeach( execsourcefile ${APP_SOURCES} )
 
+# install
+install(TARGETS TOMOATT DESTINATION bin)
 
 # test
 
