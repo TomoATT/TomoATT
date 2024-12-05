@@ -1,9 +1,10 @@
 # seismic tomography
 
-This is a toy model to invert traveltimes for Vp and anisotropy (Paper XXX, Figure 8c.)
+This is a toy model to invert traveltimes for Vp and anisotropy (Figure 8c.)
 
 Reference:
-citation
+[1] J. Chen, M. Nagaso, M. Xu, and P. Tong, TomoATT: An open-source package for Eikonal equation-based adjoint-state traveltime tomography for seismic velocity and azimuthal anisotropy, submitted.
+https://doi.org/10.48550/arXiv.2412.00031
 
 Python modules are required to initiate the inversion and to plot final results:
 - h5py
