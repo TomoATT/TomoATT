@@ -149,7 +149,7 @@ add_definitions(-DFREQ_SYNC_GHOST)
 
 # submodules
 # yaml parser
-find_package(yaml-cpp 1.0 QUIET)
+find_package(yaml-cpp 0.8 QUIET)
 if (yaml-cpp_FOUND AND NOT ${Force_download_externel_libs})
   message(STATUS "yaml-cpp found")
   message(STATUS "YAML_CPP_INCLUDE_DIR: ${YAML_CPP_INCLUDE_DIR}")
