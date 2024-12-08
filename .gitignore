@@ -40,6 +40,9 @@ test/solver_performance/advisor*
 test/solver_performance/r0*
 test/solver_performance/bench_fugaku
 
+test/inversion_small/*.yaml
+test/inversion_small/OUTPUT_FILES/
+test/inversion_small/time*
 
 # examples
 examples/*/OUTPUT_FILES*

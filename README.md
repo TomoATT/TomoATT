@@ -2,11 +2,13 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
 [![CI](https://github.com/mnagaso/TomoATT/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/mnagaso/TomoATT/actions/workflows/CI.yml)
-
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/tomoatt/badges/version.svg)](https://anaconda.org/conda-forge/tomoatt)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/tomoatt/badges/platforms.svg)](https://anaconda.org/conda-forge/tomoatt)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/tomoatt/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/tomoatt)
 
 ![logo](docs/logo/TomoATT_logo_2.png)
 
-TomoATT is a library which implements an eikonal equation solver based Adjoint-state Travel-Time Tomography for a very large-scale computation, which implements the methods described in the published works:
+TomoATT is a library which implements an eikonal equation solver based Adjoint-state Traveltime Tomography for a very large-scale computation, which implements the methods described in the publications:
 
 - [Ping Tong (2021)](https://doi.org/10.1029/2021JB021818), regional tomography in Cartesian coordinate,
 
@@ -15,9 +17,6 @@ TomoATT is a library which implements an eikonal equation solver based Adjoint-s
 - [Jing Chen, et al. (2023)](https://doi.org/10.1029/2023JB027348), teleseismic tomography in Spherical coordinate,
 
 - [Jing Chen, et al. (2024)](https://doi.org/10.48550/arXiv.2412.00031), softwave package.
-
-
-The slowness field and anisotropy fields are computed in spherical coordinate system.
 
 Thanks to the efficiency of an eikonal equation solver, the computation of the travel-time is very fast and requires less amount of computational resources.
 As an input data for TomoATT is travel times at seismic stations, we can easily prepare a great amount of input data for the computation.
@@ -31,6 +30,15 @@ The details of the parallelization method applied in this library are described 
 
 Regional events (sources within the global domain) and teleseismic events (sources outside the global domain) may be used for inversion.
 
+## Quick installation
+This library is available in the [conda-forge channel](https://anaconda.org/conda-forge/tomoatt). You can install it on personal computer by the following command:
+``` bash
+conda install -c conda-forge tomoatt pytomoatt
+```
+
+TomoATT is also capable of running on high-performance computing (HPC) systems and. Detailed installation instructions are described in the [installation manual](https://tomoatt.com/docs/GetStarted/Dependencies).
+
+<!-- 
 
 ## dependency
 - MPI v3.0 or higher  
@@ -53,7 +61,7 @@ cmake .. && make -j 8
 compile with cuda support
 ``` bash
 cmake .. -DUSE_CUDA=True && make -j 8
-``` 
+```  -->
 
 ## to run an example
 ``` bash
@@ -62,7 +70,7 @@ mpirun -n 4 ./TOMOATT -i ./input_params.yml
 Please check the [user manual](./docs/manual/index.md) and `examples` directory for the details.
 
 
-## FAQs.
+<!-- ## FAQs.
 ### git submodule problem
 In the case you will get the error message below:
 ``` text
@@ -81,4 +89,4 @@ git submodule update --init --recursive
 ```
 
 In the case that `git submodule` command doesn't work in your environment, you need to download yaml-cpp library from [its repository](https://github.com/jbeder/yaml-cpp), and place it in the `external_libs` directory,
-so that this directory is placed as `external_libs/yaml-cpp`.
+so that this directory is placed as `external_libs/yaml-cpp`. -->
