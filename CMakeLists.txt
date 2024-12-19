@@ -164,6 +164,13 @@ endif()
 # add include directory
 include_directories(include cuda)
 
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 configure_file(
   ${PROJECT_SOURCE_DIR}/include/version.h.in
   ${PROJECT_SOURCE_DIR}/include/version.h
