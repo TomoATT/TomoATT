@@ -110,14 +110,14 @@ inline void parse_options(int argc, char* argv[]){
             input_file_found = true;
         }
         else if (strcmp(argv[i], "-h") == 0){
-            stdout_by_main("usage: mpirun -np 4 TOMOATT -i input_params.yaml");
+            stdout_by_main("usage: mpirun -np 4 ./TOMOATT -i input_params.yaml");
             exit(EXIT_SUCCESS);
         }
     }
 
     // error if input_file is not found
     if(!input_file_found){
-        stdout_by_main("usage: mpirun -np 4 TOMOATT -i input_params.yaml");
+        stdout_by_main("usage: mpirun -np 4 ./TOMOATT -i input_params.yaml");
         std::cout << "Error: input parameter file not found" << std::endl;
         exit(EXIT_FAILURE);
     }

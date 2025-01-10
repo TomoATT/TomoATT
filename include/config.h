@@ -22,9 +22,9 @@
 #define MPI_DUMMY_TAG 1000
 
 // version
-inline const std::string TOMOATT_VERSION = std::to_string(PROJECT_VERSION_MAJOR) +
-                                   "." + std::to_string(PROJECT_VERSION_MINOR) +
-                                   "." + std::to_string(PROJECT_VERSION_PATCH);
+inline const std::string TOMOATT_VERSION = std::string(PROJECT_VERSION_MAJOR) +
+                                   "." + std::string(PROJECT_VERSION_MINOR) +
+                                   "." + std::string(PROJECT_VERSION_PATCH);
 
 inline int loc_I, loc_J, loc_K;
 inline int loc_I_vis, loc_J_vis, loc_K_vis;
