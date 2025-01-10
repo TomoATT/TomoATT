@@ -583,6 +583,22 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
         }
     }
 
+    // check receiver location
+    for(auto iter = rec_map_back.begin(); iter != rec_map_back.end(); iter++){
+        SrcRecInfo rec = iter->second;
+        if (rec.lat < min_lat || rec.lat > max_lat \
+         || rec.lon < min_lon || rec.lon > max_lon \
+         || rec.dep < min_dep || rec.dep > max_dep){
+
+            std::cout   << "ERROR: receiver " << rec.name
+                        << ", lat: " << rec.lat
+                        << ", lon: " << rec.lon
+                        << ", dep: " << rec.dep
+                        << " is out of region. Please check the src_rec file." << std::endl;
+            exit(1);
+        }
+    }
+
     // divide receiver and data list
     //
     // rec_map_back  ____> rec_map
