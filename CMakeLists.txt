@@ -15,24 +15,25 @@ else()
 endif()
 
 # check compiler type
-message(STATUS "Compiler type: ${CMAKE_CXX_COMPILER_ID}")
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" AND "${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64")
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CXX_ADDITIONAL_FLAGS "-Wall -pedantic -g -O0")
   else()
-    set(CXX_ADDITIONAL_FLAGS "-Wall -pedantic -O3 -funroll-loops -ffast-math -ftree-vectorize")
+    set(CXX_ADDITIONAL_FLAGS "-Wall -pedantic -O3 -funroll-loops -ffast-math -mcpu=native -ftree-vectorize")
   endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  MESSAGE("Compiler type: GNU")
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CXX_ADDITIONAL_FLAGS "-Wall -pedantic -g -O0 -lm -lstdc++fs")
   else()
-    set(CXX_ADDITIONAL_FLAGS "-Wall -pedantic -lm -O3 -funroll-loops -ffast-math -ftree-vectorize -lstdc++fs")
+    set(CXX_ADDITIONAL_FLAGS "-Wall -pedantic -lm -O3 -funroll-loops -ffast-math -march=native -mfma -ftree-vectorize -lstdc++fs")
   endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+  MESSAGE("Compiler type: Intel")
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CXX_ADDITIONAL_FLAGS "-diag-disable=10441,2012,2015,2017,2047,2304,2305,3868,10193,10315,11074,11076 -Wall -pedantic -g -O0 -lm -lstdc++fs")
   else()
-    set(CXX_ADDITIONAL_FLAGS "-diag-disable=10441,2012,2015,2017,2047,2304,2305,3868,10193,10315,11074,11076 -Wall -pedantic -O3 -funroll-loops -ffast-math -lm  -ftree-vectorize -lstdc++fs")
+    set(CXX_ADDITIONAL_FLAGS "-diag-disable=10441,2012,2015,2017,2047,2304,2305,3868,10193,10315,11074,11076 -Wall -pedantic -O3 -funroll-loops -ffast-math -lm -march=native -mfma -ftree-vectorize -lstdc++fs")
   endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Fujitsu")
   MESSAGE(FATAL_ERROR "Fujitsu trad compiler is not supported. Please use clang mode.")
@@ -98,11 +99,7 @@ add_definitions(-DUSE_HDF5_IO_COLLECTIVE)
 #add_definitions(-DSINGLE_PRECISION)
 
 # use SIMD (SSE/AVX/AVX2/AVX512) for vectorization, which is faster than the default but use a little more memory.
-if (USE_SIMD)
-  message(STATUS "TomoATT is compiled with SIMD.")
-  add_definitions(-DUSE_SIMD)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mfma")
-endif()
+add_definitions(-DUSE_SIMD)
 
 # find cuda package if USE_CUDA is defined
 if(USE_CUDA)
@@ -166,13 +163,6 @@ endif()
 
 # add include directory
 include_directories(include cuda)
-
-execute_process(
-    COMMAND git rev-parse --short HEAD
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_COMMIT_HASH
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
 
 configure_file(
   ${PROJECT_SOURCE_DIR}/include/version.h.in

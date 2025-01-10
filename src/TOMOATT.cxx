@@ -34,9 +34,9 @@ int main(int argc, char *argv[])
     initialize_mpi();
 
     stdout_by_rank_zero("------------------------------------------------------");
-    stdout_by_rank_zero(("TOMOATT version: " + std::string(TOMOATT_VERSION)).c_str());
-    stdout_by_rank_zero(("git commit: " + std::string(GIT_COMMIT)).c_str());
     stdout_by_rank_zero("TOMOATT calculation starting...");
+    std::string version = "TOMOATT version: " + std::string(TOMOATT_VERSION);
+    stdout_by_rank_zero(version.c_str());
     stdout_by_rank_zero("------------------------------------------------------");
 
     // read input file

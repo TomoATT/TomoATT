@@ -223,18 +223,19 @@ with open(fname, 'w') as f:
         f.write('\n')
 
 
-# # %%
-# # draw src and rec positions
-# import matplotlib.pyplot as plt
+# %%
+# draw src and rec positions
+import matplotlib.pyplot as plt
 
-# for i_src in range(n_src):
-#     plt.scatter(pos_src[i_src][1],pos_src[i_src][0],c='r',marker='o')
+for i_src in range(n_src):
+    plt.scatter(pos_src[i_src][1],pos_src[i_src][0],c='r',marker='o')
 
-# # %%
-# # plot receivers
-# for i_rec in range(n_rec[0]):
-#     plt.scatter(pos_rec[i_rec][1],pos_rec[i_rec][0],c='b',marker='o')
+# %%
+# plot receivers
+for i_rec in range(n_rec[0]):
+    plt.scatter(pos_rec[i_rec][1],pos_rec[i_rec][0],c='b',marker='o')
 
+# %%
 
 
 
