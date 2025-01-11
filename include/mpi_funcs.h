@@ -786,7 +786,9 @@ inline void broadcast_str(std::string& str, int root) {
     int count = str.size();
     MPI_Bcast(&count, 1, MPI_INT, root, inter_sub_comm);
     char* buf = new char[count+1];
-    std::strcpy(buf, str.c_str());
+    if (root == inter_sub_rank) {
+        std::strcpy(buf, str.c_str());
+    }
     MPI_Bcast(buf, count+1, MPI_CHAR, root, inter_sub_comm);
     str = buf;
     delete[] buf;
@@ -796,7 +798,9 @@ inline void broadcast_str_sub(std::string& str, int root) {
     int count = str.size();
     MPI_Bcast(&count, 1, MPI_INT, root, sub_comm);
     char* buf = new char[count+1];
-    std::strcpy(buf, str.c_str());
+    if (root == sub_rank) {
+        std::strcpy(buf, str.c_str());
+    }
     MPI_Bcast(buf, count+1, MPI_CHAR, root, sub_comm);
     str = buf;
     delete[] buf;
@@ -806,7 +810,9 @@ inline void broadcast_str_inter_sim(std::string& str, int root) {
     int count = str.size();
     MPI_Bcast(&count, 1, MPI_INT, root, inter_sim_comm);
     char* buf = new char[count+1];
-    std::strcpy(buf, str.c_str());
+    if (root == inter_sim_rank) {
+        std::strcpy(buf, str.c_str());
+    }
     MPI_Bcast(buf, count+1, MPI_CHAR, root, inter_sim_comm);
     str = buf;
     delete[] buf;
