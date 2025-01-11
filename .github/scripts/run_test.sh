@@ -17,6 +17,10 @@ nproc_sweep=${NPROC_SWEEP:-1}
 # get number of processes for domain decomposition if exists, or 1 by default
 nproc_dd=${NPROC_DD:-1}
 
+# set number of threads for OpenMP to be equal to the number of NPROC_SWEEP
+export OMP_NUM_THREADS=$nproc_sweep
+
+
 # print info
 echo "Running test case in a work directory: $WORKDIR"
 echo `date`
