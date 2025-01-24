@@ -52,7 +52,7 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 set(BUILD_TESTING OFF)
-set(Force_download_externel_libs OFF)
+option(FORCE_DOWNLOAD_EXTERNAL_LIBS "Force download and use external libraries" OFF)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_ADDITIONAL_FLAGS}")
 
@@ -153,7 +153,7 @@ add_definitions(-DFREQ_SYNC_GHOST)
 # submodules
 # yaml parser
 find_package(yaml-cpp 0.8 QUIET)
-if (yaml-cpp_FOUND AND NOT ${Force_download_externel_libs})
+if (yaml-cpp_FOUND AND NOT ${FORCE_DOWNLOAD_EXTERNAL_LIBS})
   message(STATUS "yaml-cpp found")
   message(STATUS "YAML_CPP_INCLUDE_DIR: ${YAML_CPP_INCLUDE_DIR}")
   message(STATUS "YAML_CPP_LIBRARIES: ${YAML_CPP_LIBRARIES}")
