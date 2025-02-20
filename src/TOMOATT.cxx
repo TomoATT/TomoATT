@@ -15,6 +15,7 @@
 #include "main_routines_calling.h"
 #include "eikonal_solver_2d.h"
 #include "version.h"
+#include "oneD_inversion.h"
 
 #ifdef USE_CUDA
 #include "cuda_initialize.cuh"

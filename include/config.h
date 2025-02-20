@@ -288,14 +288,6 @@ inline const CUSTOMREAL SWEEPING_COEFF_TELE = 1.05;        // coefficient for ca
 inline const int        N_LAYER_SRC_BOUND   = 1;           // number of layers for source boundary
 inline       CUSTOMREAL DIST_SRC_DDT        = 2.5*DEG2RAD; // distance threshold of two stations
 inline const std::string OUTPUT_DIR_2D      = "/2D_TRAVEL_TIME_FIELD/"; // output directory for 2d solver
-// use adaptive domian size for 1d inversion
-inline       CUSTOMREAL rmin_2d_1dinv       =  9999.0;
-inline       CUSTOMREAL rmax_2d_1dinv       = -9999.0;
-inline       CUSTOMREAL tmin_2d_1dinv       =  9999.0;
-inline       CUSTOMREAL tmax_2d_1dinv       = -9999.0;
-inline       CUSTOMREAL dr_2d_1dinv         = 0.5;
-inline       CUSTOMREAL dt_2d_1dinv         = PI/1800.0;
-
 
 // earthquake relocation
 inline CUSTOMREAL       step_length_src_reloc       = 2.0;  // step length for source relocation

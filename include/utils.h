@@ -343,6 +343,33 @@ inline CUSTOMREAL calc_ratio_between(CUSTOMREAL const& a, CUSTOMREAL const& b, C
     //    return (a - b) / (b - c);
 }
 
+
+inline void linear_interpolation_1d_sorted(const CUSTOMREAL* const x1, const CUSTOMREAL* const y1, const int& n1, const CUSTOMREAL* x2, CUSTOMREAL* y2, const int& n2){
+    // linear interpolation for sorted 1d array (monotonely increasing)
+    // x1 : positions of the first array
+    // y1 : values of the first array
+    // n1 : size of the first array
+    // x2 : positions of the second array
+    // y2 : values of the second array
+    // n2 : size of the second array
+    int start = 0;
+    for(int pt2=0; pt2<n2; pt2++){              // x2[pt2] <= x1[0]
+        if (x2[pt2] <= x1[0]){
+            y2[pt2] = y1[0];
+        } else if (x2[pt2] >= x1[n1-1]){    // x2[pt2] >= x1[n1-1]
+            y2[pt2] = y1[n1-1];
+        } else {                            // x1[0] < x2[pt2] < x1[n1-1]
+            for(int pt1=start; pt1<n1-1; pt1++){
+                if (x2[pt2] >= x1[pt1] && x2[pt2] <= x1[pt1+1]){
+                    y2[pt2] = y1[pt1] + (y1[pt1+1] - y1[pt1]) * (x2[pt2] - x1[pt1]) / (x1[pt1+1] - x1[pt1]);
+                    start = pt1;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 template<typename T>
 std::vector<CUSTOMREAL> linspace(T start_in, T end_in, int num_in)
 {

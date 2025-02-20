@@ -196,7 +196,7 @@ InputParams::InputParams(std::string& input_file){
         //
         if (config["run_mode"]) {
             getNodeValue(config, "run_mode", run_mode);
-            if (run_mode > 3) {
+            if (run_mode > 4) {
                 std::cout << "undefined run_mode. stop." << std::endl;
                 //MPI_Finalize();
                 exit(1);
@@ -1058,7 +1058,8 @@ void InputParams::write_params_to_file() {
     fout << "# 0 for forward simulation only,"                  << std::endl;
     fout << "# 1 for inversion"                                 << std::endl;
     fout << "# 2 for earthquake relocation"                     << std::endl;
-    fout << "# 3 for inversion + earthquake relocation"           << std::endl;
+    fout << "# 3 for inversion + earthquake relocation"         << std::endl;
+    fout << "# 4 for 1d model inversion"                        << std::endl;
     fout << "run_mode: " << run_mode << std::endl;
     fout << std::endl;
 
@@ -2869,6 +2870,12 @@ void InputParams::check_contradictions(){
         sweep_type = SWEEP_TYPE_LEVEL;
     }
 
+    // if run_mode == 4 (1d inversion), only source parallelization is allowed
+    if (run_mode == 4 && (ndiv_k > 1 || ndiv_j > 1 || ndiv_i > 1 || n_subprocs > 1)){
+        std::cout << "Error: run_mode = 4, only source parallelization is allowed" << std::endl;
+        std::cout << "Please set ndiv_rtp: [1,1,1] and nproc_sub: 1 in the input_params.yaml file" << std::endl;
+        exit(1);
+    }
 #ifdef USE_CUDA
     if (use_gpu){
 
