@@ -44,25 +44,36 @@ output_setting:
   verbose_output_level:    0 # output internal parameters, (to do)
   output_file_format: 0 # 0: hdf5, 1: ascii
 
-# default output: 
+# output files:
 # File: 'out_data_grid.h5'. Keys: ['Mesh']['elem_conn'], element index; 
 #                                 ['Mesh']['node_coords_p'], phi coordinates of nodes; 
 #                                 ['Mesh']['node_coords_t'], theta coordinates of nodes; 
 #                                 ['Mesh']['node_coords_r'], r coordinates of nodes;
 #                                 ['Mesh']['node_coords_x'], phi coordinates of elements; 
 #                                 ['Mesh']['node_coords_y'], theta coordinates of elements; 
-#                                 ['Mesh']['node_coords_z'], r coordinates of elements;               
-# File: 'out_data_sim_group_0'. Keys: ['model']['Kdensity_update_inv_XXXX'], kernel density for model update; 
-#                                     ['model']['vel_inv_XXXX'], velocity model; 
+#                                 ['Mesh']['node_coords_z'], r coordinates of elements; 
+# File: 'out_data_sim_group_0'. Keys: ['model']['vel_inv_XXXX'], velocity model; 
 #                                     ['model']['xi_inv_XXXX'], xi model; 
-#                                     ['model']['eta_inv_XXXX'], eta model                              
+#                                     ['model']['eta_inv_XXXX'], eta model
+#                                     ['model']['Ks_inv_XXXX'], sensitivity kernel related to slowness
+#                                     ['model']['Kxi_inv_XXXX'], sensitivity kernel related to xi
+#                                     ['model']['Keta_inv_XXXX'], sensitivity kernel related to eta
+#                                     ['model']['Ks_density_inv_XXXX'], kernel density of Ks 
+#                                     ['model']['Kxi_density_inv_XXXX'], kernel density of Kxi 
+#                                     ['model']['Keta_density_inv_XXXX'], kernel density of Keta 
+#                                     ['model']['Ks_over_Kden_inv_XXXX'], slowness kernel over kernel density
+#                                     ['model']['Kxi_over_Kden_inv_XXXX'], xi kernel over kernel density
+#                                     ['model']['Keta_over_Kden_inv_XXXX'], eta kernel over kernel density
+#                                     ['model']['Ks_update_inv_XXXX'], slowness kernel over kernel density, smoothed by inversion grid
+#                                     ['model']['Kxi_update_inv_XXXX'], xi kernel over kernel density, smoothed by inversion grid
+#                                     ['model']['Keta_update_inv_XXXX'], eta kernel over kernel density, smoothed by inversion grid
 # File: 'src_rec_file_step_XXXX.dat' or 'src_rec_file_forward.dat'. The synthetic traveltime data file.
 # File: 'final_model.h5'. Keys: ['eta'], ['xi'], ['vel'], the final model.
 # File: 'middle_model_step_XXXX.h5'. Keys: ['eta'], ['xi'], ['vel'], the model at step XXXX.
 # File: 'inversion_grid.txt'. The location of inversion grid nodes
 # File: 'objective_function.txt'. The objective function value at each iteration
 # File: 'out_data_sim_group_X'. Keys: ['src_$src_name']['time_field_inv_XXXX'], traveltime field for source $src_name at iteration XXXX;
-#                                     ['src_$src_name']['adjoint_field_inv_XXXX'], adjoint field for source $src_name at iteration XXXX;              
+#                                     ['src_$src_name']['adjoint_field_inv_XXXX'], adjoint field for source $src_name at iteration XXXX;
 
 #################################################
 #          inversion or forward modeling        #
@@ -94,8 +105,10 @@ model_update:
   # inversion grid can be viewed in OUTPUT_FILES/inversion_grid.txt
   n_inversion_grid: 5 # number of inversion grid sets
 
-  uniform_inv_grid: false # true for using uniform inversion grid; false for using flexible inversion grid
-  
+  uniform_inv_grid_dep: false # true if use uniform inversion grid for dep, false if use flexible inversion grid
+  uniform_inv_grid_lat: false # true if use uniform inversion grid for lat, false if use flexible inversion grid
+  uniform_inv_grid_lon: false # true if use uniform inversion grid for lon, false if use flexible inversion grid
+
   # settings for uniform inversion grid
   n_inv_dep_lat_lon: [3, 11, 11] # number of inversion grid in depth, latitude, and longitude direction
   min_max_dep_inv: [-5 ,  5] # inversion grid for vel in depth (km)
