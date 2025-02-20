@@ -798,5 +798,9 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
 }
 
 
+// run 1D inversion mode
+inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
+
+}
 
 #endif // MAIN_ROUTINES_CALLING_H

@@ -2510,6 +2510,8 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                 src_rec_file_out = output_dir + "/src_rec_file_teleseis_pre.dat";
             } else if (run_mode == SRC_RELOCATION) {
                 src_rec_file_out = output_dir + "/src_rec_file_reloc_" + int2string_zero_fill(i_iter)+".dat";
+            } else if (run_mode == ONED_INVERSION){
+                src_rec_file_out = output_dir + "/src_rec_file_step_" + int2string_zero_fill(i_inv) +".dat";
             } else {
                 std::cerr << "Error: run_mode is not defined" << std::endl;
                 exit(1);
