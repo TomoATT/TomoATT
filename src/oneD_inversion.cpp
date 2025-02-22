@@ -1,5 +1,9 @@
 #include "oneD_inversion.h"
 
+// ###############################################
+// ########     OneDInversion class     ##########
+// ###############################################
+
 OneDInversion::OneDInversion(InputParams& IP, Grid& grid) {
     // constructor
     // std::cout << "OneDInversion constructor" << std::endl;
@@ -84,7 +88,13 @@ void OneDInversion::allocate_arrays() {
     is_changed_1dinv    = allocateMemory<bool>(nr_1dinv*nt_1dinv, 4010);
 
     // parameters on grid nodes (for inversion)
-    Ks_1dinv            = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4011);
+    Ks_1dinv                = allocateMemory<CUSTOMREAL>(nr_1dinv, 4011);
+    Ks_density_1dinv        = allocateMemory<CUSTOMREAL>(nr_1dinv, 4012);
+    Ks_over_Kden_1dinv      = allocateMemory<CUSTOMREAL>(nr_1dinv, 4013);
+    Ks_multigrid            = allocateMemory<CUSTOMREAL>(nr_1dinv, 4014);
+    Ks_multigrid_previous   = allocateMemory<CUSTOMREAL>(nr_1dinv, 4015);
+    Ks_update               = allocateMemory<CUSTOMREAL>(nr_1dinv, 4016);
+
 }
 
 
@@ -145,9 +155,19 @@ void OneDInversion::deallocate_arrays(){
 
     // parameters on grid nodes (for inversion)
     delete[] Ks_1dinv;
+    delete[] Ks_density_1dinv;
+    delete[] Ks_over_Kden_1dinv;
+    delete[] Ks_multigrid;
+    delete[] Ks_multigrid_previous;
+    delete[] Ks_update;
 
 }
 
+// ########################################################
+// ########           main member function         ########
+// ########      run_simulation_one_step_1dinv     ########
+// ########           and sub functions            ########
+// ########################################################
 
 std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams& IP) {
 
@@ -156,7 +176,7 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
         std::cout << "computing traveltime field, adjoint field and kernel for 1d inversion ..." << std::endl;
 
     // initialize misfit kernel (to do)
-
+    initialize_kernel_1d();
 
     // iterate over sources
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
@@ -174,12 +194,13 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
         adjoint_solver_2d(IP, i_src, adj_type);  // now adjoint field has been stored in Tadj_density_1dinv.
         
         // calculate event sensitivity kernel
-
+        calculate_kernel_1d();
     }
+    // synchronize all processes
+    synchronize_all_world();
 
-
-    // compute all residual and obj
-    std::vector<CUSTOMREAL> obj_residual;
+    // calculate objective function and residual
+    std::vector<CUSTOMREAL> obj_residual = calculate_obj_and_residual_1dinv(IP);
 
     // return current objective function value
     return obj_residual;
@@ -626,7 +647,7 @@ void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParam
     // rec.adjoint_source = 0 && rec.adjoint_source_density = 0
     IP.initialize_adjoint_source();
 
-    // loop all receivers 
+    // loop all data 
     for (auto it_rec = IP.data_map[name_src].begin(); it_rec != IP.data_map[name_src].end(); ++it_rec) {
         for (auto& data: it_rec->second){
 
@@ -965,13 +986,200 @@ void OneDInversion::calculate_stencil_adj(const int& it, const int& ir) {
 }
 
 
+void OneDInversion::initialize_kernel_1d() {
+    for (int ir=0; ir<nr_1dinv; ir++){
+        Ks_1dinv[ir]                = _0_CR;
+        Ks_density_1dinv[ir]        = _0_CR;
+        Ks_over_Kden_1dinv[ir]      = _0_CR;
+        Ks_multigrid[ir]            = _0_CR;
+        Ks_multigrid_previous[ir]   = _0_CR;
+        Ks_update[ir]               = _0_CR;
+    }
+}
+
+
 void OneDInversion::calculate_kernel_1d() {
+    for (int ir=0; ir<nr_1dinv; ir++){
+        for (int it=0; it<nt_1dinv; it++){
+            Ks_1dinv[ir]            += Tadj_1dinv[I2V_1DINV(it,ir)]         * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
+            Ks_density_1dinv[ir]    += Tadj_density_1dinv[I2V_1DINV(it,ir)] * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
+        }
+    }
+}
+
+
+std::vector<CUSTOMREAL> OneDInversion::calculate_obj_and_residual_1dinv(InputParams& IP) {
+
+    CUSTOMREAL obj           = 0.0;
+    CUSTOMREAL obj_abs       = 0.0;
+    CUSTOMREAL obj_cs_dif    = 0.0;
+    CUSTOMREAL obj_cr_dif    = 0.0;
+    CUSTOMREAL obj_tele      = 0.0;
+
+    CUSTOMREAL res           = 0.0;
+    CUSTOMREAL res_sq        = 0.0;
+    CUSTOMREAL res_abs       = 0.0;
+    CUSTOMREAL res_abs_sq    = 0.0;
+    CUSTOMREAL res_cs_dif    = 0.0;
+    CUSTOMREAL res_cs_dif_sq = 0.0;
+    CUSTOMREAL res_cr_dif    = 0.0;
+    CUSTOMREAL res_cr_dif_sq = 0.0;
+    CUSTOMREAL res_tele      = 0.0;
+    CUSTOMREAL res_tele_sq   = 0.0;
+
+    std::vector<CUSTOMREAL> obj_residual;
+
+    // iterate over sources
+    for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+        const std::string name_src  = IP.get_src_name(i_src);
+
+        // loop all data 
+        for (auto it_rec = IP.data_map[name_src].begin(); it_rec != IP.data_map[name_src].end(); ++it_rec) {
+            for (auto& data: it_rec->second){
+                if (data.is_src_rec){
+                    CUSTOMREAL syn_time       = data.travel_time;
+                    CUSTOMREAL obs_time       = data.travel_time_obs;
+                    std::string name_rec      = data.name_rec;
+
+                    // contribute misfit of specific type of data
+                    obj             +=  1.0 * my_square(syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.weight;
+                    res             += 1.0 *          (syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
+                    res_sq          += 1.0 * my_square(syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
+
+                    obj_abs         +=  1.0 * my_square(syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.weight;
+                    res_abs         +=  1.0 *          (syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
+                    res_abs_sq      +=  1.0 * my_square(syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
+                    
+                } else {
+                    // pass, only consider absolute time residual for 1D inversion
+                }
+            }
+        }
+    }
+
+
+    obj_residual = {obj, obj_abs, obj_cs_dif, obj_cr_dif, obj_tele, res, res_sq, res_abs, res_abs_sq, res_cs_dif, res_cs_dif_sq, res_cr_dif, res_cr_dif_sq, res_tele, res_tele_sq};
+
+    for(int i = 0; i < (int)obj_residual.size(); i++){
+        allreduce_cr_sim_single_inplace(obj_residual[i]);
+    }
+
+    return obj_residual;
+}
+
+// ########################################################
+// ########           main member function         ########
+// ########           model_optimize_1dinv         ########
+// ########             and sub functions          ########
+// ########################################################
+
+void OneDInversion::model_optimize_1dinv(Grid& grid) {
+
+    // kernel aggregation
+    allreduce_cr_sim_inplace(Ks_1dinv, nr_1dinv);
+
+    // kernel processing (multi-grid parameterization, density normalization)
+    kernel_processing_1dinv(grid);
+
+    // model_update
+    model_update_1dinv();
+}   
+
+
+void OneDInversion::kernel_processing_1dinv(Grid& grid) {
+
+    // density normalization
+    density_normalization_1dinv();
+
+    // multi-grid parameterization
+    multi_grid_parameterization_1dinv(grid);
+}
+
+
+void OneDInversion::density_normalization_1dinv() {
+    // kernel density normalization
+    for (int ir=0; ir<nr_1dinv; ir++){
+        if(isZero(Ks_density_1dinv[ir])){
+            // do nothing
+        } else {
+            if(Ks_density_1dinv[ir] < 0) {
+                std::cout << "WARNING!!!  Ks_density_1dinv < 0. ir: " << ir << ", Ks_density_1dinv[ir]: " << Ks_density_1dinv[ir] << std::endl;
+            }
+            Ks_over_Kden_1dinv[ir] = Ks_1dinv[ir] / std::pow(std::abs(Ks_density_1dinv[ir]),Kdensity_coe);
+        }
+    }
+}
+
+
+void OneDInversion::multi_grid_parameterization_1dinv(Grid& grid) {
+
+    const int ref_idx_t = 0;
+    const int ref_idx_p = 0;
+    int kdr = -1;
+    CUSTOMREAL ratio_r = -_1_CR;
+
+
+    // loop over all inversion grids
+    for (int i_grid = 0; i_grid < n_inv_grids; i_grid++) {
+        // initialize the Ks on inversion grid 
+        // Here we borrow the definition of Ks_inv_loc on 3D inversion grid, but lon, lat index are set to be ref_idx_t = 0 and ref_idx_p = 0
+        for (int k = 0; k < n_inv_K_loc; k++) { 
+            grid.Ks_inv_loc[I2V_INV_KNL(ref_idx_p,ref_idx_t,k)] = _0_CR;
+        }
+
+        // part 1, project r_1dinv onto the inversion grid
+
+        for (int ir = 0; ir < nr_1dinv; ir++) {
+            ratio_r = -_1_CR;
+            for (int ii_invr = 0; ii_invr < n_inv_K_loc-1; ii_invr++){
+                // increasing or decreasing order
+                if (in_between(r_1dinv[ir], grid.inv_grid->r.arr[I2V_INV_GRIDS_1DK(ii_invr,i_grid)], grid.inv_grid->r.arr[I2V_INV_GRIDS_1DK(ii_invr+1,i_grid)])) {
+                    kdr = ii_invr;
+                    ratio_r = calc_ratio_between(r_1dinv[ir], grid.inv_grid->r.arr[I2V_INV_GRIDS_1DK(ii_invr,i_grid)], grid.inv_grid->r.arr[I2V_INV_GRIDS_1DK(ii_invr+1,i_grid)]);
+                    break;
+                }
+            }
+            // continue if r is out of the inversion grid
+            if (ratio_r < _0_CR) continue;
+
+            CUSTOMREAL dtdr = dt_1dinv * r_1dinv[ir] * dr_1dinv;
+
+            grid.Ks_inv_loc[I2V_INV_KNL(ref_idx_p,ref_idx_t,kdr  )] += (_1_CR-ratio_r) * Ks_over_Kden_1dinv[ir] * dtdr;
+            grid.Ks_inv_loc[I2V_INV_KNL(ref_idx_p,ref_idx_t,kdr+1)] += (ratio_r)       * Ks_over_Kden_1dinv[ir] * dtdr;
+                    
+        }
+
+        // part 2, project Ks_inv_loc back to r_1dinv
+        for (int ir = 0; ir < nr_1dinv; ir++) {
+            ratio_r = -_1_CR;
+            for (int ii_invr = 0; ii_invr < n_inv_K_loc-1; ii_invr++){
+                // increasing or decreasing order
+                if (in_between(r_1dinv[ir], grid.inv_grid->r.arr[I2V_INV_GRIDS_1DK(ii_invr,i_grid)], grid.inv_grid->r.arr[I2V_INV_GRIDS_1DK(ii_invr+1,i_grid)])) {
+                    kdr = ii_invr;
+                    ratio_r = calc_ratio_between(r_1dinv[ir], grid.inv_grid->r.arr[I2V_INV_GRIDS_1DK(ii_invr,i_grid)], grid.inv_grid->r.arr[I2V_INV_GRIDS_1DK(ii_invr+1,i_grid)]);
+                    break;
+                }
+            }
+            // continue if r is out of the inversion grid
+            if (ratio_r < _0_CR) continue;
+
+            CUSTOMREAL dtdr = dt_1dinv * r_1dinv[ir] * dr_1dinv;
+
+            Ks_multigrid[ir] += (_1_CR-ratio_r) * grid.Ks_inv_loc[I2V_INV_KNL(ref_idx_p,ref_idx_t,kdr  )] * dtdr;
+            Ks_multigrid[ir] += (ratio_r)       * grid.Ks_inv_loc[I2V_INV_KNL(ref_idx_p,ref_idx_t,kdr+1)] * dtdr;
+        }
+    }
 
 }
 
-void OneDInversion::model_optimize_1dinv() {
 
+void OneDInversion::model_update_1dinv() {
+    
 }
+
+
+
+
 
 
 

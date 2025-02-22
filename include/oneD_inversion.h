@@ -38,12 +38,16 @@ public:
     CUSTOMREAL      *delta_1dinv;          // delta
 
     // parameters on grid nodes (for inversion)
-    CUSTOMREAL      *Ks_1dinv;             // Ks
-
+    CUSTOMREAL      *Ks_1dinv;              // Ks
+    CUSTOMREAL      *Ks_density_1dinv;      // Ks_density
+    CUSTOMREAL      *Ks_over_Kden_1dinv;    // Ks_over_Kdensity
+    CUSTOMREAL      *Ks_multigrid;          // (Ks_over_Kdensity) parameterized by multigrid
+    CUSTOMREAL      *Ks_multigrid_previous; // Ks_multigrid at previous iteration 
+    CUSTOMREAL      *Ks_update;             // Ks update at current iteration (rescaled to be [-1,1])
 
     // functions
     std::vector<CUSTOMREAL> run_simulation_one_step_1dinv(InputParams&);
-    void model_optimize_1dinv(); 
+    void model_optimize_1dinv(Grid&); 
 
 private:
 
@@ -58,12 +62,14 @@ private:
 
 
     // member functions
+    // class functions
     void generate_2d_mesh(InputParams&);
     void deallocate_arrays();
     void allocate_arrays();
     void load_1d_model(Grid&);
     int I2V_1DINV(const int&,const int&);
     
+    // "run_simulation_one_step_1dinv" subfunctions:
     void eikonal_solver_2d(InputParams&, int& );
     void initialize_eikonal_array(CUSTOMREAL);
     void FSM_2d();
@@ -77,7 +83,15 @@ private:
     void FSM_2d_adjoint(const int&);
     void calculate_stencil_adj(const int&, const int&);
 
+    void initialize_kernel_1d();
     void calculate_kernel_1d();
+    std::vector<CUSTOMREAL> calculate_obj_and_residual_1dinv(InputParams&);
+
+    // "model_optimize_1dinv" subfunctions:
+    void kernel_processing_1dinv(Grid&);
+    void density_normalization_1dinv();
+    void multi_grid_parameterization_1dinv(Grid&);
+    void model_update_1dinv();
 };
 
 #endif // ONED_INVERSION_H
