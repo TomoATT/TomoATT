@@ -30,26 +30,54 @@ public:
     CUSTOMREAL      *tau_old_1dinv;        // tau_old
     CUSTOMREAL      *T_1dinv;              // T
     CUSTOMREAL      *Tadj_1dinv;           // Tadj
+    CUSTOMREAL      *Tadj_density_1dinv;           // Tadj
     CUSTOMREAL      *T0v_1dinv;            // T0v
     CUSTOMREAL      *T0r_1dinv;            // T0r
     CUSTOMREAL      *T0t_1dinv;            // T0t
     bool            *is_changed_1dinv;     // is_changed
+    CUSTOMREAL      *delta_1dinv;          // delta
 
     // parameters on grid nodes (for inversion)
     CUSTOMREAL      *Ks_1dinv;             // Ks
 
 
     // functions
-    std::vector<CUSTOMREAL> run_simulation_one_step_1dinv();
+    std::vector<CUSTOMREAL> run_simulation_one_step_1dinv(InputParams&);
     void model_optimize_1dinv(); 
 
 private:
 
+    // for eikonal solver
+    int count_cand;
+    int ii,ii_nr,ii_n2r,ii_pr,ii_p2r,ii_nt,ii_n2t,ii_pt,ii_p2t;
+    CUSTOMREAL ar,br,at,bt,ar1,ar2,at1,at2,br1,br2,bt1,bt2;
+    CUSTOMREAL eqn_a, eqn_b, eqn_c, eqn_Delta;
+    CUSTOMREAL tmp_tau, T_r, T_t, charact_r, charact_t;
+    bool is_causality;
+    std::vector<CUSTOMREAL> canditate = std::vector<CUSTOMREAL>(60);
+
+
+    // member functions
     void generate_2d_mesh(InputParams&);
     void deallocate_arrays();
     void allocate_arrays();
     void load_1d_model(Grid&);
     int I2V_1DINV(const int&,const int&);
+    
+    void eikonal_solver_2d(InputParams&, int& );
+    void initialize_eikonal_array(CUSTOMREAL);
+    void FSM_2d();
+    void calculate_stencil(const int&, const int&);
+    
+    void calculate_synthetic_traveltime_and_adjoint_source(InputParams&, int& );
+    CUSTOMREAL interpolate_2d_traveltime(const CUSTOMREAL&, const CUSTOMREAL&);
+
+    void adjoint_solver_2d(InputParams&, const int&, const int&);
+    void initialize_adjoint_array(InputParams&, const int&, const int&);
+    void FSM_2d_adjoint(const int&);
+    void calculate_stencil_adj(const int&, const int&);
+
+    void calculate_kernel_1d();
 };
 
 #endif // ONED_INVERSION_H

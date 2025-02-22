@@ -344,7 +344,7 @@ inline CUSTOMREAL calc_ratio_between(CUSTOMREAL const& a, CUSTOMREAL const& b, C
 }
 
 
-inline void linear_interpolation_1d_sorted(const CUSTOMREAL* const x1, const CUSTOMREAL* const y1, const int& n1, const CUSTOMREAL* x2, CUSTOMREAL* y2, const int& n2){
+inline void linear_interpolation_1d_sorted(const CUSTOMREAL* x1, const CUSTOMREAL* y1, const int& n1, const CUSTOMREAL* x2, CUSTOMREAL* y2, const int& n2){
     // linear interpolation for sorted 1d array (monotonely increasing)
     // x1 : positions of the first array
     // y1 : values of the first array

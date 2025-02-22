@@ -77,6 +77,7 @@ void OneDInversion::allocate_arrays() {
     tau_old_1dinv       = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4004);
     T_1dinv             = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4005);
     Tadj_1dinv          = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4006);
+    Tadj_density_1dinv  = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4006);
     T0v_1dinv           = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4007);
     T0r_1dinv           = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4008);
     T0t_1dinv           = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4009);
@@ -136,6 +137,7 @@ void OneDInversion::deallocate_arrays(){
     delete[] tau_old_1dinv;
     delete[] T_1dinv;
     delete[] Tadj_1dinv;
+    delete[] Tadj_density_1dinv;
     delete[] T0v_1dinv;
     delete[] T0r_1dinv;
     delete[] T0t_1dinv;
@@ -147,12 +149,33 @@ void OneDInversion::deallocate_arrays(){
 }
 
 
-std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv() {
+std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams& IP) {
 
     // begin from here
+    if(world_rank == 0)
+        std::cout << "computing traveltime field, adjoint field and kernel for 1d inversion ..." << std::endl;
+
+    // initialize misfit kernel (to do)
 
 
+    // iterate over sources
+    for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+        
+        // solver 2d eikonal equation for the i-th source for traveltime field
+        eikonal_solver_2d(IP, i_src);   // now traveltime field has been stored in T_1dinv.
 
+        // calculate synthetic traveltime and adjoint source
+        calculate_synthetic_traveltime_and_adjoint_source(IP, i_src);  // now data in data_map, the data.traveltime has been updated.
+
+        // solver for 2d adjoint field
+        int adj_type = 0;  // 0: adjoint_field, 1: adjoint_density
+        adjoint_solver_2d(IP, i_src, adj_type);  // now adjoint field has been stored in Tadj_1dinv.
+        adj_type = 1;  
+        adjoint_solver_2d(IP, i_src, adj_type);  // now adjoint field has been stored in Tadj_density_1dinv.
+        
+        // calculate event sensitivity kernel
+
+    }
 
 
     // compute all residual and obj
@@ -160,6 +183,790 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv() {
 
     // return current objective function value
     return obj_residual;
+}
+
+
+void OneDInversion::eikonal_solver_2d(InputParams& IP, int& i_src){
+
+    // get the source r 
+    const std::string name_sim_src  = IP.get_src_name(i_src);
+    CUSTOMREAL src_r                = IP.get_src_radius(name_sim_src);
+    // source in the 2D grid is r = src_r, t = 0;
+
+    // initialize T0v_1dinv, T0r_1dinv, T0t_1dinv, tau_1dinv, tau_old_1dinv is_changed_1dinv
+    initialize_eikonal_array(src_r);
+
+    // fast sweeping method for 2d space
+    FSM_2d();
+}
+
+
+void OneDInversion::initialize_eikonal_array(CUSTOMREAL src_r) {
+    // discretize the src position
+    CUSTOMREAL src_t_dummy = _0_CR;
+    int src_r_i = std::floor((src_r - r_1dinv[0])/dr_1dinv);
+    int src_t_i = std::floor((src_t_dummy - t_1dinv[0])/dt_1dinv);
+
+    // error of discretized source position
+    CUSTOMREAL src_r_err = std::min(_1_CR, (src_r - r_1dinv[src_r_i])/dr_1dinv);
+    CUSTOMREAL src_t_err = std::min(_1_CR, (src_t_dummy - t_1dinv[src_t_i])/dt_1dinv);
+
+    // check precision error for floor
+    if (src_r_err == _1_CR) {
+        src_r_err = _0_CR;
+        src_r_i++;
+    }
+    if (src_t_err == _1_CR) {
+        src_t_err = _0_CR;
+        src_t_i++;
+    }
+
+    // initialize the initial fields
+    CUSTOMREAL a0           = (_1_CR - src_r_err)*(_1_CR - src_t_err)*fac_a_1dinv[I2V_1DINV(src_t_i  ,src_r_i  )] \
+                            + (_1_CR - src_r_err)*         src_t_err *fac_a_1dinv[I2V_1DINV(src_t_i+1,src_r_i  )] \
+                            +           src_r_err*(_1_CR - src_t_err)*fac_a_1dinv[I2V_1DINV(src_t_i  ,src_r_i+1)] \
+                            +           src_r_err*         src_t_err *fac_a_1dinv[I2V_1DINV(src_t_i+1,src_r_i+1)];
+
+    CUSTOMREAL b0           = (_1_CR - src_r_err)*(_1_CR - src_t_err)*fac_b_1dinv[I2V_1DINV(src_t_i  ,src_r_i  )] \
+                            + (_1_CR - src_r_err)*         src_t_err *fac_b_1dinv[I2V_1DINV(src_t_i+1,src_r_i  )] \
+                            +          src_r_err *(_1_CR - src_t_err)*fac_b_1dinv[I2V_1DINV(src_t_i  ,src_r_i+1)] \
+                            +          src_r_err *         src_t_err *fac_b_1dinv[I2V_1DINV(src_t_i+1,src_r_i+1)];
+
+    CUSTOMREAL slowness0    = (_1_CR - src_r_err)*(_1_CR - src_t_err)*slowness_1dinv[I2V_1DINV(src_t_i  ,src_r_i  )] \
+                            + (_1_CR - src_r_err)*         src_t_err *slowness_1dinv[I2V_1DINV(src_t_i+1,src_r_i  )] \
+                            +          src_r_err *(_1_CR - src_t_err)*slowness_1dinv[I2V_1DINV(src_t_i  ,src_r_i+1)] \
+                            +          src_r_err *         src_t_err *slowness_1dinv[I2V_1DINV(src_t_i+1,src_r_i+1)];
+
+
+    for (int ir = 0; ir < nr_1dinv; ir++){
+        for (int it = 0; it < nt_1dinv; it++){
+
+            int irt = I2V_1DINV(it,ir);
+            T0v_1dinv[irt] = slowness0 * std::sqrt((_1_CR/a0) * my_square((r_1dinv[ir]-src_r))
+                                          + _1_CR/b0  * my_square((t_1dinv[it]-src_t_dummy)));
+
+            if (isZero(T0v_1dinv[irt])) {
+                T0r_1dinv[irt] = _0_CR;
+                T0t_1dinv[irt] = _0_CR;
+            } else {
+                T0r_1dinv[irt] = my_square(slowness0) * (_1_CR/a0 * (r_1dinv[ir]-src_r))       / T0v_1dinv[irt];
+                T0t_1dinv[irt] = my_square(slowness0) * (_1_CR/b0 * (t_1dinv[it]-src_t_dummy)) / T0v_1dinv[irt];
+            }
+
+            if (std::abs((r_1dinv[ir]-src_r)/dr_1dinv)       <= _1_CR-0.1 \
+             && std::abs((t_1dinv[it]-src_t_dummy)/dt_1dinv) <= _1_CR-0.1) {
+                tau_1dinv[irt] = TAU_INITIAL_VAL;
+                is_changed_1dinv[irt] = false;
+            } else {
+                tau_1dinv[irt] = TAU_INF_VAL;  // upwind scheme, initial tau should be large enough
+                is_changed_1dinv[irt] = true;
+            }
+            tau_old_1dinv[irt] = _0_CR;
+        }
+    }
+}
+
+
+void OneDInversion::FSM_2d() {
+    if (myrank==0)
+        std::cout << "Running 2d eikonal solver..." << std::endl;
+
+    CUSTOMREAL L1_dif  =1000000000;
+    CUSTOMREAL Linf_dif=1000000000;
+
+    int iter = 0;
+
+    while (true) {
+
+        // update tau_old
+        std::memcpy(tau_old_1dinv, tau_1dinv, sizeof(CUSTOMREAL)*nr_1dinv*nt_1dinv);
+
+        int r_start, r_end;
+        int t_start, t_end;
+        int r_dirc, t_dirc;
+
+        // sweep direction
+        for (int iswp = 0; iswp < 4; iswp++){
+            if (iswp == 0){
+                r_start = nr_1dinv-1;
+                r_end   = -1;
+                t_start = nt_1dinv-1;
+                t_end   = -1;
+                r_dirc  = -1;
+                t_dirc  = -1;
+            } else if (iswp==1){
+                r_start = nr_1dinv-1;
+                r_end   = -1;
+                t_start = 0;
+                t_end   = nt_1dinv;
+                r_dirc  = -1;
+                t_dirc  = 1;
+            } else if (iswp==2){
+                r_start = 0;
+                r_end   = nr_1dinv;
+                t_start = nt_1dinv-1;
+                t_end   = -1;
+                r_dirc  = 1;
+                t_dirc  = -1;
+            } else {
+                r_start = 0;
+                r_end   = nr_1dinv;
+                t_start = 0;
+                t_end   = nt_1dinv;
+                r_dirc  = 1;
+                t_dirc  = 1;
+            }
+
+            for (int ir = r_start; ir != r_end; ir += r_dirc) {
+                for (int it = t_start; it != t_end; it += t_dirc) {
+
+                    if (is_changed_1dinv[I2V_1DINV(it,ir)])
+                        calculate_stencil(it,it);
+
+                }
+            }
+        } // end of iswp
+
+        // calculate L1 and Linf error
+        L1_dif  = _0_CR;
+        Linf_dif= _0_CR;
+
+        for (int ii = 0; ii < nr_1dinv*nt_1dinv; ii++){
+            L1_dif  += std::abs(tau_1dinv[ii]-tau_old_1dinv[ii]);
+            Linf_dif = std::max(Linf_dif, std::abs(tau_1dinv[ii]-tau_old_1dinv[ii]));
+        }
+        L1_dif /= nr_1dinv*nt_1dinv;
+
+
+        // check convergence
+        if (std::abs(L1_dif) < TOL_2D_SOLVER && std::abs(Linf_dif) < TOL_2D_SOLVER){
+            if (myrank==0)
+                std::cout << "Converged at iteration " << iter << std::endl;
+            break;
+        } else if (iter > MAX_ITER_2D_SOLVER){
+            if (myrank==0)
+                std::cout << "Maximum iteration reached at iteration " << iter << std::endl;
+            break;
+        } else {
+            if (myrank==0 && if_verbose)
+                std::cout << "Iteration " << iter << ": L1 dif = " << L1_dif << ", Linf dif = " << Linf_dif << std::endl;
+            iter++;
+        }
+    } // end of wile
+
+    if (myrank==0)
+        std::cout << "Iteration " << iter << " finished." << std::endl;
+
+    for (int ii = 0; ii < nr_1dinv*nt_1dinv; ii++){
+        T_1dinv[ii] = tau_1dinv[ii]*T0v_1dinv[ii];
+    }
+
+}
+
+
+void OneDInversion::calculate_stencil(const int& it, const int& ir) {
+    
+    count_cand = 0;
+    ii     = I2V_1DINV(it,ir);
+    ii_nr  = I2V_1DINV(it,ir-1);
+    ii_pr  = I2V_1DINV(it,ir+1);
+    ii_nt  = I2V_1DINV(it-1,ir);
+    ii_pt  = I2V_1DINV(it+1,ir);
+    
+
+    // (T0*tau)_r = ar*tau(iix,iiy)+br; (T0*tau)_t = at*tau(iix,iiy)+bt
+    if (it > 0){
+        at1 =  T0t_1dinv[ii] + T0v_1dinv[ii]/dt_1dinv;
+        bt1 = -T0v_1dinv[ii]/dt_1dinv*tau_1dinv[ii_nt];
+    }
+    if (it < nt_1dinv-1){
+        at2 =  T0t_1dinv[ii] - T0v_1dinv[ii]/dt_1dinv;
+        bt2 =  T0v_1dinv[ii]/dt_1dinv*tau_1dinv[ii_pt];
+    }
+    if (ir > 0){
+        ar1 =  T0r_1dinv[ii] + T0v_1dinv[ii]/dr_1dinv;
+        br1 = -T0v_1dinv[ii]/dr_1dinv*tau_1dinv[ii_nr];
+    }
+    if (ir < nr_1dinv-1){
+        ar2 =  T0r_1dinv[ii] - T0v_1dinv[ii]/dr_1dinv;
+        br2 =  T0v_1dinv[ii]/dr_1dinv*tau_1dinv[ii_pr];
+    }
+
+    // start to find candidate solutions
+
+    // first catalog: characteristic travels through sector in 2D volume (4 cases)
+    for (int i_case = 0; i_case < 4; i_case++){
+        // determine discretization of T_t,T_r
+        switch (i_case) {
+            case 0:    // characteristic travels from -t, -r
+                if (it == 0 || ir == 0)
+                    continue;
+                at = at1; bt = bt1;
+                ar = ar1; br = br1;
+                break;
+            case 1:     // characteristic travels from -t, +r
+                if (it == 0 || ir == nr_1dinv-1)
+                    continue;
+                at = at1; bt = bt1;
+                ar = ar2; br = br2;
+                break;
+            case 2:    // characteristic travels from +t, -r
+                if (it == nt_1dinv-1 || ir == 0)
+                    continue;
+                at = at2; bt = bt2;
+                ar = ar1; br = br1;
+                break;
+            case 3:     // characteristic travels from +t, +r
+                if (it == nt_1dinv-1 || ir == nr_1dinv-1)
+                    continue;
+                at = at2; bt = bt2;
+                ar = ar2; br = br2;
+                break;
+        }
+
+        // plug T_t, T_r into eikonal equation, solving the quadratic equation with respect to tau(iip,jjt,kkr)
+        // that is a*(ar*tau+br)^2 + b*(at*tau+bt)^2 = s^2
+        eqn_a = fac_a_1dinv[ii] * std::pow(ar, _2_CR) + fac_b_1dinv[ii] * std::pow(at, _2_CR);
+        eqn_b = fac_a_1dinv[ii] * _2_CR * ar * br     + fac_b_1dinv[ii] * _2_CR * at * bt;
+        eqn_c = fac_a_1dinv[ii] * std::pow(br, _2_CR) + fac_b_1dinv[ii] * std::pow(bt, _2_CR) - std::pow(slowness_1dinv[ii], _2_CR);
+        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+
+        if (eqn_Delta >= 0){    // one or two real solutions
+            for (int i_solution = 0; i_solution < 2; i_solution++){
+                // solutions
+                switch (i_solution){
+                    case 0:
+                        tmp_tau = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        break;
+                    case 1:
+                        tmp_tau = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        break;
+                }
+
+                // check the causality condition: the characteristic passing through (it,ir) is in between used two sides
+                // characteristic direction is (dr/dt, dtheta/dt, tphi/dt) = (H_p1,H_p2,H_p3), p1 = T_r, p2 = T_t, p3 = T_p
+                T_r = ar*tmp_tau + br;
+                T_t = at*tmp_tau + bt;
+
+                charact_r = T_r;
+                charact_t = T_t;
+
+                is_causality = false;
+                switch (i_case){
+                    case 0:  //characteristic travels from -t, -r
+                        if (charact_t >= 0 && charact_r >= 0 && tmp_tau > 0){
+                            is_causality = true;
+                        }
+                        break;
+                    case 1:  //characteristic travels from -t, +r
+                        if (charact_t >= 0 && charact_r <= 0 && tmp_tau > 0){
+                            is_causality = true;
+                        }
+                        break;
+                    case 2:  //characteristic travels from +t, -r
+                        if (charact_t <= 0 && charact_r >= 0 && tmp_tau > 0){
+                            is_causality = true;
+                        }
+                        break;
+                    case 3:  //characteristic travels from +t, +r
+                        if (charact_t <= 0 && charact_r <= 0 && tmp_tau > 0){
+                            is_causality = true;
+                        }
+                        break;
+                }
+
+                // if satisfying the causility condition, retain it as a canditate solution
+                if (is_causality) {
+                    canditate[count_cand] = tmp_tau;
+                    count_cand += 1;
+                }
+            }
+        }
+    }
+
+    // second catalog: characteristic travels through lines in 1D volume (4 cases)
+    // case: 1-2
+    // characteristic travels along r-axis, force H_p2, H_p3 = 0, that is, T_t = 0
+    // plug the constraint into eikonal equation, we have the equation:   a*T_r^2 = s^2
+    for (int i_case = 0; i_case < 2; i_case++){
+        switch (i_case){
+            case 0:     //characteristic travels from  -r
+                if (ir ==  0){
+                    continue;
+                }
+                ar = ar1; br = br1;
+                break;
+            case 1:     //characteristic travels from  +r
+                if (ir ==  nr_1dinv-1){
+                    continue;
+                }
+                ar = ar2; br = br2;
+                break;
+        }
+
+        // plug T_t, T_r into eikonal equation, solve the quadratic equation:  (ar*tau+br)^2 = s^2
+        // simply, we have two solutions
+        for (int i_solution = 0; i_solution < 2; i_solution++){
+            // solutions
+            switch (i_solution){
+                case 0:
+                    tmp_tau = ( std::sqrt(std::pow(slowness_1dinv[ii],_2_CR)/fac_a_1dinv[ii]) - br)/ar;
+                    break;
+                case 1:
+                    tmp_tau = (-std::sqrt(std::pow(slowness_1dinv[ii],_2_CR)/fac_a_1dinv[ii]) - br)/ar;
+                    break;
+            }
+
+            // check the causality condition:
+
+            is_causality = false;
+            switch (i_case){
+                case 0:  //characteristic travels from -r (we can simply compare the traveltime, which is the same as check the direction of characteristic)
+                    if (tmp_tau * T0v_1dinv[ii] > tau_1dinv[ii_nr] * T0v_1dinv[ii_nr]
+                        && tmp_tau > tau_1dinv[ii_nr]/_2_CR && tmp_tau > 0){   // this additional condition ensures the causality near the source
+                        is_causality = true;
+                    }
+                    break;
+                case 1:  //characteristic travels from +r
+                    if (tmp_tau * T0v_1dinv[ii] > tau_1dinv[ii_pr] * T0v_1dinv[ii_pr]
+                        && tmp_tau > tau_1dinv[ii_pr]/_2_CR && tmp_tau > 0){
+                        is_causality = true;
+                    }
+                    break;
+            }
+
+            // if satisfying the causility condition, retain it as a canditate solution
+            if (is_causality) {
+                canditate[count_cand] = tmp_tau;
+                count_cand += 1;
+            }
+        }
+
+    }
+
+
+    // case: 3-4
+    // characteristic travels along t-axis, force H_p1, H_p3 = 0, that is, T_r = 0;
+    // plug the constraint into eikonal equation, we have the equation:   T_t^2 = s^2
+    for (int i_case = 2; i_case < 4; i_case++){
+        switch (i_case){
+            case 2:     //characteristic travels from  -t
+                if (it ==  0){
+                    continue;
+                }
+                at = at1; bt = bt1;
+                break;
+            case 3:     //characteristic travels from  +t
+                if (it ==  nt_1dinv-1){
+                    continue;
+                }
+                at = at2; bt = bt2;
+                break;
+        }
+
+        // plug T_t into eikonal equation, solve the quadratic equation:  b*(at*tau+bt)^2 = s^2
+        // simply, we have two solutions
+        for (int i_solution = 0; i_solution < 2; i_solution++){
+            // solutions
+            switch (i_solution){
+                case 0:
+                    tmp_tau = ( std::sqrt(std::pow(slowness_1dinv[ii],_2_CR)/fac_b_1dinv[ii]) - bt)/at;
+                    break;
+                case 1:
+                    tmp_tau = (-std::sqrt(std::pow(slowness_1dinv[ii],_2_CR)/fac_b_1dinv[ii]) - bt)/at;
+                    break;
+            }
+
+            // check the causality condition:
+
+            is_causality = false;
+            switch (i_case){
+                case 2:  //characteristic travels from -t (we can simply compare the traveltime, which is the same as check the direction of characteristic)
+                    if (tmp_tau * T0v_1dinv[ii] > tau_1dinv[ii_nt] * T0v_1dinv[ii_nt]
+                        && tmp_tau > tau_1dinv[ii_nt]/_2_CR && tmp_tau > 0){   // this additional condition ensures the causality near the source
+                        is_causality = true;
+                    }
+                    break;
+                case 3:  //characteristic travels from +t
+                    if (tmp_tau * T0v_1dinv[ii] > tau_1dinv[ii_pt]  * T0v_1dinv[ii_pt]
+                        && tmp_tau > tau_1dinv[ii_pt]/_2_CR && tmp_tau > 0){
+                        is_causality = true;
+                    }
+                    break;
+            }
+
+            // if satisfying the causility condition, retain it as a canditate solution
+            if (is_causality) {
+                canditate[count_cand] = tmp_tau;
+                count_cand += 1;
+            }
+        }
+    }
+
+    // final, choose the minimum candidate solution as the updated value
+    for (int i_cand = 0; i_cand < count_cand; i_cand++){
+        tau_1dinv[ii] = std::min(tau_1dinv[ii], canditate[i_cand]);
+        if (tau_1dinv[ii] < 0 ){
+            std::cout << "error, tau_loc < 0. ir: " << ir << ", it: " << it << std::endl;
+            exit(1);
+        }
+    }
+
+}
+
+
+void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParams& IP, int& i_src) {
+
+    // get the (r,t,p) of the real source
+    const std::string name_src  = IP.get_src_name(i_src);
+    // CUSTOMREAL src_r   = IP.get_src_radius(name_src);
+    CUSTOMREAL src_lon = IP.get_src_lon(   name_src); // in radian
+    CUSTOMREAL src_lat = IP.get_src_lat(   name_src); // in radian
+
+    // rec.adjoint_source = 0 && rec.adjoint_source_density = 0
+    IP.initialize_adjoint_source();
+
+    // loop all receivers 
+    for (auto it_rec = IP.data_map[name_src].begin(); it_rec != IP.data_map[name_src].end(); ++it_rec) {
+        for (auto& data: it_rec->second){
+
+            const std::string name_rec = data.name_rec;
+            // get position of the receiver
+            CUSTOMREAL rec_r = depth2radius(IP.rec_map[name_rec].dep);
+            CUSTOMREAL rec_lon = IP.rec_map[name_rec].lon*DEG2RAD;   // in radian
+            CUSTOMREAL rec_lat = IP.rec_map[name_rec].lat*DEG2RAD;   // in radian
+
+            // calculate epicentral distance
+            CUSTOMREAL distance =0.0;
+            Epicentral_distance_sphere(src_lat, src_lon, rec_lat, rec_lon, distance);
+
+            // 2d interporlation, to find the traveltime at (distance, rec_r) on the field of T_1dinv on the mesh meshgrid(t_1dinv, r_1dinv)
+            CUSTOMREAL traveltime = interpolate_2d_traveltime(distance, rec_r);
+            data.travel_time = traveltime;
+
+            // calculate adjoint source
+            if (data.is_src_rec){
+                CUSTOMREAL syn_time       = data.travel_time;
+                CUSTOMREAL obs_time       = data.travel_time_obs;
+
+                // assign local weight
+                CUSTOMREAL  local_weight = _1_CR;
+
+                // evaluate residual_weight_abs （If run_mode == DO_INVERSION, tau_opt always equal 0. But when run_mode == INV_RELOC, we need to consider the change of ortime of earthquakes (swapped receiver)）
+                CUSTOMREAL  local_residual = abs(syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
+                CUSTOMREAL* res_weight = IP.get_residual_weight_abs();
+
+                if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
+                else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
+                else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
+
+                // evaluate distance_weight_abs
+                CUSTOMREAL  local_dis    =   _0_CR;
+                Epicentral_distance_sphere(IP.get_rec_point(name_rec).lat*DEG2RAD, IP.get_rec_point(name_rec).lon*DEG2RAD, IP.get_src_point(name_src).lat*DEG2RAD, IP.get_src_point(name_src).lon*DEG2RAD, local_dis);
+                local_dis *= R_earth;       // rad to km
+                CUSTOMREAL* dis_weight = IP.get_distance_weight_abs();
+
+                if      (local_dis < dis_weight[0])         local_weight *= dis_weight[2];
+                else if (local_dis > dis_weight[1])         local_weight *= dis_weight[3];
+                else                                        local_weight *= ((local_dis - dis_weight[0])/(dis_weight[1] - dis_weight[0]) * (dis_weight[3] - dis_weight[2]) + dis_weight[2]);
+
+                // assign adjoint source
+                CUSTOMREAL adjoint_source = IP.get_rec_point(name_rec).adjoint_source + (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.weight * local_weight;
+                IP.set_adjoint_source(name_rec, adjoint_source); // set adjoint source to rec_map[name_rec]
+
+                // assign adjoint source density
+                CUSTOMREAL adjoint_source_density = IP.get_rec_point(name_rec).adjoint_source_density + _1_CR;
+                IP.set_adjoint_source_density(name_rec, adjoint_source_density);
+            }
+        }
+    }
+}
+
+
+CUSTOMREAL OneDInversion::interpolate_2d_traveltime(const CUSTOMREAL& distance, const CUSTOMREAL& r) {
+
+    int r_index = std::floor((r         - r_1dinv[0])/dr_1dinv);
+    int t_index = std::floor((distance  - t_1dinv[0])/dt_1dinv);
+
+    // error of discretized source position
+    CUSTOMREAL r_err = std::min(_1_CR, (r           - r_1dinv[r_index])/dr_1dinv);
+    CUSTOMREAL t_err = std::min(_1_CR, (distance    - t_1dinv[t_index])/dt_1dinv);
+
+    // check precision error for floor
+    if (r_err == _1_CR) {
+        r_err = _0_CR;
+        r_err++;
+    }
+    if (t_err == _1_CR) {
+        t_err = _0_CR;
+        t_err++;
+    }
+
+    if(t_index < 0 || t_index > nt_1dinv-2 || r_index < 0 || r_index > nr_1dinv-2){
+        std::cout << "error, out of range. t_index: " << t_index << ", r_index: " << r_index << std::endl;
+        exit(1);
+    }
+
+    // initialize the initial fields
+    CUSTOMREAL traveltime   = (_1_CR - r_err)*(_1_CR - t_err)*T_1dinv[I2V_1DINV(t_index  ,r_index  )] \
+                            + (_1_CR - r_err)*         t_err *T_1dinv[I2V_1DINV(t_index+1,r_index  )] \
+                            +          r_err *(_1_CR - t_err)*T_1dinv[I2V_1DINV(t_index  ,r_index+1)] \
+                            +          r_err *         t_err *T_1dinv[I2V_1DINV(t_index+1,r_index+1)];
+            
+    return traveltime;
+}
+
+
+void OneDInversion::adjoint_solver_2d(InputParams& IP, const int& i_src, const int& adj_type){
+    
+    // initialize adjoint arrays: Tadj_1dinv, is_changed_1dinv, delta_1dinv
+    initialize_adjoint_array(IP, i_src, adj_type);
+
+    // fast sweeping method for 2d space
+    FSM_2d_adjoint(adj_type);
+}   
+
+
+void OneDInversion::initialize_adjoint_array(InputParams& IP, const int& i_src, const int& adj_type) {
+    // adj_type: 0, adjoint_source; 1, adjoint_source_density
+
+    // initialize adjoint field
+    for (int ir = 0; ir < nr_1dinv; ir++){
+        for (int it = 0; it < nt_1dinv; it++){
+            tau_1dinv[I2V_1DINV(it,ir)]    = _0_CR;
+        }
+    }
+
+    // initialize is_changed_1dinv
+    for (int ir = 0; ir < nr_1dinv; ir++){
+        for (int it = 0; it < nt_1dinv; it++){
+            is_changed_1dinv[I2V_1DINV(it,ir)] = true;
+        }
+    }
+    for (int ir = 0; ir < nr_1dinv; ir++){      // boundary are false
+        is_changed_1dinv[I2V_1DINV(0,ir)] = false;
+        is_changed_1dinv[I2V_1DINV(nt_1dinv-1,ir)] = false;
+    }
+    for (int it = 0; it < nt_1dinv; it++){
+        is_changed_1dinv[I2V_1DINV(it,0)] = false;
+        is_changed_1dinv[I2V_1DINV(it,nr_1dinv-1)] = false;
+    }
+
+    // initialize delta_1dinv
+    for (int ir = 0; ir < nr_1dinv; ir++){
+        for (int it = 0; it < nt_1dinv; it++){
+            delta_1dinv[I2V_1DINV(it,ir)] = _0_CR;
+        }
+    }
+    // loop all receivers to assign adjoint source
+    
+    // get the (r,t,p) of the real source
+    const std::string name_src  = IP.get_src_name(i_src);
+    // CUSTOMREAL src_r   = IP.get_src_radius(name_src);
+    CUSTOMREAL src_lon = IP.get_src_lon(   name_src); // in radian
+    CUSTOMREAL src_lat = IP.get_src_lat(   name_src); // in radian
+
+    // loop all receivers
+    for (int irec = 0; irec < IP.n_rec_this_sim_group; irec++) {
+        // get receiver information
+        std::string name_rec = IP.get_rec_name(irec);
+        CUSTOMREAL adjoint_source; 
+        if (adj_type == 0){
+            adjoint_source = IP.rec_map[name_rec].adjoint_source;
+        } else if (adj_type == 1) {
+            adjoint_source = IP.rec_map[name_rec].adjoint_source_density;
+        } else {
+            std::cout << "error, adj_type is not defined." << std::endl;
+            exit(1);
+        }
+        
+        CUSTOMREAL rec_r = depth2radius(IP.rec_map[name_rec].dep);
+        CUSTOMREAL rec_lon = IP.rec_map[name_rec].lon*DEG2RAD;   // in radian
+        CUSTOMREAL rec_lat = IP.rec_map[name_rec].lat*DEG2RAD;   // in radian
+
+        if (adjoint_source == 0){
+            continue;
+        }
+
+        // descretize receiver position
+        CUSTOMREAL distance =0.0;
+        Epicentral_distance_sphere(src_lat, src_lon, rec_lat, rec_lon, distance);
+        int r_index = std::floor((rec_r     - r_1dinv[0])/dr_1dinv);
+        int t_index = std::floor((distance  - t_1dinv[0])/dt_1dinv);
+
+        // error of discretized source position
+        CUSTOMREAL r_err = std::min(_1_CR, (rec_r       - r_1dinv[r_index])/dr_1dinv);
+        CUSTOMREAL t_err = std::min(_1_CR, (distance    - t_1dinv[t_index])/dt_1dinv);
+
+        // check precision error for floor
+        if (r_err == _1_CR) {
+            r_err = _0_CR;
+            r_err++;
+        }
+        if (t_err == _1_CR) {
+            t_err = _0_CR;
+            t_err++;
+        }
+
+        if(t_index < 0 || t_index > nt_1dinv-2 || r_index < 0 || r_index > nr_1dinv-2){
+            std::cout << "error, out of range. t_index: " << t_index << ", r_index: " << r_index << std::endl;
+            exit(1);
+        }
+        
+        // assign to delta function
+        delta_1dinv[I2V_1DINV(t_index  ,r_index  )] += adjoint_source*(1.0-r_err)*(1.0-t_err)/(dr_1dinv*dt_1dinv*rec_r);
+        delta_1dinv[I2V_1DINV(t_index+1,r_index  )] += adjoint_source*(1.0-r_err)*     t_err /(dr_1dinv*dt_1dinv*rec_r);
+        delta_1dinv[I2V_1DINV(t_index  ,r_index+1)] += adjoint_source*     r_err *(1.0-t_err)/(dr_1dinv*dt_1dinv*rec_r);
+        delta_1dinv[I2V_1DINV(t_index+1,r_index+1)] += adjoint_source*     r_err *     t_err /(dr_1dinv*dt_1dinv*rec_r);
+    }
+
+}
+
+
+void OneDInversion::FSM_2d_adjoint(const int& adj_type) {
+    if (myrank==0)
+        std::cout << "Running 2d adjoint solver..." << std::endl;
+
+    CUSTOMREAL L1_dif  =1000000000;
+    CUSTOMREAL Linf_dif=1000000000;
+
+    int iter = 0;
+
+    while (true) {
+
+        // update tau_old
+        std::memcpy(tau_old_1dinv, tau_1dinv, sizeof(CUSTOMREAL)*nr_1dinv*nt_1dinv);
+
+        int r_start, r_end;
+        int t_start, t_end;
+        int r_dirc, t_dirc;
+
+        // sweep direction
+        for (int iswp = 0; iswp < 4; iswp++){
+            if (iswp == 0){
+                r_start = nr_1dinv-1;
+                r_end   = -1;
+                t_start = nt_1dinv-1;
+                t_end   = -1;
+                r_dirc  = -1;
+                t_dirc  = -1;
+            } else if (iswp==1){
+                r_start = nr_1dinv-1;
+                r_end   = -1;
+                t_start = 0;
+                t_end   = nt_1dinv;
+                r_dirc  = -1;
+                t_dirc  = 1;
+            } else if (iswp==2){
+                r_start = 0;
+                r_end   = nr_1dinv;
+                t_start = nt_1dinv-1;
+                t_end   = -1;
+                r_dirc  = 1;
+                t_dirc  = -1;
+            } else {
+                r_start = 0;
+                r_end   = nr_1dinv;
+                t_start = 0;
+                t_end   = nt_1dinv;
+                r_dirc  = 1;
+                t_dirc  = 1;
+            }
+
+            for (int ir = r_start; ir != r_end; ir += r_dirc) {
+                for (int it = t_start; it != t_end; it += t_dirc) {
+
+                    if (is_changed_1dinv[I2V_1DINV(it,ir)])
+                        calculate_stencil_adj(it,it);
+
+                }
+            }
+        } // end of iswp
+
+        // calculate L1 and Linf error
+        L1_dif  = _0_CR;
+        Linf_dif= _0_CR;
+
+        for (int ii = 0; ii < nr_1dinv*nt_1dinv; ii++){
+            L1_dif  += std::abs(tau_1dinv[ii]-tau_old_1dinv[ii]);
+            Linf_dif = std::max(Linf_dif, std::abs(tau_1dinv[ii]-tau_old_1dinv[ii]));
+        }
+        L1_dif /= nr_1dinv*nt_1dinv;
+
+
+        // check convergence
+        if (std::abs(L1_dif) < TOL_2D_SOLVER && std::abs(Linf_dif) < TOL_2D_SOLVER){
+            if (myrank==0)
+                std::cout << "Converged at iteration " << iter << std::endl;
+            break;
+        } else if (iter > MAX_ITER_2D_SOLVER){
+            if (myrank==0)
+                std::cout << "Maximum iteration reached at iteration " << iter << std::endl;
+            break;
+        } else {
+            if (myrank==0 && if_verbose)
+                std::cout << "Iteration " << iter << ": L1 dif = " << L1_dif << ", Linf dif = " << Linf_dif << std::endl;
+            iter++;
+        }
+    } // end of wile
+
+    if (myrank==0)
+        std::cout << "Iteration " << iter << " finished." << std::endl;
+    
+    if (adj_type == 0){
+        for (int ii = 0; ii < nr_1dinv*nt_1dinv; ii++){
+            Tadj_1dinv[ii] = tau_1dinv[ii];
+        }
+    } else if (adj_type == 1){
+        for (int ii = 0; ii < nr_1dinv*nt_1dinv; ii++){
+            Tadj_density_1dinv[ii] = delta_1dinv[ii];
+        }
+    } else {
+        std::cout << "error, adj_type is not defined." << std::endl;
+        exit(1);
+    }
+}
+
+
+void OneDInversion::calculate_stencil_adj(const int& it, const int& ir) {
+    // function \nabla \cdot ( P (-\nabla T) M ) = \sum delta * adj
+    // matrix:
+    // |  a  0 |
+    // |  0  b |
+
+    // related coefficients
+    CUSTOMREAL a1  = - (T_1dinv[I2V_1DINV(it  ,ir  )] - T_1dinv[I2V_1DINV(it-1,ir  )]) / dt_1dinv * (fac_a_1dinv[I2V_1DINV(it  ,ir  )] + fac_a_1dinv[I2V_1DINV(it-1,ir  )])/2.0;
+    CUSTOMREAL a1m = (a1 - std::abs(a1))/2.0;
+    CUSTOMREAL a1p = (a1 + std::abs(a1))/2.0;
+
+    CUSTOMREAL a2  = - (T_1dinv[I2V_1DINV(it+1,ir  )] - T_1dinv[I2V_1DINV(it  ,ir  )]) / dt_1dinv * (fac_a_1dinv[I2V_1DINV(it+1,ir  )] + fac_a_1dinv[I2V_1DINV(it  ,ir  )])/2.0;
+    CUSTOMREAL a2m = (a2 - std::abs(a2))/2.0;
+    CUSTOMREAL a2p = (a2 + std::abs(a2))/2.0;
+
+    CUSTOMREAL b1  = - (T_1dinv[I2V_1DINV(it  ,ir  )] - T_1dinv[I2V_1DINV(it  ,ir-1)]) / dr_1dinv * (fac_b_1dinv[I2V_1DINV(it  ,ir  )] + fac_b_1dinv[I2V_1DINV(it  ,ir-1)])/2.0;
+    CUSTOMREAL b1m = (b1 - std::abs(b1))/2.0;
+    CUSTOMREAL b1p = (b1 + std::abs(b1))/2.0;
+
+    CUSTOMREAL b2  = - (T_1dinv[I2V_1DINV(it  ,ir+1)] - T_1dinv[I2V_1DINV(it  ,ir  )]) / dr_1dinv * (fac_b_1dinv[I2V_1DINV(it  ,ir+1)] + fac_b_1dinv[I2V_1DINV(it  ,ir  )])/2.0;
+    CUSTOMREAL b2m = (b2 - std::abs(b2))/2.0;
+    CUSTOMREAL b2p = (b2 + std::abs(b2))/2.0;
+
+    CUSTOMREAL coe = (a2p - a1m)/dt_1dinv + (b2p - b1m)/dr_1dinv;
+
+    if (isZero(coe)){
+        tau_1dinv[I2V_1DINV(it,ir)] = 0.0;
+    } else {
+        // Hamiltonian
+        CUSTOMREAL Hadj = (a1p * Tadj_1dinv[I2V_1DINV(it-1,ir)] - a2m * Tadj_1dinv[I2V_1DINV(it+1,ir)])/dt_1dinv 
+                        + (b1p * Tadj_1dinv[I2V_1DINV(it,ir-1)] - b2m * Tadj_1dinv[I2V_1DINV(it,ir+1)])/dr_1dinv;
+
+        tau_1dinv[I2V_1DINV(it,ir)] = (delta_1dinv[I2V_1DINV(it,ir)] + Hadj) / coe;
+    }
+}
+
+
+void OneDInversion::calculate_kernel_1d() {
+
 }
 
 void OneDInversion::model_optimize_1dinv() {
