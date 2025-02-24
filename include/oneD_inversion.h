@@ -45,9 +45,13 @@ public:
     CUSTOMREAL      *Ks_multigrid_previous; // Ks_multigrid at previous iteration 
     CUSTOMREAL      *Ks_update;             // Ks update at current iteration (rescaled to be [-1,1])
 
+    // parameters for optimization
+    CUSTOMREAL      v_obj;
+    CUSTOMREAL      old_v_obj;
+
     // functions
     std::vector<CUSTOMREAL> run_simulation_one_step_1dinv(InputParams&);
-    void model_optimize_1dinv(Grid&); 
+    void model_optimize_1dinv(Grid&, const int&); 
 
 private:
 
@@ -91,7 +95,10 @@ private:
     void kernel_processing_1dinv(Grid&);
     void density_normalization_1dinv();
     void multi_grid_parameterization_1dinv(Grid&);
-    void model_update_1dinv();
+    void model_update_1dinv(const int&);
+    void determine_step_size_1dinv(const int&);
+    CUSTOMREAL norm_1dinv(const CUSTOMREAL*, const int&);
+    void generate_3d_model(Grid&);
 };
 
 #endif // ONED_INVERSION_H

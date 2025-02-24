@@ -128,6 +128,8 @@ void OneDInversion::load_1d_model(Grid& grid) {
         }
     }
 
+    delete[] model_1d_input;
+    delete[] tmp_slowness;
 }
 
 
@@ -1064,6 +1066,10 @@ std::vector<CUSTOMREAL> OneDInversion::calculate_obj_and_residual_1dinv(InputPar
         allreduce_cr_sim_single_inplace(obj_residual[i]);
     }
 
+    // update obj
+    old_v_obj       = v_obj;
+    v_obj           = obj_residual[0];
+
     return obj_residual;
 }
 
@@ -1073,16 +1079,25 @@ std::vector<CUSTOMREAL> OneDInversion::calculate_obj_and_residual_1dinv(InputPar
 // ########             and sub functions          ########
 // ########################################################
 
-void OneDInversion::model_optimize_1dinv(Grid& grid) {
+void OneDInversion::model_optimize_1dinv(Grid& grid, const int& i_inv) {
 
     // kernel aggregation
     allreduce_cr_sim_inplace(Ks_1dinv, nr_1dinv);
 
-    // kernel processing (multi-grid parameterization, density normalization)
-    kernel_processing_1dinv(grid);
+    // update kernel by rank 0
+    if (id_sim==0){
+        // kernel processing (multi-grid parameterization, density normalization)
+        kernel_processing_1dinv(grid);
 
-    // model_update
-    model_update_1dinv();
+        // model_update
+        model_update_1dinv(i_inv);
+    }
+
+    // broadcast to all kernel
+    broadcast_cr_inter_sim(Ks_multigrid, nr_1dinv, 0);
+
+    // generate 3d model from the 1d model
+    generate_3d_model(grid);
 }   
 
 
@@ -1112,6 +1127,11 @@ void OneDInversion::density_normalization_1dinv() {
 
 
 void OneDInversion::multi_grid_parameterization_1dinv(Grid& grid) {
+
+    // store the previous Ks_multigrid
+    for (int ir = 0; ir < nr_1dinv; ir++) {
+        Ks_multigrid_previous[ir] = Ks_multigrid[ir];
+    }
 
     const int ref_idx_t = 0;
     const int ref_idx_p = 0;
@@ -1170,18 +1190,148 @@ void OneDInversion::multi_grid_parameterization_1dinv(Grid& grid) {
         }
     }
 
+    // normalize Ks_miltigrid
+    CUSTOMREAL Linf_Ks = _0_CR;
+    for(int ir = 0; ir < nr_1dinv; ir++) {
+        Linf_Ks = std::max(Linf_Ks, std::abs(Ks_multigrid[ir]));
+    }
+    if(isZero(Linf_Ks)){
+        std::cout << "ERROR!!!  max value of kernel = 0. Please check data and input parameter" << std::endl;
+        exit(1);
+    }
+    for(int ir = 0; ir < nr_1dinv; ir++) {
+        Ks_multigrid[ir] /= Linf_Ks;
+    }
 }
 
 
-void OneDInversion::model_update_1dinv() {
+void OneDInversion::model_update_1dinv(const int& i_inv ) {
     
+    // determine step size
+    determine_step_size_1dinv(i_inv);
+
+    // update model
+    for (int it=0; it<nt_1dinv; it++){
+        for (int ir=0; ir<nr_1dinv; ir++){
+            slowness_1dinv[I2V_1DINV(it,ir)] *= (_1_CR - Ks_multigrid[ir]) * step_length_init;
+        }
+    }
 }
 
 
+void OneDInversion::determine_step_size_1dinv(const int& i_inv) {
+
+    // change stepsize
+    // Option 1: the step length is modulated when obj changes.
+    if (step_method == OBJ_DEFINED){
+        if(i_inv != 0){
+            if (v_obj < old_v_obj) {
+                step_length_init    = std::min((CUSTOMREAL)0.02, step_length_init);
+                if(myrank == 0 && id_sim == 0){
+                    std::cout << std::endl;
+                    std::cout << "The obj keeps decreasing, from " << old_v_obj << " to " << v_obj
+                            << ", the step length is " << step_length_init << std::endl;
+                    std::cout << std::endl;
+                }
+            } else if (v_obj >= old_v_obj) {
+                step_length_init    = std::max((CUSTOMREAL)0.0001, step_length_init*step_length_decay);
+                if(myrank == 0 && id_sim == 0){
+                    std::cout << std::endl;
+                    std::cout << "The obj keep increases, from " << old_v_obj << " to " << v_obj
+                            << ", the step length decreases from " << step_length_init/step_length_decay
+                            << " to " << step_length_init << std::endl;
+                    std::cout << std::endl;
+                }
+            }
+        } else {
+            if(myrank == 0 && id_sim == 0){
+                std::cout << std::endl;
+                std::cout << "At the first iteration, the step length is " << step_length_init << std::endl;
+                std::cout << std::endl;
+            }
+        }
+    } else if (step_method == GRADIENT_DEFINED){
+        // Option 2: we modulate the step length according to the angle between the previous and current gradient directions.
+        // If the angle is less than XX degree, which means the model update direction is successive, we should enlarge the step size
+        // Otherwise, the step length should decrease
+        if(i_inv != 0){
+            // calculate the angle between the previous and current gradient directions
+            CUSTOMREAL angle = 0;
+            for (int ir = 0; ir < nr_1dinv; ir++){
+                angle += Ks_multigrid[ir] * Ks_multigrid_previous[ir];
+            }
+            angle = std::acos(angle/(norm_1dinv(Ks_multigrid, nr_1dinv)*norm_1dinv(Ks_multigrid_previous, nr_1dinv)))*RAD2DEG;
+
+            if (angle > step_length_gradient_angle){
+                CUSTOMREAL old_step_length = step_length_init;
+                step_length_init    = std::max((CUSTOMREAL)0.0001, step_length_init * step_length_down);
+                if(myrank == 0 && id_sim == 0){
+                    std::cout << std::endl;
+                    std::cout << "The angle between two update darections is " << angle
+                            << ". Because the angle is greater than " << step_length_gradient_angle << " degree, the step length decreases from "
+                            << old_step_length << " to " << step_length_init << std::endl;
+                    std::cout << std::endl;
+                }
+            } else if (angle <= step_length_gradient_angle) {
+                CUSTOMREAL old_step_length = step_length_init;
+                step_length_init    = std::min((CUSTOMREAL)0.02, step_length_init * step_length_up);
+                if(myrank == 0 && id_sim == 0){
+                    std::cout << std::endl;
+                    std::cout << "The angle between two update darections is " << angle
+                            << ". Because the angle is less than " << step_length_gradient_angle << " degree, the step length increases from "
+                            << old_step_length << " to " << step_length_init << std::endl;
+                    std::cout << std::endl;
+                }
+            }
+        } else {
+            if(myrank == 0 && id_sim == 0){
+                std::cout << std::endl;
+                std::cout << "At the first iteration, the step length is " << step_length_init << std::endl;
+                std::cout << std::endl;
+            }
+        }
+    } else {
+        std::cout << std::endl;
+        std::cout << "No supported method for step size change, step keep the same: " << step_length_init << std::endl;
+        std::cout << std::endl;
+    }
+}
 
 
+CUSTOMREAL OneDInversion::norm_1dinv(const CUSTOMREAL* vec, const int& n) {
+    CUSTOMREAL norm = 0.0;
+    for (int i = 0; i < n; i++){
+        norm += vec[i]*vec[i];
+    }
+    norm = std::sqrt(norm);
+    
+    return norm;
+}
 
 
+void OneDInversion::generate_3d_model(Grid& grid){
+    
+    // 1. ---------------- load slowness ----------------
+    CUSTOMREAL *tmp_slowness;
+    tmp_slowness = allocateMemory<CUSTOMREAL>(nr_1dinv, 4000);
+    for (int ir = 0; ir < nr_1dinv; ir++){
+        tmp_slowness[ir] = slowness_1dinv[I2V_1DINV(0,ir)];
+    }
+    // 1d interpolation
+    // interpolate slowness from (r_1dinv, slowness_1dinv) to (grid.r_loc_1d, *)
+    CUSTOMREAL *model_1d_output;
+    model_1d_output = allocateMemory<CUSTOMREAL>(loc_K, 4000);
+    linear_interpolation_1d_sorted(r_1dinv, tmp_slowness, nr_1dinv, grid.r_loc_1d, model_1d_output, loc_K);
+
+    // 1d model to 3d model
+    for (int k = 0; k < loc_K; k++) {
+        for (int j = 0; j < loc_J; j++) {
+            for (int i = 0; i < loc_I; i++) {
+                grid.fun_loc[I2V(i,j,k)] = model_1d_output[k];
+            }
+        }
+    }
+}
 
 
 

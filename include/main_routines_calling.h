@@ -858,7 +858,7 @@ inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
         ///////////////
         if(myrank == 0 && id_sim ==0)
             std::cout << "mode update starting ... " << std::endl;
-        oneDInv.model_optimize_1dinv(grid);
+        oneDInv.model_optimize_1dinv(grid, i_inv);
 
         // output objective function
         write_objective_function(IP, i_inv, v_obj_misfit, out_main, "1d inversion");
