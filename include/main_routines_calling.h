@@ -129,7 +129,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         // model update
         ///////////////
         if(myrank == 0 && id_sim ==0)
-            std::cout << "mode update starting ... " << std::endl;
+            std::cout << "model update starting ... " << std::endl;
 
         if (IP.get_run_mode() == DO_INVERSION) {
             if (optim_method == GRADIENT_DESCENT)
@@ -857,7 +857,7 @@ inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
         // model update
         ///////////////
         if(myrank == 0 && id_sim ==0)
-            std::cout << "mode update starting ... " << std::endl;
+            std::cout << "model update starting ... " << std::endl;
         oneDInv.model_optimize_1dinv(grid, i_inv);
 
         // output objective function

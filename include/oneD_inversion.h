@@ -38,12 +38,11 @@ public:
     CUSTOMREAL      *delta_1dinv;          // delta
 
     // parameters on grid nodes (for inversion)
-    CUSTOMREAL      *Ks_1dinv;              // Ks
-    CUSTOMREAL      *Ks_density_1dinv;      // Ks_density
-    CUSTOMREAL      *Ks_over_Kden_1dinv;    // Ks_over_Kdensity
-    CUSTOMREAL      *Ks_multigrid;          // (Ks_over_Kdensity) parameterized by multigrid
-    CUSTOMREAL      *Ks_multigrid_previous; // Ks_multigrid at previous iteration 
-    CUSTOMREAL      *Ks_update;             // Ks update at current iteration (rescaled to be [-1,1])
+    CUSTOMREAL      *Ks_1dinv;                      // Ks
+    CUSTOMREAL      *Ks_density_1dinv;              // Ks_density
+    CUSTOMREAL      *Ks_over_Kden_1dinv;            // Ks_over_Kdensity
+    CUSTOMREAL      *Ks_multigrid_1dinv;            // (Ks_over_Kdensity) parameterized by multigrid
+    CUSTOMREAL      *Ks_multigrid_previous_1dinv;   // Ks_multigrid at previous iteration 
 
     // parameters for optimization
     CUSTOMREAL      v_obj;

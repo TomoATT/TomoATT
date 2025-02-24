@@ -166,7 +166,7 @@ inline void write_objective_function(InputParams& IP, int i_inv, std::vector<CUS
         } else {
             out_main << "," << std::setw(24) << "0.0/0.0";
         }
-        if(type == "model update")
+        if(type == "model update" || type == "1d inversion")
             out_main << "," << std::setw(19) << step_length_init << ",";
 
         out_main << std::endl;
