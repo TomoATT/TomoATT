@@ -224,8 +224,13 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
     // synchronize all processes
     synchronize_all_world();
 
+    // gather all the traveltime to the main process and distribute to all processes
+    // for calculating cr_dif
+    IP.gather_traveltimes_and_calc_syn_diff();
+
     // calculate objective function and residual
-    std::vector<CUSTOMREAL> obj_residual = calculate_obj_and_residual_1dinv(IP);
+    Receiver rec;
+    std::vector<CUSTOMREAL> obj_residual = rec.calculate_obj_and_residual(IP);
 
     // return current objective function value
     return obj_residual;
@@ -673,6 +678,8 @@ void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParam
     for (auto it_rec = IP.data_map[name_src].begin(); it_rec != IP.data_map[name_src].end(); ++it_rec) {
         for (auto& data: it_rec->second){
 
+            ///////////////// calculate synthetic traveltime //////////////////
+
             const std::string name_rec = data.name_rec;
             // get position of the receiver
             CUSTOMREAL rec_r = depth2radius(IP.rec_map[name_rec].dep);
@@ -686,6 +693,26 @@ void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParam
             // 2d interporlation, to find the traveltime at (distance, rec_r) on the field of T_1dinv on the mesh meshgrid(t_1dinv, r_1dinv)
             CUSTOMREAL traveltime = interpolate_2d_traveltime(distance, rec_r);
             data.travel_time = traveltime;
+
+            // for common source differentail arrival time, calculate differential time in addition
+            if (data.is_rec_pair) {
+                const std::string name_rec2 = data.name_rec_pair[1];
+                CUSTOMREAL rec_r2 = depth2radius(IP.rec_map[name_rec2].dep);
+                CUSTOMREAL rec_lon2 = IP.rec_map[name_rec2].lon*DEG2RAD;   // in radian
+                CUSTOMREAL rec_lat2 = IP.rec_map[name_rec2].lat*DEG2RAD;   // in radian
+
+                // calculate epicentral distance
+                CUSTOMREAL distance2 =0.0;
+                Epicentral_distance_sphere(src_lat, src_lon, rec_lat2, rec_lon2, distance2);
+
+                // 2d interporlation, to find the traveltime at (distance, rec_r) on the field of T_1dinv on the mesh meshgrid(t_1dinv, r_1dinv)
+                CUSTOMREAL traveltime2 = interpolate_2d_traveltime(distance2, rec_r2);
+                data.cs_dif_travel_time = traveltime - traveltime2;
+            }
+
+
+            /////////////// calculate adjoint source (only consider absolute traveltime for 1d inversion) /////////////////////////
+
 
             // calculate adjoint source
             if (data.is_src_rec){
@@ -1027,69 +1054,6 @@ void OneDInversion::calculate_kernel_1d() {
 }
 
 
-std::vector<CUSTOMREAL> OneDInversion::calculate_obj_and_residual_1dinv(InputParams& IP) {
-
-    CUSTOMREAL obj           = 0.0;
-    CUSTOMREAL obj_abs       = 0.0;
-    CUSTOMREAL obj_cs_dif    = 0.0;
-    CUSTOMREAL obj_cr_dif    = 0.0;
-    CUSTOMREAL obj_tele      = 0.0;
-
-    CUSTOMREAL res           = 0.0;
-    CUSTOMREAL res_sq        = 0.0;
-    CUSTOMREAL res_abs       = 0.0;
-    CUSTOMREAL res_abs_sq    = 0.0;
-    CUSTOMREAL res_cs_dif    = 0.0;
-    CUSTOMREAL res_cs_dif_sq = 0.0;
-    CUSTOMREAL res_cr_dif    = 0.0;
-    CUSTOMREAL res_cr_dif_sq = 0.0;
-    CUSTOMREAL res_tele      = 0.0;
-    CUSTOMREAL res_tele_sq   = 0.0;
-
-    std::vector<CUSTOMREAL> obj_residual;
-
-    // iterate over sources
-    for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-        const std::string name_src  = IP.get_src_name(i_src);
-
-        // loop all data 
-        for (auto it_rec = IP.data_map[name_src].begin(); it_rec != IP.data_map[name_src].end(); ++it_rec) {
-            for (auto& data: it_rec->second){
-                if (data.is_src_rec){
-                    CUSTOMREAL syn_time       = data.travel_time;
-                    CUSTOMREAL obs_time       = data.travel_time_obs;
-                    std::string name_rec      = data.name_rec;
-
-                    // contribute misfit of specific type of data
-                    obj             +=  1.0 * my_square(syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.weight;
-                    res             += 1.0 *          (syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
-                    res_sq          += 1.0 * my_square(syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
-
-                    obj_abs         +=  1.0 * my_square(syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.weight;
-                    res_abs         +=  1.0 *          (syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
-                    res_abs_sq      +=  1.0 * my_square(syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
-                    
-                } else {
-                    // pass, only consider absolute time residual for 1D inversion
-                }
-            }
-        }
-    }
-
-
-    obj_residual = {obj, obj_abs, obj_cs_dif, obj_cr_dif, obj_tele, res, res_sq, res_abs, res_abs_sq, res_cs_dif, res_cs_dif_sq, res_cr_dif, res_cr_dif_sq, res_tele, res_tele_sq};
-
-    for(int i = 0; i < (int)obj_residual.size(); i++){
-        allreduce_cr_sim_single_inplace(obj_residual[i]);
-    }
-
-    // update obj
-    old_v_obj       = v_obj;
-    v_obj           = obj_residual[0];
-
-    return obj_residual;
-}
-
 // ########################################################
 // ########           main member function         ########
 // ########           model_optimize_1dinv         ########
@@ -1379,10 +1343,12 @@ void OneDInversion::write_T_1dinv(IO_utils& io, const std::string& name_src, con
     io.write_1dinv_field(T_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
 }
 
+
 void OneDInversion::write_Tadj_1dinv(IO_utils& io, const std::string& name_src, const int& i_inv) {
     std::string field_name = "adjoint_field_1dinv_" + name_src + "_inv_" + int2string_zero_fill(i_inv);
     io.write_1dinv_field(Tadj_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
 }
+
 
 void OneDInversion::write_vel_1dinv(IO_utils& io, const int& i_inv) {
     std::string field_name = "vel_1dinv_inv_" + int2string_zero_fill(i_inv);

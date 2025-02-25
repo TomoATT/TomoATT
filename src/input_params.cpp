@@ -2881,6 +2881,18 @@ void InputParams::check_contradictions(){
         std::cout << "Please set ndiv_rtp: [1,1,1] and nproc_sub: 1 in the input_params.yaml file" << std::endl;
         exit(1);
     }
+
+    // if run_mode == 4, only absolute traveltime data is allowed
+    if (run_mode == 4){
+        std::cout << "Notify: since run_mode = 4, only absolute traveltime data is allowed" << std::endl;
+        std::cout << "use_abs_time is set to be true" << std::endl;
+        use_abs = true;
+        std::cout << "use_cs_time is set to be false" << std::endl;
+        use_cs = false;
+        std::cout << "use_cr_time is set to be false" << std::endl;
+        use_cr = false;
+    }
+
 #ifdef USE_CUDA
     if (use_gpu){
 

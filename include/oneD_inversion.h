@@ -9,6 +9,8 @@
 #include "grid.h"
 #include "utils.h"
 #include "config.h"
+#include "receiver.h"
+
 class OneDInversion {
 
 public:
@@ -93,7 +95,6 @@ private:
 
     void initialize_kernel_1d();
     void calculate_kernel_1d();
-    std::vector<CUSTOMREAL> calculate_obj_and_residual_1dinv(InputParams&);
 
     // "model_optimize_1dinv" subfunctions:
     void kernel_processing_1dinv(Grid&);

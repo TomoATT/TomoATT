@@ -36,7 +36,7 @@ parallel: # parameters for parallel computation
 #            output file setting           #
 ############################################
 output_setting:
-  output_dir: OUTPUT_FILES/OUTPUT_FILES_1dinv_inv_parallel # path to output director (default is ./OUTPUT_FILES/)
+  output_dir: OUTPUT_FILES/OUTPUT_FILES_1dinv_inv # path to output director (default is ./OUTPUT_FILES/)
   output_source_field:     true # True: output the traveltime field and adjoint field of all sources at each iteration. Default: false. File: 'out_data_sim_group_X'.
   output_kernel:           false # True: output sensitivity kernel and kernel density. Default: false. File: 'out_data_sim_group_X'.
   output_final_model:      true # True: output merged final model. This file can be used as the input model for TomoATT. Default: true. File: 'model_final.h5'.
