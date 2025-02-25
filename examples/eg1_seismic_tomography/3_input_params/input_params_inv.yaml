@@ -55,28 +55,33 @@ output_setting:
 #                                 ['Mesh']['node_coords_x'], phi coordinates of elements; 
 #                                 ['Mesh']['node_coords_y'], theta coordinates of elements; 
 #                                 ['Mesh']['node_coords_z'], r coordinates of elements; 
-# File: 'out_data_sim_group_0'. Keys: ['model']['vel_inv_XXXX'], velocity model; 
-#                                     ['model']['xi_inv_XXXX'], xi model; 
-#                                     ['model']['eta_inv_XXXX'], eta model
-#                                     ['model']['Ks_inv_XXXX'], sensitivity kernel related to slowness
-#                                     ['model']['Kxi_inv_XXXX'], sensitivity kernel related to xi
-#                                     ['model']['Keta_inv_XXXX'], sensitivity kernel related to eta
-#                                     ['model']['Ks_density_inv_XXXX'], kernel density of Ks 
-#                                     ['model']['Kxi_density_inv_XXXX'], kernel density of Kxi 
-#                                     ['model']['Keta_density_inv_XXXX'], kernel density of Keta 
-#                                     ['model']['Ks_over_Kden_inv_XXXX'], slowness kernel over kernel density
-#                                     ['model']['Kxi_over_Kden_inv_XXXX'], xi kernel over kernel density
-#                                     ['model']['Keta_over_Kden_inv_XXXX'], eta kernel over kernel density
-#                                     ['model']['Ks_update_inv_XXXX'], slowness kernel over kernel density, smoothed by inversion grid
-#                                     ['model']['Kxi_update_inv_XXXX'], xi kernel over kernel density, smoothed by inversion grid
-#                                     ['model']['Keta_update_inv_XXXX'], eta kernel over kernel density, smoothed by inversion grid
+# File: 'out_data_sim_group_0'. Keys: ['model']['vel_inv_XXXX'], velocity model at iteration XXXX; 
+#                                     ['model']['xi_inv_XXXX'], xi model at iteration XXXX; 
+#                                     ['model']['eta_inv_XXXX'], eta model at iteration XXXX
+#                                     ['model']['Ks_inv_XXXX'], sensitivity kernel related to slowness at iteration XXXX
+#                                     ['model']['Kxi_inv_XXXX'], sensitivity kernel related to xi at iteration XXXX
+#                                     ['model']['Keta_inv_XXXX'], sensitivity kernel related to eta at iteration XXXX
+#                                     ['model']['Ks_density_inv_XXXX'], kernel density of Ks at iteration XXXX
+#                                     ['model']['Kxi_density_inv_XXXX'], kernel density of Kxi at iteration XXXX
+#                                     ['model']['Keta_density_inv_XXXX'], kernel density of Keta at iteration XXXX
+#                                     ['model']['Ks_over_Kden_inv_XXXX'], slowness kernel over kernel density at iteration XXXX
+#                                     ['model']['Kxi_over_Kden_inv_XXXX'], xi kernel over kernel density at iteration XXXX
+#                                     ['model']['Keta_over_Kden_inv_XXXX'], eta kernel over kernel density at iteration XXXX
+#                                     ['model']['Ks_update_inv_XXXX'], slowness kernel over kernel density at iteration XXXX, smoothed by inversion grid
+#                                     ['model']['Kxi_update_inv_XXXX'], xi kernel over kernel density at iteration XXXX, smoothed by inversion grid
+#                                     ['model']['Keta_update_inv_XXXX'], eta kernel over kernel density at iteration XXXX, smoothed by inversion grid
+#                                     ['1dinv']['vel_1dinv_inv_XXXX'], 2d velocity model at iteration XXXX, in 1d inversion mode
+#                                     ['1dinv']['r_1dinv'], r coordinates (depth), in 1d inversion mode
+#                                     ['1dinv']['t_1dinv'], t coordinates (epicenter distance), in 1d inversion mode
 # File: 'src_rec_file_step_XXXX.dat' or 'src_rec_file_forward.dat'. The synthetic traveltime data file.
 # File: 'final_model.h5'. Keys: ['eta'], ['xi'], ['vel'], the final model.
 # File: 'middle_model_step_XXXX.h5'. Keys: ['eta'], ['xi'], ['vel'], the model at step XXXX.
 # File: 'inversion_grid.txt'. The location of inversion grid nodes
 # File: 'objective_function.txt'. The objective function value at each iteration
-# File: 'out_data_sim_group_X'. Keys: ['src_$src_name']['time_field_inv_XXXX'], traveltime field for source $src_name at iteration XXXX;
-#                                     ['src_$src_name']['adjoint_field_inv_XXXX'], adjoint field for source $src_name at iteration XXXX;
+# File: 'out_data_sim_group_X'. Keys: ['src_YYYY']['time_field_inv_XXXX'], traveltime field of source YYYY at iteration XXXX;
+#                                     ['src_YYYY']['adjoint_field_inv_XXXX'], adjoint field of source YYYY at iteration XXXX;
+#                                     ['1dinv']['time_field_1dinv_YYYY_inv_XXXX'], 2d traveltime field of source YYYY at iteration XXXX, in 1d inversion mode
+#                                     ['1dinv']['adjoint_field_1dinv_YYYY_inv_XXXX'], 2d adjoint field of source YYYY at iteration XXXX, in 1d inversion mode
 
 
 #################################################
@@ -87,6 +92,7 @@ output_setting:
 # 1 for inversion
 # 2 for earthquake relocation
 # 3 for inversion + earthquake relocation
+# 4 for 1d model inversion
 run_mode: 1
 
 have_tele_data: false # An error will be reported if false but source out of study region is used. Default: false.

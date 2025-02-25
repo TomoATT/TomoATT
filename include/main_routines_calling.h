@@ -833,7 +833,7 @@ inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
         ///////////////////////////////////////////////////////
         // run (forward and adjoint) simulation for each source
         ///////////////////////////////////////////////////////
-        v_obj_misfit = oneDInv.run_simulation_one_step_1dinv(IP, io);
+        v_obj_misfit = oneDInv.run_simulation_one_step_1dinv(IP, io, i_inv);
 
         // wait for all processes to finish
         synchronize_all_world();

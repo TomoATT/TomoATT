@@ -619,15 +619,22 @@ void IO_utils::write_data_merged_ascii(Grid& grid, std::string& fname){
 
 }
 
-
 void IO_utils::write_1dinv_field(CUSTOMREAL* field_1dinv, CUSTOMREAL* r_1dinv, CUSTOMREAL* t_1dinv, int nr_1dinv, int nt_1dinv, std::string& field_name){
     if (myrank == 0) {
         if (output_format==OUTPUT_FORMAT_HDF5){
 #ifdef USE_HDF5
             // open h5 file
             std::string fout = output_dir + "/" + h5_output_fname;
-            file_id_2d = H5Fopen(fout.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+            hid_t tmp_file_id = H5Fopen(fout.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
       
+            // try to create and open group "1dinv"
+            if (!H5Lexists(tmp_file_id, "1dinv", H5P_DEFAULT)) {
+                file_id_2d = H5Gcreate(tmp_file_id, "1dinv", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                // close group
+                H5Gclose(file_id_2d);
+            }
+            file_id_2d = H5Gopen(tmp_file_id, "1dinv", H5P_DEFAULT);
+
             // force to use CUSTOMREAL type for 2D fields
             int dtype = check_data_type(field_1dinv[0]);
 
@@ -652,8 +659,11 @@ void IO_utils::write_1dinv_field(CUSTOMREAL* field_1dinv, CUSTOMREAL* r_1dinv, C
             str_dset = "t_1dinv";
             h5_create_and_write_dataset_2d(str_dset, 1, &nt_1dinv, dtype, t_1dinv);
 
+            // close groud 
+            H5Gclose(file_id_2d);
+
             // close h5 file
-            H5Fclose(file_id_2d);
+            H5Fclose(tmp_file_id);
 #else
             std::cout << "ERROR: HDF5 is not enabled" << std::endl;
             exit(1);

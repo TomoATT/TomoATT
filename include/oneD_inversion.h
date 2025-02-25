@@ -49,13 +49,13 @@ public:
     CUSTOMREAL      old_v_obj;
 
     // functions
-    std::vector<CUSTOMREAL> run_simulation_one_step_1dinv(InputParams&, IO_utils&);
+    std::vector<CUSTOMREAL> run_simulation_one_step_1dinv(InputParams&, IO_utils&, const int&);
     void model_optimize_1dinv(InputParams&, Grid&, IO_utils&, const int&); 
 
     // h5 file output
-    void write_T_1dinv(IO_utils&, const int&);
-    void write_Tadj_1dinv(IO_utils&, const int&);
-    void write_slowness_1dinv(IO_utils&);
+    void write_T_1dinv(IO_utils&, const std::string&, const int&);
+    void write_Tadj_1dinv(IO_utils&, const std::string&, const int&);
+    void write_vel_1dinv(IO_utils&, const int&);
 
 private:
 

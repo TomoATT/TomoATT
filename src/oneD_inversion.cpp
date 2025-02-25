@@ -171,7 +171,7 @@ void OneDInversion::deallocate_arrays(){
 // ########           and sub functions            ########
 // ########################################################
 
-std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams& IP, IO_utils& io) {
+std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams& IP, IO_utils& io, const int& i_inv) {
 
     // begin from here
     if(world_rank == 0)
@@ -200,9 +200,9 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
         // calculate synthetic traveltime and adjoint source
         calculate_synthetic_traveltime_and_adjoint_source(IP, i_src);  // now data in data_map, the data.traveltime has been updated.
 
-        if(IP.get_if_output_source_field()){
+        if(IP.get_if_output_source_field() && (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2 || i_inv == 0)){
             // write out the traveltime field
-            write_T_1dinv(io, i_src);
+            write_T_1dinv(io, IP.get_src_name(i_src), i_inv);
         }
 
         ///////////////// run adjoint //////////////////
@@ -213,9 +213,9 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
         adj_type = 1;  
         adjoint_solver_2d(IP, i_src, adj_type);  // now adjoint field has been stored in Tadj_density_1dinv.
         
-        if(IP.get_if_output_source_field()){
+        if(IP.get_if_output_source_field() && (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2 || i_inv == 0)){
             // write out the adjoint field
-            write_Tadj_1dinv(io, i_src);
+            write_Tadj_1dinv(io, IP.get_src_name(i_src), i_src);
         }
 
         // calculate event sensitivity kernel
@@ -1119,7 +1119,10 @@ void OneDInversion::model_optimize_1dinv(InputParams& IP, Grid& grid, IO_utils& 
         model_update_1dinv(i_inv);
 
         // write slowness
-        write_slowness_1dinv(io);
+        if(IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2 || i_inv == 0){
+            write_vel_1dinv(io, i_inv);
+        }
+        
     }
 
     // broadcast new slowness
@@ -1371,18 +1374,24 @@ void OneDInversion::generate_3d_model(Grid& grid){
 // ########           HDF5 output functions         #######
 // ########################################################
 
-void OneDInversion::write_T_1dinv(IO_utils& io, const int& i_inv) {
-    std::string field_name = "time_field_1dinv_inv_" + int2string_zero_fill(i_inv);
+void OneDInversion::write_T_1dinv(IO_utils& io, const std::string& name_src, const int& i_inv) {
+    std::string field_name = "time_field_1dinv_" + name_src + "_inv_" + int2string_zero_fill(i_inv);
     io.write_1dinv_field(T_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
 }
 
-void OneDInversion::write_Tadj_1dinv(IO_utils& io, const int& i_inv) {
-    std::string field_name = "adjoint_field_1dinv_inv_" + int2string_zero_fill(i_inv);
+void OneDInversion::write_Tadj_1dinv(IO_utils& io, const std::string& name_src, const int& i_inv) {
+    std::string field_name = "adjoint_field_1dinv_" + name_src + "_inv_" + int2string_zero_fill(i_inv);
     io.write_1dinv_field(Tadj_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
 }
 
-void OneDInversion::write_slowness_1dinv(IO_utils& io) {
-    std::string field_name = "slowness_1dinv";
-    io.write_1dinv_field(slowness_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
+void OneDInversion::write_vel_1dinv(IO_utils& io, const int& i_inv) {
+    std::string field_name = "vel_1dinv_inv_" + int2string_zero_fill(i_inv);
+    CUSTOMREAL *vel_1dinv;
+    vel_1dinv = allocateMemory<CUSTOMREAL>(nr_1dinv*nt_1dinv, 4000);
+    for (int ii = 0; ii < nr_1dinv*nt_1dinv; ii++){
+        vel_1dinv[ii] = _1_CR/slowness_1dinv[ii];
+    }
+    io.write_1dinv_field(vel_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
+    delete[] vel_1dinv;
 }
 
