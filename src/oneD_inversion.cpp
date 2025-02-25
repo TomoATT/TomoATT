@@ -171,7 +171,7 @@ void OneDInversion::deallocate_arrays(){
 // ########           and sub functions            ########
 // ########################################################
 
-std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams& IP) {
+std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams& IP, IO_utils& io) {
 
     // begin from here
     if(world_rank == 0)
@@ -183,12 +183,29 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
     // iterate over sources
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
         
+        if (myrank == 0){
+            std::string name_sim_src  = IP.get_src_name(i_src);
+            std::cout << "id_sim: " << id_sim << ", calculating source (" << i_src+1 << "/" << IP.n_src_this_sim_group
+                    << "), name: "
+                    << name_sim_src << ", lat: " << IP.src_map[name_sim_src].lat
+                    << ", lon: " << IP.src_map[name_sim_src].lon << ", dep: " << IP.src_map[name_sim_src].dep
+                    << std::endl;
+        }
+
+        ///////////////// run forward //////////////////
+
         // solver 2d eikonal equation for the i-th source for traveltime field
         eikonal_solver_2d(IP, i_src);   // now traveltime field has been stored in T_1dinv.
 
         // calculate synthetic traveltime and adjoint source
         calculate_synthetic_traveltime_and_adjoint_source(IP, i_src);  // now data in data_map, the data.traveltime has been updated.
-        std::cout << "adjoint source calculate over" << std::endl;
+
+        if(IP.get_if_output_source_field()){
+            // write out the traveltime field
+            write_T_1dinv(io, i_src);
+        }
+
+        ///////////////// run adjoint //////////////////
 
         // solver for 2d adjoint field
         int adj_type = 0;  // 0: adjoint_field, 1: adjoint_density
@@ -196,6 +213,11 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
         adj_type = 1;  
         adjoint_solver_2d(IP, i_src, adj_type);  // now adjoint field has been stored in Tadj_density_1dinv.
         
+        if(IP.get_if_output_source_field()){
+            // write out the adjoint field
+            write_Tadj_1dinv(io, i_src);
+        }
+
         // calculate event sensitivity kernel
         calculate_kernel_1d();
     }
@@ -222,8 +244,6 @@ void OneDInversion::eikonal_solver_2d(InputParams& IP, int& i_src){
 
     // fast sweeping method for 2d space
     FSM_2d();
-
-    std::cout << "2d eikonal solver over" << std::endl;
 }
 
 
@@ -367,11 +387,11 @@ void OneDInversion::FSM_2d() {
         // check convergence
         if (std::abs(L1_dif) < TOL_2D_SOLVER && std::abs(Linf_dif) < TOL_2D_SOLVER){
             if (myrank==0)
-                std::cout << "Converged at iteration " << iter << std::endl;
+                std::cout << "Eikonal solver converged at iteration " << iter << std::endl;
             break;
         } else if (iter > MAX_ITER_2D_SOLVER){
             if (myrank==0)
-                std::cout << "Maximum iteration reached at iteration " << iter << std::endl;
+                std::cout << "Eikonal solver reached the maximum iteration at iteration " << iter << std::endl;
             break;
         } else {
             if (myrank==0 && if_verbose)
@@ -379,9 +399,6 @@ void OneDInversion::FSM_2d() {
             iter++;
         }
     } // end of wile
-
-    if (myrank==0)
-        std::cout << "Iteration " << iter << " finished." << std::endl;
 
     for (int ii = 0; ii < nr_1dinv*nt_1dinv; ii++){
         T_1dinv[ii] = tau_1dinv[ii]*T0v_1dinv[ii];
@@ -748,37 +765,15 @@ void OneDInversion::adjoint_solver_2d(InputParams& IP, const int& i_src, const i
     // initialize adjoint arrays: Tadj_1dinv, is_changed_1dinv, delta_1dinv
     initialize_adjoint_array(IP, i_src, adj_type);
 
-    // check max of delta
-    CUSTOMREAL max_delta = _0_CR;
-    for (int ir = 0; ir < nr_1dinv; ir++){
-        for (int it = 0; it < nt_1dinv; it++){
-            if (delta_1dinv[I2V_1DINV(it,ir)] > 0){
-                max_delta = std::max(max_delta, delta_1dinv[I2V_1DINV(it,ir)]);
-            }
-        }
-    }
-    std::cout << "max_delta: " << max_delta << std::endl;
-
     // fast sweeping method for 2d space
     FSM_2d_adjoint(adj_type);
 
-    // check adjoint
-    CUSTOMREAL max_tau = _0_CR;
-    for (int ir = 0; ir < nr_1dinv; ir++){
-        for (int it = 0; it < nt_1dinv; it++){
-            if (tau_1dinv[I2V_1DINV(it,ir)] > 0){
-                max_tau = std::max(max_tau, tau_1dinv[I2V_1DINV(it,ir)]);
-            }
-        }
-    }
-    std::cout << "max_tau: " << max_tau << std::endl;
 }   
 
 
 void OneDInversion::initialize_adjoint_array(InputParams& IP, const int& i_src, const int& adj_type) {
     // adj_type: 0, adjoint_source; 1, adjoint_source_density
     
-    std::cout << "initialize adjoint array: tau_1dinv" << std::endl;
     // initialize adjoint field
     for (int ir = 0; ir < nr_1dinv; ir++){
         for (int it = 0; it < nt_1dinv; it++){
@@ -786,7 +781,6 @@ void OneDInversion::initialize_adjoint_array(InputParams& IP, const int& i_src, 
         }
     }
 
-    std::cout << "initialize adjoint array: is_changed_1dinv" << std::endl;
     // initialize is_changed_1dinv
     for (int ir = 0; ir < nr_1dinv; ir++){
         for (int it = 0; it < nt_1dinv; it++){
@@ -802,7 +796,6 @@ void OneDInversion::initialize_adjoint_array(InputParams& IP, const int& i_src, 
         is_changed_1dinv[I2V_1DINV(it,nr_1dinv-1)] = false;
     }
 
-    std::cout << "initialize adjoint array: delta_1dinv" << std::endl;
     // initialize delta_1dinv
     for (int ir = 0; ir < nr_1dinv; ir++){
         for (int it = 0; it < nt_1dinv; it++){
@@ -950,11 +943,11 @@ void OneDInversion::FSM_2d_adjoint(const int& adj_type) {
         // check convergence
         if (std::abs(L1_dif) < TOL_2D_SOLVER && std::abs(Linf_dif) < TOL_2D_SOLVER){
             if (myrank==0)
-                std::cout << "Converged at iteration " << iter << std::endl;
+                std::cout << "Adjoint solver converged at iteration " << iter << std::endl;
             break;
         } else if (iter > MAX_ITER_2D_SOLVER){
             if (myrank==0)
-                std::cout << "Maximum iteration reached at iteration " << iter << std::endl;
+                std::cout << "Adjoint solver reached the maximum iteration at Iteration " << iter << std::endl;
             break;
         } else {
             if (myrank==0 && if_verbose)
@@ -963,9 +956,6 @@ void OneDInversion::FSM_2d_adjoint(const int& adj_type) {
         }
     } // end of wile
 
-    if (myrank==0)
-        std::cout << "Iteration " << iter << " finished." << std::endl;
-    
     if (adj_type == 0){
         for (int ii = 0; ii < nr_1dinv*nt_1dinv; ii++){
             Tadj_1dinv[ii] = tau_1dinv[ii];
@@ -988,30 +978,30 @@ void OneDInversion::calculate_stencil_adj(const int& it, const int& ir) {
     // |  0  b |
 
     // related coefficients
-    CUSTOMREAL a1  = - (T_1dinv[I2V_1DINV(it  ,ir  )] - T_1dinv[I2V_1DINV(it-1,ir  )]) / dt_1dinv * (fac_a_1dinv[I2V_1DINV(it  ,ir  )] + fac_a_1dinv[I2V_1DINV(it-1,ir  )])/2.0;
+    CUSTOMREAL a1  = - (T_1dinv[I2V_1DINV(it  ,ir  )] - T_1dinv[I2V_1DINV(it  ,ir-1)]) / dr_1dinv * (fac_a_1dinv[I2V_1DINV(it  ,ir  )] + fac_a_1dinv[I2V_1DINV(it  ,ir-1)])/2.0;
     CUSTOMREAL a1m = (a1 - std::abs(a1))/2.0;
     CUSTOMREAL a1p = (a1 + std::abs(a1))/2.0;
 
-    CUSTOMREAL a2  = - (T_1dinv[I2V_1DINV(it+1,ir  )] - T_1dinv[I2V_1DINV(it  ,ir  )]) / dt_1dinv * (fac_a_1dinv[I2V_1DINV(it+1,ir  )] + fac_a_1dinv[I2V_1DINV(it  ,ir  )])/2.0;
+    CUSTOMREAL a2  = - (T_1dinv[I2V_1DINV(it  ,ir+1)] - T_1dinv[I2V_1DINV(it  ,ir  )]) / dr_1dinv * (fac_a_1dinv[I2V_1DINV(it  ,ir  )] + fac_a_1dinv[I2V_1DINV(it  ,ir+1)])/2.0;
     CUSTOMREAL a2m = (a2 - std::abs(a2))/2.0;
     CUSTOMREAL a2p = (a2 + std::abs(a2))/2.0;
 
-    CUSTOMREAL b1  = - (T_1dinv[I2V_1DINV(it  ,ir  )] - T_1dinv[I2V_1DINV(it  ,ir-1)]) / dr_1dinv * (fac_b_1dinv[I2V_1DINV(it  ,ir  )] + fac_b_1dinv[I2V_1DINV(it  ,ir-1)])/2.0;
+    CUSTOMREAL b1  = - (T_1dinv[I2V_1DINV(it  ,ir  )] - T_1dinv[I2V_1DINV(it-1,ir  )]) / dt_1dinv * (fac_b_1dinv[I2V_1DINV(it  ,ir  )] + fac_b_1dinv[I2V_1DINV(it-1,ir  )])/2.0;
     CUSTOMREAL b1m = (b1 - std::abs(b1))/2.0;
     CUSTOMREAL b1p = (b1 + std::abs(b1))/2.0;
 
-    CUSTOMREAL b2  = - (T_1dinv[I2V_1DINV(it  ,ir+1)] - T_1dinv[I2V_1DINV(it  ,ir  )]) / dr_1dinv * (fac_b_1dinv[I2V_1DINV(it  ,ir+1)] + fac_b_1dinv[I2V_1DINV(it  ,ir  )])/2.0;
+    CUSTOMREAL b2  = - (T_1dinv[I2V_1DINV(it+1,ir  )] - T_1dinv[I2V_1DINV(it  ,ir  )]) / dt_1dinv * (fac_b_1dinv[I2V_1DINV(it+1,ir  )] + fac_b_1dinv[I2V_1DINV(it  ,ir  )])/2.0;
     CUSTOMREAL b2m = (b2 - std::abs(b2))/2.0;
     CUSTOMREAL b2p = (b2 + std::abs(b2))/2.0;
 
-    CUSTOMREAL coe = (a2p - a1m)/dt_1dinv + (b2p - b1m)/dr_1dinv;
+    CUSTOMREAL coe = (a2p - a1m)/dr_1dinv + (b2p - b1m)/dt_1dinv;
 
     if (isZero(coe)){
         tau_1dinv[I2V_1DINV(it,ir)] = 0.0;
     } else {
         // Hamiltonian
-        CUSTOMREAL Hadj = (a1p * tau_1dinv[I2V_1DINV(it-1,ir)] - a2m * tau_1dinv[I2V_1DINV(it+1,ir)])/dt_1dinv 
-                        + (b1p * tau_1dinv[I2V_1DINV(it,ir-1)] - b2m * tau_1dinv[I2V_1DINV(it,ir+1)])/dr_1dinv;
+        CUSTOMREAL Hadj = (a1p * tau_1dinv[I2V_1DINV(it,ir-1)] - a2m * tau_1dinv[I2V_1DINV(it,ir+1)])/dr_1dinv 
+                        + (b1p * tau_1dinv[I2V_1DINV(it-1,ir)] - b2m * tau_1dinv[I2V_1DINV(it+1,ir)])/dt_1dinv;
 
         tau_1dinv[I2V_1DINV(it,ir)] = (delta_1dinv[I2V_1DINV(it,ir)] + Hadj) / coe;
     }
@@ -1033,6 +1023,7 @@ void OneDInversion::calculate_kernel_1d() {
             Ks_density_1dinv[ir]    += Tadj_density_1dinv[I2V_1DINV(it,ir)] * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
         }
     }
+    
 }
 
 
@@ -1105,17 +1096,19 @@ std::vector<CUSTOMREAL> OneDInversion::calculate_obj_and_residual_1dinv(InputPar
 // ########             and sub functions          ########
 // ########################################################
 
-void OneDInversion::model_optimize_1dinv(Grid& grid, const int& i_inv) {
+void OneDInversion::model_optimize_1dinv(InputParams& IP, Grid& grid, IO_utils& io, const int& i_inv) {
 
     // kernel aggregation
     allreduce_cr_sim_inplace(Ks_1dinv, nr_1dinv);
+    allreduce_cr_sim_inplace(Ks_density_1dinv, nr_1dinv);
 
-    // check the maximum value of Ks_1dinv
-    CUSTOMREAL max_Ks_1dinv = _0_CR;
-    for (int ir = 0; ir < nr_1dinv; ir++){
-        max_Ks_1dinv = std::max(max_Ks_1dinv, std::abs(Ks_1dinv[ir]));
-    }
-    std::cout << "max_Ks: " << max_Ks_1dinv << std::endl;
+    // // write kernel
+    // if (id_sim==0 && subdom_main && IP.get_if_output_kernel() && (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2 || i_inv == 0)) {
+    //     // store kernel only in the first src datafile
+    //     io.change_group_name_for_model();
+    
+    //     write_Ks_1dinv(io, i_inv);
+    // }
 
     // update kernel by rank 0
     if (id_sim==0){
@@ -1124,13 +1117,17 @@ void OneDInversion::model_optimize_1dinv(Grid& grid, const int& i_inv) {
 
         // model_update
         model_update_1dinv(i_inv);
+
+        // write slowness
+        write_slowness_1dinv(io);
     }
 
-    // broadcast to all kernel
-    broadcast_cr_inter_sim(Ks_multigrid_1dinv, nr_1dinv, 0);
+    // broadcast new slowness
+    broadcast_cr_inter_sim(slowness_1dinv, nr_1dinv*nt_1dinv, 0);
 
     // generate 3d model from the 1d model
     generate_3d_model(grid);
+
 }   
 
 
@@ -1139,20 +1136,9 @@ void OneDInversion::kernel_processing_1dinv(Grid& grid) {
     // density normalization
     density_normalization_1dinv();
 
-    CUSTOMREAL max_value = _0_CR;
-    for (int ir = 0; ir < nr_1dinv; ir++){
-        max_value = std::max(max_value, std::abs(Ks_over_Kden_1dinv[ir]));
-    }
-    std::cout << "max_Ks_over_Kden: " << max_value << std::endl;
-
     // multi-grid parameterization
     multi_grid_parameterization_1dinv(grid);
 
-    max_value = _0_CR;
-    for (int ir = 0; ir < nr_1dinv; ir++){
-        max_value = std::max(max_value, std::abs(Ks_multigrid_1dinv[ir]));
-    }
-    std::cout << "max_Ks_multigrid: " << max_value << std::endl;
 }
 
 
@@ -1161,6 +1147,7 @@ void OneDInversion::density_normalization_1dinv() {
     for (int ir=0; ir<nr_1dinv; ir++){
         if(isZero(Ks_density_1dinv[ir])){
             // do nothing
+            Ks_over_Kden_1dinv[ir] = Ks_1dinv[ir];
         } else {
             if(Ks_density_1dinv[ir] < 0) {
                 std::cout << "WARNING!!!  Ks_density_1dinv < 0. ir: " << ir << ", Ks_density_1dinv[ir]: " << Ks_density_1dinv[ir] << std::endl;
@@ -1307,11 +1294,7 @@ void OneDInversion::determine_step_size_1dinv(const int& i_inv) {
             for (int ir = 0; ir < nr_1dinv; ir++){
                 angle += Ks_multigrid_1dinv[ir] * Ks_multigrid_previous_1dinv[ir];
             }
-            std::cout << "dot product: " << angle << std::endl;
             angle = std::acos(angle/(norm_1dinv(Ks_multigrid_1dinv, nr_1dinv)*norm_1dinv(Ks_multigrid_previous_1dinv, nr_1dinv)))*RAD2DEG;
-            std::cout << "norm Ks: " << norm_1dinv(Ks_multigrid_1dinv, nr_1dinv) << std::endl;
-            std::cout << "norm Ks_previous: " << norm_1dinv(Ks_multigrid_previous_1dinv, nr_1dinv) << std::endl;
-            std::cout << "angle: " << angle << std::endl;
 
             if (angle > step_length_gradient_angle){
                 CUSTOMREAL old_step_length = step_length_init;
@@ -1384,5 +1367,22 @@ void OneDInversion::generate_3d_model(Grid& grid){
     }
 }
 
+// ########################################################
+// ########           HDF5 output functions         #######
+// ########################################################
 
+void OneDInversion::write_T_1dinv(IO_utils& io, const int& i_inv) {
+    std::string field_name = "time_field_1dinv_inv_" + int2string_zero_fill(i_inv);
+    io.write_1dinv_field(T_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
+}
+
+void OneDInversion::write_Tadj_1dinv(IO_utils& io, const int& i_inv) {
+    std::string field_name = "adjoint_field_1dinv_inv_" + int2string_zero_fill(i_inv);
+    io.write_1dinv_field(Tadj_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
+}
+
+void OneDInversion::write_slowness_1dinv(IO_utils& io) {
+    std::string field_name = "slowness_1dinv";
+    io.write_1dinv_field(slowness_1dinv, r_1dinv, t_1dinv, nr_1dinv, nt_1dinv, field_name);
+}
 

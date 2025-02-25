@@ -22,6 +22,8 @@
 # # Step 5 (Optional): Plot the results
 # python plot_output.py
 
-mpirun -n 1 --allow-run-as-root --oversubscribe ../../build/bin/TOMOATT -i 3_input_params/input_params_1dinv_signal.yaml
+mpirun -n 8 --allow-run-as-root --oversubscribe ../../build/bin/TOMOATT -i 3_input_params/input_params_1dinv_signal.yaml
 
-mpirun -n 1 --allow-run-as-root --oversubscribe ../../build/bin/TOMOATT -i 3_input_params/input_params_1dinv_inv.yaml
+mpirun -n 8 --allow-run-as-root --oversubscribe ../../build/bin/TOMOATT -i 3_input_params/input_params_1dinv_inv_parallel.yaml
+
+# mpirun -n 1 --allow-run-as-root --oversubscribe ../../build/bin/TOMOATT -i 3_input_params/input_params_1dinv_inv_series.yaml

@@ -14,7 +14,7 @@ domain:
 #################################################
 source:
   src_rec_file: 1_src_rec_files/src_rec_config.dat # source receiver file path
-  swap_src_rec: false # swap source and receiver (only valid for regional source and receiver, those of tele remain unchanged)
+  swap_src_rec: true # swap source and receiver (only valid for regional source and receiver, those of tele remain unchanged)
 
 #################################################
 #            initial model file path            #
@@ -27,7 +27,7 @@ model:
 #            parallel computation settings      #
 #################################################
 parallel: # parameters for parallel computation
-  n_sims: 1 # number of simultanoues runs (parallel the sources)
+  n_sims: 8 # number of simultanoues runs (parallel the sources)
   ndiv_rtp: [1, 1, 1] # number of subdivision on each direction (parallel the computional domain)
   nproc_sub: 1 # number of processors for sweep parallelization (parallel the fast sweep method)
   use_gpu: false # true if use gpu (EXPERIMENTAL)

@@ -833,7 +833,7 @@ inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
         ///////////////////////////////////////////////////////
         // run (forward and adjoint) simulation for each source
         ///////////////////////////////////////////////////////
-        v_obj_misfit = oneDInv.run_simulation_one_step_1dinv(IP);
+        v_obj_misfit = oneDInv.run_simulation_one_step_1dinv(IP, io);
 
         // wait for all processes to finish
         synchronize_all_world();
@@ -858,7 +858,7 @@ inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
         ///////////////
         if(myrank == 0 && id_sim ==0)
             std::cout << "model update starting ... " << std::endl;
-        oneDInv.model_optimize_1dinv(grid, i_inv);
+        oneDInv.model_optimize_1dinv(IP, grid, io, i_inv);
 
         // output objective function
         write_objective_function(IP, i_inv, v_obj_misfit, out_main, "1d inversion");
@@ -906,6 +906,8 @@ inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
             io.write_merged_model(grid, IP, tmp_fname);
         }
 
+        // wait for all processes to finish
+        synchronize_all_world();
     } // end loop inverse
 
     // close xdmf file

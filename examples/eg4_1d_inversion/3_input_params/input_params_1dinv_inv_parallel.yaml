@@ -14,7 +14,7 @@ domain:
 #################################################
 source:
   src_rec_file: OUTPUT_FILES/OUTPUT_FILES_1dinv_signal/src_rec_file_step_0000.dat # source receiver file path
-  swap_src_rec: false # swap source and receiver (only valid for regional source and receiver, those of tele remain unchanged)
+  swap_src_rec: true # swap source and receiver (only valid for regional source and receiver, those of tele remain unchanged)
 
 #################################################
 #            initial model file path            #
@@ -27,7 +27,7 @@ model:
 #            parallel computation settings      #
 #################################################
 parallel: # parameters for parallel computation
-  n_sims: 1 # number of simultanoues runs (parallel the sources)
+  n_sims: 8 # number of simultanoues runs (parallel the sources)
   ndiv_rtp: [1, 1, 1] # number of subdivision on each direction (parallel the computional domain)
   nproc_sub: 1 # number of processors for sweep parallelization (parallel the fast sweep method)
   use_gpu: false # true if use gpu (EXPERIMENTAL)
@@ -36,7 +36,7 @@ parallel: # parameters for parallel computation
 #            output file setting           #
 ############################################
 output_setting:
-  output_dir: OUTPUT_FILES/OUTPUT_FILES_1dinv_inv # path to output director (default is ./OUTPUT_FILES/)
+  output_dir: OUTPUT_FILES/OUTPUT_FILES_1dinv_inv_parallel # path to output director (default is ./OUTPUT_FILES/)
   output_source_field:     false # True: output the traveltime field and adjoint field of all sources at each iteration. Default: false. File: 'out_data_sim_group_X'.
   output_kernel:           false # True: output sensitivity kernel and kernel density. Default: false. File: 'out_data_sim_group_X'.
   output_final_model:      true # True: output merged final model. This file can be used as the input model for TomoATT. Default: true. File: 'model_final.h5'.
@@ -95,7 +95,7 @@ have_tele_data: false # An error will be reported if false but source out of stu
 #          model update parameters setting        #
 ###################################################
 model_update:
-  max_iterations: 40 # maximum number of inversion iterations
+  max_iterations: 200 # maximum number of inversion iterations
   optim_method: 0 # optimization method. 0 : grad_descent, 1 : halve-stepping, 2 : lbfgs (EXPERIMENTAL)
 
   #common parameters for all optim methods
@@ -129,7 +129,7 @@ model_update:
 
   # -------------- uniform inversion grid setting -------------- 
   # settings for uniform inversion grid
-  n_inv_dep_lat_lon: [25, 9, 9] # number of the base inversion grid points
+  n_inv_dep_lat_lon: [13, 9, 9] # number of the base inversion grid points
   min_max_dep_inv: [-10, 50] # depth in km (Radius of the earth is defined in config.h/R_earth)
   min_max_lat_inv: [0, 2] # latitude in degree
   min_max_lon_inv: [0, 2] # longitude in degree
@@ -206,4 +206,4 @@ model_update:
 
   # -------------- inversion parameters --------------
   update_slowness : true # update slowness (velocity) or not.              default: true
-  update_azi_ani  : true # update azimuthal anisotropy (xi, eta) or not.   default: false
+  update_azi_ani  : false # update azimuthal anisotropy (xi, eta) or not.   default: false
