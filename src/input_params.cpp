@@ -2866,31 +2866,40 @@ void InputParams::check_contradictions(){
 
     // if run_mode == 0 then the max_iter should be 1
     if (run_mode == ONLY_FORWARD && max_iter_inv > 1){
-        std::cout << "Warning: run_mode = 0, max_iter should be 1" << std::endl;
+        if(myrank == 0){
+            std::cout << "Warning: run_mode = 0, max_iter should be 1" << std::endl;
+        }
         max_iter_inv = 1;
     }
 
     if (n_subprocs > 1 && sweep_type != SWEEP_TYPE_LEVEL){
-        std::cout << "Warning: n_subprocs > 1 but do not use SWEEP_TYPE_LEVEL, sweep_type changes to SWEEP_TYPE_LEVEL" << std::endl;
+        if(myrank == 0){
+            std::cout << "Warning: n_subprocs > 1 but do not use SWEEP_TYPE_LEVEL, sweep_type changes to SWEEP_TYPE_LEVEL" << std::endl;
+        }
         sweep_type = SWEEP_TYPE_LEVEL;
     }
 
     // if run_mode == 4 (1d inversion), only source parallelization is allowed
     if (run_mode == 4 && (ndiv_k > 1 || ndiv_j > 1 || ndiv_i > 1 || n_subprocs > 1)){
-        std::cout << "Error: run_mode = 4, only source parallelization is allowed" << std::endl;
-        std::cout << "Please set ndiv_rtp: [1,1,1] and nproc_sub: 1 in the input_params.yaml file" << std::endl;
+        if(myrank == 0){
+            std::cout << "Error: run_mode = 4, only source parallelization is allowed" << std::endl;
+            std::cout << "Please set ndiv_rtp: [1,1,1] and nproc_sub: 1 in the input_params.yaml file" << std::endl;
+        }
         exit(1);
     }
 
     // if run_mode == 4, only absolute traveltime data is allowed
     if (run_mode == 4){
-        std::cout << "Notify: since run_mode = 4, only absolute traveltime data is allowed" << std::endl;
-        std::cout << "use_abs_time is set to be true" << std::endl;
-        use_abs = true;
-        std::cout << "use_cs_time is set to be false" << std::endl;
-        use_cs = false;
-        std::cout << "use_cr_time is set to be false" << std::endl;
-        use_cr = false;
+        if(myrank == 0){
+            std::cout << "Notify: since run_mode = 4, only absolute traveltime data is allowed" << std::endl;
+            std::cout << "use_abs_time is set to be true" << std::endl;
+            use_abs = true;
+            std::cout << "use_cs_time is set to be false" << std::endl;
+            use_cs = false;
+            std::cout << "use_cr_time is set to be false" << std::endl;
+            use_cr = false;
+        }
+        
     }
 
 #ifdef USE_CUDA
