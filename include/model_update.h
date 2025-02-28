@@ -15,9 +15,9 @@
 // before doing this, K*_update_loc has no meaning (unavailable)
 void smooth_kernels(Grid& grid, InputParams& IP) {
 
-    if (subdom_main){
+    if (subdom_main){ // parallel level 3
 
-        if (id_sim==0){
+        if (id_sim==0){ // parallel level 1
             // initiaize update params
             for (int k = 0; k < loc_K; k++) {
                 for (int j = 0; j < loc_J; j++) {

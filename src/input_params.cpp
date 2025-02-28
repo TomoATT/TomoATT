@@ -196,7 +196,7 @@ InputParams::InputParams(std::string& input_file){
         //
         if (config["run_mode"]) {
             getNodeValue(config, "run_mode", run_mode);
-            if (run_mode > 3) {
+            if (run_mode > 4) {
                 std::cout << "undefined run_mode. stop." << std::endl;
                 //MPI_Finalize();
                 exit(1);
@@ -1026,28 +1026,33 @@ void InputParams::write_params_to_file() {
     fout << "#                                 ['Mesh']['node_coords_x'], phi coordinates of elements; " << std::endl;
     fout << "#                                 ['Mesh']['node_coords_y'], theta coordinates of elements; " << std::endl;
     fout << "#                                 ['Mesh']['node_coords_z'], r coordinates of elements; " << std::endl;
-    fout << "# File: 'out_data_sim_group_0'. Keys: ['model']['vel_inv_XXXX'], velocity model; " << std::endl;
-    fout << "#                                     ['model']['xi_inv_XXXX'], xi model; " << std::endl;
-    fout << "#                                     ['model']['eta_inv_XXXX'], eta model" << std::endl;
-    fout << "#                                     ['model']['Ks_inv_XXXX'], sensitivity kernel related to slowness" << std::endl;
-    fout << "#                                     ['model']['Kxi_inv_XXXX'], sensitivity kernel related to xi" << std::endl;
-    fout << "#                                     ['model']['Keta_inv_XXXX'], sensitivity kernel related to eta" << std::endl;
-    fout << "#                                     ['model']['Ks_density_inv_XXXX'], kernel density of Ks " << std::endl;
-    fout << "#                                     ['model']['Kxi_density_inv_XXXX'], kernel density of Kxi " << std::endl;
-    fout << "#                                     ['model']['Keta_density_inv_XXXX'], kernel density of Keta " << std::endl;
-    fout << "#                                     ['model']['Ks_over_Kden_inv_XXXX'], slowness kernel over kernel density" << std::endl;
-    fout << "#                                     ['model']['Kxi_over_Kden_inv_XXXX'], xi kernel over kernel density" << std::endl;
-    fout << "#                                     ['model']['Keta_over_Kden_inv_XXXX'], eta kernel over kernel density" << std::endl;
-    fout << "#                                     ['model']['Ks_update_inv_XXXX'], slowness kernel over kernel density, smoothed by inversion grid" << std::endl;
-    fout << "#                                     ['model']['Kxi_update_inv_XXXX'], xi kernel over kernel density, smoothed by inversion grid" << std::endl;
-    fout << "#                                     ['model']['Keta_update_inv_XXXX'], eta kernel over kernel density, smoothed by inversion grid" << std::endl;
+    fout << "# File: 'out_data_sim_group_0'. Keys: ['model']['vel_inv_XXXX'], velocity model at iteration XXXX; " << std::endl;
+    fout << "#                                     ['model']['xi_inv_XXXX'], xi model at iteration XXXX; " << std::endl;
+    fout << "#                                     ['model']['eta_inv_XXXX'], eta model at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Ks_inv_XXXX'], sensitivity kernel related to slowness at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Kxi_inv_XXXX'], sensitivity kernel related to xi at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Keta_inv_XXXX'], sensitivity kernel related to eta at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Ks_density_inv_XXXX'], kernel density of Ks at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Kxi_density_inv_XXXX'], kernel density of Kxi at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Keta_density_inv_XXXX'], kernel density of Keta at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Ks_over_Kden_inv_XXXX'], slowness kernel over kernel density at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Kxi_over_Kden_inv_XXXX'], xi kernel over kernel density at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Keta_over_Kden_inv_XXXX'], eta kernel over kernel density at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Ks_update_inv_XXXX'], slowness kernel over kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
+    fout << "#                                     ['model']['Kxi_update_inv_XXXX'], xi kernel over kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
+    fout << "#                                     ['model']['Keta_update_inv_XXXX'], eta kernel over kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
+    fout << "#                                     ['1dinv']['vel_1dinv_inv_XXXX'], 2d velocity model at iteration XXXX, in 1d inversion mode" << std::endl;
+    fout << "#                                     ['1dinv']['r_1dinv'], r coordinates (depth), in 1d inversion mode" << std::endl;
+    fout << "#                                     ['1dinv']['t_1dinv'], t coordinates (epicenter distance), in 1d inversion mode" << std::endl;
     fout << "# File: 'src_rec_file_step_XXXX.dat' or 'src_rec_file_forward.dat'. The synthetic traveltime data file." << std::endl;
     fout << "# File: 'final_model.h5'. Keys: ['eta'], ['xi'], ['vel'], the final model." << std::endl;
     fout << "# File: 'middle_model_step_XXXX.h5'. Keys: ['eta'], ['xi'], ['vel'], the model at step XXXX." << std::endl;
     fout << "# File: 'inversion_grid.txt'. The location of inversion grid nodes" << std::endl;
     fout << "# File: 'objective_function.txt'. The objective function value at each iteration" << std::endl;
-    fout << "# File: 'out_data_sim_group_X'. Keys: ['src_$src_name']['time_field_inv_XXXX'], traveltime field for source $src_name at iteration XXXX;" << std::endl;
-    fout << "#                                     ['src_$src_name']['adjoint_field_inv_XXXX'], adjoint field for source $src_name at iteration XXXX;" << std::endl;
+    fout << "# File: 'out_data_sim_group_X'. Keys: ['src_YYYY']['time_field_inv_XXXX'], traveltime field of source YYYY at iteration XXXX;" << std::endl;
+    fout << "#                                     ['src_YYYY']['adjoint_field_inv_XXXX'], adjoint field of source YYYY at iteration XXXX;" << std::endl;
+    fout << "#                                     ['1dinv']['time_field_1dinv_YYYY_inv_XXXX'], 2d traveltime field of source YYYY at iteration XXXX, in 1d inversion mode" << std::endl;
+    fout << "#                                     ['1dinv']['adjoint_field_1dinv_YYYY_inv_XXXX'], 2d adjoint field of source YYYY at iteration XXXX, in 1d inversion mode" << std::endl;
     fout << std::endl;
     fout << std::endl;
 
@@ -1058,7 +1063,8 @@ void InputParams::write_params_to_file() {
     fout << "# 0 for forward simulation only,"                  << std::endl;
     fout << "# 1 for inversion"                                 << std::endl;
     fout << "# 2 for earthquake relocation"                     << std::endl;
-    fout << "# 3 for inversion + earthquake relocation"           << std::endl;
+    fout << "# 3 for inversion + earthquake relocation"         << std::endl;
+    fout << "# 4 for 1d model inversion"                        << std::endl;
     fout << "run_mode: " << run_mode << std::endl;
     fout << std::endl;
 
@@ -2510,6 +2516,8 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                 src_rec_file_out = output_dir + "/src_rec_file_teleseis_pre.dat";
             } else if (run_mode == SRC_RELOCATION) {
                 src_rec_file_out = output_dir + "/src_rec_file_reloc_" + int2string_zero_fill(i_iter)+".dat";
+            } else if (run_mode == ONED_INVERSION){
+                src_rec_file_out = output_dir + "/src_rec_file_step_" + int2string_zero_fill(i_inv) +".dat";
             } else {
                 std::cerr << "Error: run_mode is not defined" << std::endl;
                 exit(1);
@@ -2858,13 +2866,40 @@ void InputParams::check_contradictions(){
 
     // if run_mode == 0 then the max_iter should be 1
     if (run_mode == ONLY_FORWARD && max_iter_inv > 1){
-        std::cout << "Warning: run_mode = 0, max_iter should be 1" << std::endl;
+        if(myrank == 0){
+            std::cout << "Warning: run_mode = 0, max_iter should be 1" << std::endl;
+        }
         max_iter_inv = 1;
     }
 
     if (n_subprocs > 1 && sweep_type != SWEEP_TYPE_LEVEL){
-        std::cout << "Warning: n_subprocs > 1 but do not use SWEEP_TYPE_LEVEL, sweep_type changes to SWEEP_TYPE_LEVEL" << std::endl;
+        if(myrank == 0){
+            std::cout << "Warning: n_subprocs > 1 but do not use SWEEP_TYPE_LEVEL, sweep_type changes to SWEEP_TYPE_LEVEL" << std::endl;
+        }
         sweep_type = SWEEP_TYPE_LEVEL;
+    }
+
+    // if run_mode == 4 (1d inversion), only source parallelization is allowed
+    if (run_mode == 4 && (ndiv_k > 1 || ndiv_j > 1 || ndiv_i > 1 || n_subprocs > 1)){
+        if(myrank == 0){
+            std::cout << "Error: run_mode = 4, only source parallelization is allowed" << std::endl;
+            std::cout << "Please set ndiv_rtp: [1,1,1] and nproc_sub: 1 in the input_params.yaml file" << std::endl;
+        }
+        exit(1);
+    }
+
+    // if run_mode == 4, only absolute traveltime data is allowed
+    if (run_mode == 4){
+        if(myrank == 0){
+            std::cout << "Notify: since run_mode = 4, only absolute traveltime data is allowed" << std::endl;
+            std::cout << "use_abs_time is set to be true" << std::endl;
+            use_abs = true;
+            std::cout << "use_cs_time is set to be false" << std::endl;
+            use_cs = false;
+            std::cout << "use_cr_time is set to be false" << std::endl;
+            use_cr = false;
+        }
+        
     }
 
 #ifdef USE_CUDA

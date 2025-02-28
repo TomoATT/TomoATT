@@ -125,7 +125,8 @@ inline const int ONLY_FORWARD        = 0;
 inline const int DO_INVERSION        = 1;
 inline const int SRC_RELOCATION      = 2;
 inline const int INV_RELOC           = 3;
-inline const int TELESEIS_PREPROCESS = 4; // hiden function
+inline const int ONED_INVERSION      = 4;  
+inline const int TELESEIS_PREPROCESS = -1; // hiden function
 
 // SWEEPING TYPE FLAG
 inline const int SWEEP_TYPE_LEGACY = 0;
@@ -181,9 +182,9 @@ inline int      n_subprocs       = 1; // number of sub processes in each subdoma
 inline int      ndiv_i           = 1; // number of divisions in x direction
 inline int      ndiv_j           = 1; // number of divisions in y direction
 inline int      ndiv_k           = 1; // number of divisions in z direction
-inline int      id_sim           = 0; // simultaneous run id  (not equal to src id)
-inline int      id_subdomain     = 0; // subdomain id
-inline bool     subdom_main      = false; // true if this process is main process in subdomain
+inline int      id_sim           = 0; // simultaneous run id  (not equal to src id)                 (parallel level 1)
+inline int      id_subdomain     = 0; // subdomain id                                               (parallel level 2)
+inline bool     subdom_main      = false; // true if this process is main process in subdomain      (parallel level 3)
 
 // flags for explaining the process's role
 inline bool proc_read_srcrec = false;  // true if this process is reading source file
@@ -273,15 +274,15 @@ inline CUSTOMREAL total_cr_dif_local_data_weight_reloc = 0.0;
 inline CUSTOMREAL total_cs_dif_local_data_weight_reloc = 0.0;
 inline CUSTOMREAL total_teleseismic_data_weight_reloc  = 0.0;
 
-// 2d solver parameters
-// use fixed domain size for all 2d simulations
+// 2d solver parameters for teleseismic data
+// use fixed domain size for all 2d simulations in teleseismic data
 inline       CUSTOMREAL rmin_2d             = 3370.5;
 inline       CUSTOMREAL rmax_2d             = 6471.5;
 inline       CUSTOMREAL tmin_2d             = -5.0/180.0*PI;
 inline       CUSTOMREAL tmax_2d             = 120.0/180.0*PI;
 inline       CUSTOMREAL dr_2d               = 2.0;
 inline       CUSTOMREAL dt_2d               = PI/1000.0;
-inline const CUSTOMREAL TOL_2D_SOLVER       = 1e-4;
+inline const CUSTOMREAL TOL_2D_SOLVER       = 1e-5;
 inline const CUSTOMREAL MAX_ITER_2D_SOLVER  = 4000;
 inline const CUSTOMREAL SWEEPING_COEFF_TELE = 1.05;        // coefficient for calculationg sigr/sigt/sigp
 inline const int        N_LAYER_SRC_BOUND   = 1;           // number of layers for source boundary

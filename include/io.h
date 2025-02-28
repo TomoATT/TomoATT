@@ -143,6 +143,9 @@ public:
     void h5_create_and_write_dataset_2d(std::string&, int, int*, int, CUSTOMREAL*);
     void read_2d_travel_time_field(std::string&, CUSTOMREAL*, int, int);
 
+    // 2d field for 1dinv
+    void write_1dinv_field(CUSTOMREAL*, CUSTOMREAL*, CUSTOMREAL*, int, int, std::string&);
+
     // merged model
     void write_T_merged(Grid&, InputParams&, int);
     void write_merged_model(Grid&, InputParams&, std::string);

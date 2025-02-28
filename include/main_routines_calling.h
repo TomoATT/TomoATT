@@ -23,6 +23,7 @@
 #include "lbfgs.h"
 #include "objective_function_utils.h"
 #include "timer.h"
+#include "oneD_inversion.h"
 
 // run forward-only or inversion mode
 inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils &io) {
@@ -128,7 +129,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         // model update
         ///////////////
         if(myrank == 0 && id_sim ==0)
-            std::cout << "mode update starting ... " << std::endl;
+            std::cout << "model update starting ... " << std::endl;
 
         if (IP.get_run_mode() == DO_INVERSION) {
             if (optim_method == GRADIENT_DESCENT)
@@ -798,5 +799,128 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
 }
 
 
+// run 1D inversion mode
+inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
+    OneDInversion oneDInv(IP, grid);
+
+    if(myrank == 0)
+        std::cout << "id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+
+    // estimate running time
+    Timer timer("1D_inversion", true);
+
+    // prepare objective_function file
+    std::ofstream out_main; // close() is not mandatory
+    prepare_header_line(IP, out_main);
+
+    synchronize_all_world();
+
+    /////////////////////
+    // loop for inversion
+    /////////////////////
+
+    // objective function for all src
+    std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
+
+    for (int i_inv = 0; i_inv < IP.get_max_iter_inv(); i_inv++) {
+        if(myrank == 0 && id_sim ==0){
+            std::cout << "iteration " << i_inv << " starting ... " << std::endl;
+        }
+
+        // prepare inverstion iteration group in xdmf file
+        io.prepare_grid_inv_xdmf(i_inv);
+
+        ///////////////////////////////////////////////////////
+        // run (forward and adjoint) simulation for each source
+        ///////////////////////////////////////////////////////
+        v_obj_misfit = oneDInv.run_simulation_one_step_1dinv(IP, io, i_inv);
+
+        // wait for all processes to finish
+        synchronize_all_world();
+
+        // check if v_obj is nan
+        if (std::isnan(v_obj_misfit[0])) {
+            if (myrank == 0)
+                std::cout << "v_obj is nan, stop inversion" << std::endl;
+            // stop inversion
+            break;
+        }
+
+        // output src rec file with the result arrival times
+        if (IP.get_if_output_in_process_data()){
+            IP.write_src_rec_file(i_inv,0);
+        } else if (i_inv == IP.get_max_iter_inv()-1 || i_inv==0) {
+            IP.write_src_rec_file(i_inv,0);
+        }
+
+        ///////////////
+        // model update
+        ///////////////
+        if(myrank == 0 && id_sim ==0)
+            std::cout << "model update starting ... " << std::endl;
+        oneDInv.model_optimize_1dinv(IP, grid, io, i_inv);
+
+        // output objective function
+        write_objective_function(IP, i_inv, v_obj_misfit, out_main, "1d inversion");
+
+        // output updated model
+        if (id_sim==0) {
+            //io.change_xdmf_obj(0); // change xmf file for next src
+            io.change_group_name_for_model();
+
+            // write out model info
+            if (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2){
+                io.write_vel(grid, i_inv+1);
+                io.write_xi( grid, i_inv+1);
+                io.write_eta(grid, i_inv+1);
+            }
+        }
+
+        // writeout temporary xdmf file
+        io.update_xdmf_file();
+
+        // wait for all processes to finish
+        synchronize_all_world();
+
+        // estimate running time
+        CUSTOMREAL time_elapsed = timer.get_t();
+        if (id_sim == 0 && myrank == 0 && i_inv < IP.get_max_iter_inv()-1) {
+            const time_t end_time_estimated = time_elapsed / (i_inv + 1) * (IP.get_max_iter_inv() - i_inv - 1) + timer.get_start();
+            auto will_run_time = (int)(time_elapsed/(i_inv + 1) * (IP.get_max_iter_inv() - i_inv - 1));
+
+            std::cout << std::endl;
+            std::cout << "The program begins at " << timer.get_start_t() << std::endl;
+            std::cout << "Iteration (" << i_inv + 1 << "/" << IP.get_max_iter_inv() << ") finished at " << time_elapsed << " seconds" << std::endl;
+            std::cout << i_inv + 1 << " iterations run " << timer.get_t() << " seconds, the rest of " << IP.get_max_iter_inv() - i_inv - 1 << " iterations require " << will_run_time << " seconds." << std::endl;
+            std::cout << "The program is estimated to stop at " << timer.get_utc_from_time_t(end_time_estimated) << std::endl;
+            std::cout << std::endl;
+        }
+
+        // output current state of the model
+        if (IP.get_if_output_final_model()) {
+            // io.write_final_model(grid, IP);
+            io.write_merged_model(grid, IP, "final_model.h5");
+        }
+        if (IP.get_if_output_middle_model()) {
+            std::string tmp_fname = "middle_model_step_" + int2string_zero_fill(i_inv + 1) + ".h5";
+            io.write_merged_model(grid, IP, tmp_fname);
+        }
+
+        // wait for all processes to finish
+        synchronize_all_world();
+    } // end loop inverse
+
+    // close xdmf file
+    io.finalize_data_output_file();
+
+    timer.stop_timer();
+    if (id_sim == 0 && myrank == 0) {
+        std::cout << std::endl;
+        std::cout << "The program begin at " << timer.get_start_t() << std::endl;
+        std::cout << "1d model inversion ended at " << timer.get_end_t() << std::endl;
+        std::cout << "It has run " << timer.get_elapsed_t() << " seconds in total." << std::endl;
+        std::cout << std::endl;
+    }
+}
 
 #endif // MAIN_ROUTINES_CALLING_H

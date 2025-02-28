@@ -15,6 +15,7 @@
 #include "main_routines_calling.h"
 #include "eikonal_solver_2d.h"
 #include "version.h"
+#include "oneD_inversion.h"
 
 #ifdef USE_CUDA
 #include "cuda_initialize.cuh"
@@ -96,6 +97,8 @@ int main(int argc, char *argv[])
         run_earthquake_relocation(IP, grid, io);
     } else if (IP.get_run_mode() == INV_RELOC) {
         run_inversion_and_relocation(IP,grid,io);
+    } else if (IP.get_run_mode() == ONED_INVERSION) {
+        run_1d_inversion(IP,grid,io);
     } else {
         std::cerr << "Error: invalid run mode is specified." << std::endl;
         exit(1);
