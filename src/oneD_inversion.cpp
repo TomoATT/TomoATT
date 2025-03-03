@@ -1047,7 +1047,7 @@ void OneDInversion::calculate_kernel_1d() {
     for (int ir=0; ir<nr_1dinv; ir++){
         for (int it=0; it<nt_1dinv; it++){
 
-            // add mask? (to do?)
+            // add mask? (currently no need)
 
             Ks_1dinv[ir]            += Tadj_1dinv[I2V_1DINV(it,ir)]         * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
             Ks_density_1dinv[ir]    += Tadj_density_1dinv[I2V_1DINV(it,ir)] * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
