@@ -26,6 +26,9 @@
 inline void model_optimize(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, \
                     CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool& first_src, std::ofstream& out_main) {
 
+    // check kernel density
+    check_kernel_density(grid, IP);
+
     // sum kernels among all simultaneous runs
     sumup_kernels(grid);
 

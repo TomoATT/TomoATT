@@ -167,6 +167,31 @@ void calculate_sensitivity_kernel(Grid& grid, InputParams& IP, const std::string
 }
 
 
+void check_kernel_density(Grid& grid, InputParams& IP) {
+    if(subdom_main){
+        // check local kernel density positivity
+        for (int i_loc = 0; i_loc < loc_I; i_loc++) {
+            for (int j_loc = 0; j_loc < loc_J; j_loc++) {
+                for (int k_loc = 0; k_loc < loc_K; k_loc++) {
+                    if (grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)] < 0){
+                        std::cout   << "Warning, id_sim: " << id_sim << ", grid.Ks_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " 
+                                    << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]   
+                                    << std::endl;
+                        // print the source name
+                        for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+                            // get source info
+                            std::string name_sim_src   = IP.get_src_name(i_src);
+                            std::cout   << "id_sim: " << id_sim << ", "
+                                        << i_src + 1 << "/" << IP.n_src_this_sim_group << ", source name: " << name_sim_src << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 void sumup_kernels(Grid& grid) {
     if(subdom_main){
         int n_grids = loc_I*loc_J*loc_K;

@@ -240,15 +240,8 @@ inline void smooth_inv_kernels_orig(Grid& grid, InputParams& IP) {
                 } else {
                     if (grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)] < 0){
                         std::cout   << "Warning: grid.Ks_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " 
-                                    << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]   
-                                    << ", n_src_this_sim_group = " << IP.n_src_this_sim_group                      
+                                    << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]                      
                                     << std::endl;
-                        // print the source name
-                        for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-                            // get source info
-                            std::string name_sim_src   = IP.get_src_name(i_src);
-                            std::cout << "id_sim: " << id_sim+1 << "/" << IP.n_src_this_sim_group << ", source name: " << name_sim_src << std::endl;
-                        }
                     }
                     grid.Ks_loc[I2V(i_loc,j_loc,k_loc)] /= std::pow(std::abs(grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]),Kdensity_coe);
                 }
