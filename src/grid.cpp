@@ -1232,7 +1232,7 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
                 }
 
                 if (IP.get_stencil_order() == 1){
-                    source_width = _1_CR-0.1;
+                    source_width = _1_CR * 0.9;
                 } else {
                     source_width = _2_CR;
                 }
@@ -1274,6 +1274,17 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
             } // end loop i
         } // end loop j
     } // end loop k
+
+    // int iip_out = 6;
+    // int jjt_out = 41;
+    // int kkr_out = 49;
+    
+    // std::cout << "T0v_loc[I2V(iip_out-2,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out-2,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0v_loc[I2V(iip_out-1,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out-1,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0v_loc[I2V(iip_out  ,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0v_loc[I2V(iip_out+1,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out+1,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0v_loc[I2V(iip_out+2,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out+2,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0p_loc[I2V(iip_out  ,jjt_out,kkr_out)]: " << T0p_loc[I2V(iip_out  ,jjt_out,kkr_out)] << std::endl;
 
     // std::cout << "p_loc_1d (lon): " << p_loc_1d[25]*RAD2DEG << ", id_i: " << 25
     //           << "t_loc_1d (lat): " << t_loc_1d[29]*RAD2DEG << ", id_j: " << 29
