@@ -54,21 +54,38 @@ data = ATTData.read(data_file, par_file, grid_file, group, dataset)
 kernel_list[dataset] = data.to_xarray()
 
 # %%
-# (Option 3) read normalized kernel, K/(k_den)^\zeta
-# Ks_norm: normalized kernel w.r.t. slowness at the 7-th iteration
-dataset     = 'Ks_over_Kden_inv_%s'%(Nstep)                      
-data = ATTData.read(data_file, par_file, grid_file, group, dataset)
-kernel_list[dataset] = data.to_xarray()
+# kernel density normalization is performed after smoothing. So tag 'Ks_over_Kden_inv_%s'%(Nstep) is not available for version > 1.0.3
+# # (Option 3) read normalized kernel, K/(k_den)^\zeta
+# dataset     = 'Ks_over_Kden_inv_%s'%(Nstep)                      
+# data = ATTData.read(data_file, par_file, grid_file, group, dataset)
+# kernel_list[dataset] = data.to_xarray()
 
-# Kxi_norm: normalized kernel w.r.t. xi (anisotropic parameter) at the 7-th iteration
-dataset     = 'Kxi_over_Kden_inv_%s'%(Nstep)                      
-data = ATTData.read(data_file, par_file, grid_file, group, dataset)
-kernel_list[dataset] = data.to_xarray()
+# # Kxi_norm: normalized kernel w.r.t. xi (anisotropic parameter) at the 7-th iteration
+# dataset     = 'Kxi_over_Kden_inv_%s'%(Nstep)                      
+# data = ATTData.read(data_file, par_file, grid_file, group, dataset)
+# kernel_list[dataset] = data.to_xarray()
 
-# Keta_norm: normalized kernel w.r.t. eta (anisotropic parameter) at the 7-th iteration
-dataset     = 'Keta_over_Kden_inv_%s'%(Nstep)                      
-data = ATTData.read(data_file, par_file, grid_file, group, dataset)
-kernel_list[dataset] = data.to_xarray()
+# # Keta_norm: normalized kernel w.r.t. eta (anisotropic parameter) at the 7-th iteration
+# dataset     = 'Keta_over_Kden_inv_%s'%(Nstep)                      
+# data = ATTData.read(data_file, par_file, grid_file, group, dataset)
+# kernel_list[dataset] = data.to_xarray()
+
+# %%
+# this part works for version > 1.0.3
+# # (Option 3) read kernel density smoothed by multigrid parameterization, 
+# dataset     = 'Ks_density_update_inv_%s'%(Nstep)                      
+# data = ATTData.read(data_file, par_file, grid_file, group, dataset)
+# kernel_list[dataset] = data.to_xarray()
+
+# # Kxi_norm: normalized kernel w.r.t. xi (anisotropic parameter) at the 7-th iteration
+# dataset     = 'Kxi_density_update_inv_%s'%(Nstep)                      
+# data = ATTData.read(data_file, par_file, grid_file, group, dataset)
+# kernel_list[dataset] = data.to_xarray()
+
+# # Keta_norm: normalized kernel w.r.t. eta (anisotropic parameter) at the 7-th iteration
+# dataset     = 'Keta_density_update_inv_%s'%(Nstep)                      
+# data = ATTData.read(data_file, par_file, grid_file, group, dataset)
+# kernel_list[dataset] = data.to_xarray()
 
 # %%
 # (Option 4) read normalized kernel smoothed by multigrid parameterization
