@@ -117,6 +117,8 @@ public:
     CUSTOMREAL* get_lon_inv()     {return lon_inv;};
     CUSTOMREAL* get_trapezoid()   {return trapezoid;};
 
+    bool        get_ignore_velocity_discontinuity(){return ignore_velocity_discontinuity;};
+
     // invgrid for ani
     bool        get_invgrid_ani()     {return invgrid_ani;};
 
@@ -447,6 +449,9 @@ private:
 
     // have have_tele_data or not?
     bool have_tele_data = false;  // default is false. Error will occur if teleseismic data is include but false.
+
+    // ignore velocity discontinuity
+    bool ignore_velocity_discontinuity = false; // default is false. Error will occur if model velocity has discontinuity ( v[i+1] > v[i] * 1.2 or v[i+1] < v[i] * 0.8).
 
     CUSTOMREAL depth_taper[2] = {-9999999, -9999998};   // kernel weight:  0: -inf ~ taper[0]; 0 ~ 1 : taper[0] ~ taper[1]; 1 : taper[1] ~ inf
     bool use_sta_correction = false; // apply station correction or not.

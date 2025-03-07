@@ -1040,12 +1040,41 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         }
     } // end of for loop
 
+
+    // check model discontinuity
+    if (id_sim == 0 && (!IP.get_ignore_velocity_discontinuity())){
+        check_velocity_discontinuity();
+    }
+
+
     // setup parameters for inversion grids
 //    if (inverse_flag)
 //        setup_inv_grid_params(IP);
 
 }
 
+
+void Grid::check_velocity_discontinuity(){
+    
+    for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+        for (int i_lon = 0; i_lon < loc_I; i_lon++){
+            for (int k_r = 0; k_r < loc_K-1; k_r++) {
+                CUSTOMREAL vel_bottom  = 1.0/fun_loc[I2V(i_lon,j_lat,k_r)];
+                CUSTOMREAL vel_top     = 1.0/fun_loc[I2V(i_lon,j_lat,k_r+1)];
+                if (vel_top > vel_bottom * 1.2 || vel_top < vel_bottom * 0.8){
+                    std::cout << "Velocity discontinuity detected at i = " << i_lon << " j = " << j_lat << " k = " << k_r << std::endl;
+                    std::cout << "vel_loc[I2V(i,j,k)] = "   << vel_bottom << std::endl;
+                    std::cout << "vel_loc[I2V(i,j,k+1)] = " << vel_top << std::endl;
+                    std::cout << std::endl;
+                    std::cout << "Smoothing the input model using Gaussian filter is highly recommended." << std::endl;
+                    std::cout << "Please set the flag ignore_velocity_discontinuity = True in the input_params.yaml file if you want to solve in a model with discontinuity. " << std::endl;
+                    std::cout << "Unexpected bias may occur in traveltime and kernel." << std::endl;
+                    exit(1);
+                }
+            }
+        }
+    }
+}
 
 
 void Grid::initialize_kernels(){

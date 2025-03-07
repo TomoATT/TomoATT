@@ -66,6 +66,9 @@ public:
     // inversion methods
     InvGrid* inv_grid; // inversion grid definitions
 
+    // check model discontinuity
+    void check_velocity_discontinuity();
+
     void reinitialize_abcf();   // reinitialize factors
     void rejuvenate_abcf();     // reinitialize factors for earthquake relocation
     void initialize_kernels();  // fill 0 to kernels

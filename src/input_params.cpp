@@ -207,6 +207,10 @@ InputParams::InputParams(std::string& input_file){
             getNodeValue(config, "have_tele_data", have_tele_data);
         }
 
+        if (config["ignore_velocity_discontinuity"]) {
+            getNodeValue(config, "ignore_velocity_discontinuity", ignore_velocity_discontinuity);
+        }
+
         //
         // model update
         //
@@ -1069,6 +1073,8 @@ void InputParams::write_params_to_file() {
     fout << std::endl;
 
     fout << "have_tele_data: " << have_tele_data << " # An error will be reported if false but source out of study region is used. Default: false." << std::endl;
+    fout << "ignore_velocity_discontinuity: " << ignore_velocity_discontinuity << " # An error will be reported if false but there is velocity discontinuity (v[ix,iy,iz+1] > v[ix,iy,iz] * 1.2 or v[ix,iy,iz+1] < v[ix,iy,iz] * 0.8) in the input model. Default: false." << std::endl;
+    fout << "# velocity discontinuity will lead to unexpected bais in traveltime and kernel. Smoothing the model with Gaussian filter is highly recommended. If you really want to use the model with discontinuity, please set True. " << std::endl;
     fout << std::endl;
     fout << std::endl;
 
