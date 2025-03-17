@@ -1003,10 +1003,18 @@ void Iterator::fix_boundary_Tadj(Grid& grid) {
 void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, int&kkr){
 
     bool check_out = false;
-    int iip_out = 24;
-    int jjt_out = 29;
-    int kkr_out = 38;
+    int iip_out = 6;
+    int jjt_out = 41;
+    int kkr_out = 49;
     // preparations
+
+    int ii      = I2V(iip,   jjt,   kkr);
+    int ii_mp   = I2V(iip-1, jjt,   kkr);
+    int ii_pp   = I2V(iip+1, jjt,   kkr);
+    int ii_mt   = I2V(iip  , jjt-1, kkr);
+    int ii_pt   = I2V(iip  , jjt+1, kkr);
+    int ii_mr   = I2V(iip  , jjt,   kkr-1);
+    int ii_pr   = I2V(iip  , jjt,   kkr+1);
 
     count_cand = 0;
     // forward and backward partial differential discretization
@@ -1014,32 +1022,32 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
     //  T_t = (T0*tau)_t = T0t*tau + T0v*tau_t = at*tau(iip, jjt, kkr)+bt;
     //  T_r = (T0*tau)_r = T0r*tau + T0v*tau_r = ar*tau(iip, jjt, kkr)+br;
     if (iip > 0){
-        ap1 =  grid.T0p_loc[I2V(iip, jjt, kkr)] + grid.T0v_loc[I2V(iip, jjt, kkr)]/dp;
-        bp1 = -grid.T0v_loc[I2V(iip, jjt, kkr)]/dp*grid.tau_loc[I2V(iip-1, jjt, kkr)];
+        ap1 =  grid.T0p_loc[ii] +  grid.T0v_loc[ii]/dp;
+        bp1 = -grid.T0v_loc[ii]/dp*grid.tau_loc[ii_mp];
     }
     if (iip < np-1){
-        ap2 =  grid.T0p_loc[I2V(iip, jjt, kkr)] - grid.T0v_loc[I2V(iip, jjt, kkr)]/dp;
-        bp2 =  grid.T0v_loc[I2V(iip, jjt, kkr)]/dp*grid.tau_loc[I2V(iip+1, jjt, kkr)];
+        ap2 =  grid.T0p_loc[ii] -  grid.T0v_loc[ii]/dp;
+        bp2 =  grid.T0v_loc[ii]/dp*grid.tau_loc[ii_pp];
     }
 
     if (jjt > 0){
-        at1 =  grid.T0t_loc[I2V(iip, jjt, kkr)] + grid.T0v_loc[I2V(iip, jjt, kkr)]/dt;
-        bt1 = -grid.T0v_loc[I2V(iip, jjt, kkr)]/dt*grid.tau_loc[I2V(iip, jjt-1, kkr)];
+        at1 =  grid.T0t_loc[ii] + grid.T0v_loc[ii]/dt;
+        bt1 = -grid.T0v_loc[ii]/dt*grid.tau_loc[ii_mt];
     }
     if (jjt < nt-1){
-        at2 =  grid.T0t_loc[I2V(iip, jjt, kkr)] - grid.T0v_loc[I2V(iip, jjt, kkr)]/dt;
-        bt2 =  grid.T0v_loc[I2V(iip, jjt, kkr)]/dt*grid.tau_loc[I2V(iip, jjt+1, kkr)];
+        at2 =  grid.T0t_loc[ii] - grid.T0v_loc[ii]/dt;
+        bt2 =  grid.T0v_loc[ii]/dt*grid.tau_loc[ii_pt];
     }
 
     if (kkr > 0){
-        ar1 =  grid.T0r_loc[I2V(iip, jjt, kkr)] + grid.T0v_loc[I2V(iip, jjt, kkr)]/dr;
-        br1 = -grid.T0v_loc[I2V(iip, jjt, kkr)]/dr*grid.tau_loc[I2V(iip, jjt, kkr-1)];
+        ar1 =  grid.T0r_loc[ii] + grid.T0v_loc[ii]/dr;
+        br1 = -grid.T0v_loc[ii]/dr*grid.tau_loc[ii_mr];
     }
     if (kkr < nr-1){
-        ar2 =  grid.T0r_loc[I2V(iip, jjt, kkr)] - grid.T0v_loc[I2V(iip, jjt, kkr)]/dr;
-        br2 =  grid.T0v_loc[I2V(iip, jjt, kkr)]/dr*grid.tau_loc[I2V(iip, jjt, kkr+1)];
+        ar2 =  grid.T0r_loc[ii] - grid.T0v_loc[ii]/dr;
+        br2 =  grid.T0v_loc[ii]/dr*grid.tau_loc[ii_pr];
     }
-    bc_f2 = grid.fac_b_loc[I2V(iip,jjt,kkr)]*grid.fac_c_loc[I2V(iip,jjt,kkr)] - std::pow(grid.fac_f_loc[I2V(iip,jjt,kkr)],_2_CR);
+    bc_f2 = grid.fac_b_loc[ii]*grid.fac_c_loc[ii] - std::pow(grid.fac_f_loc[ii],_2_CR);
 
     // start to find candidate solutions
 
@@ -1108,13 +1116,13 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
 
         // plug T_p, T_t, T_r into eikonal equation, solving the quadratic equation with respect to tau(iip,jjt,kkr)
         // that is a*(ar*tau+br)^2 + b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2*f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR)
-              + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * at * ap;
-        eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*grid.fac_b_loc[I2V(iip,jjt,kkr)] * at * bt
-              + _2_CR*grid.fac_c_loc[I2V(iip,jjt,kkr)] * ap * bp - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * (at*bp + bt*ap);
-        eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
-              + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * bt * bp
-              - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
+        eqn_a = grid.fac_a_loc[ii] * std::pow(ar, _2_CR) + grid.fac_b_loc[ii] * std::pow(at, _2_CR)
+              + grid.fac_c_loc[ii] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[ii] * at * ap;
+        eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*grid.fac_b_loc[ii] * at * bt
+              + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
+        eqn_c = grid.fac_a_loc[ii] * std::pow(br, _2_CR) + grid.fac_b_loc[ii] * std::pow(bt, _2_CR)
+              + grid.fac_c_loc[ii] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[ii] * bt * bp
+              - std::pow(grid.fun_loc[ii], _2_CR);
         eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
@@ -1135,49 +1143,74 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 T_t = at*tmp_tau + bt;
                 T_p = ap*tmp_tau + bp;
 
-                charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
-                charact_t = grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_t - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_p;
-                charact_p = grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_p - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_t;
+                charact_r = grid.fac_a_loc[ii]*T_r;
+                charact_t = grid.fac_b_loc[ii]*T_t - grid.fac_f_loc[ii]*T_p;
+                charact_p = grid.fac_c_loc[ii]*T_p - grid.fac_f_loc[ii]*T_t;
 
                 is_causality = false;
                 switch (i_case){
                     case 0:  //characteristic travels from -p, -t, -r
-                        if (charact_p >= 0 && charact_t >= 0 && charact_r >= 0 && tmp_tau > 0){
+                        if (charact_p >= 0 && charact_t >= 0 && charact_r >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mp] * grid.tau_loc[ii_mp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mt] * grid.tau_loc[ii_mt]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mr] * grid.tau_loc[ii_mr]){
+                                // the additional constrains is only valid for weak anisotropy. it ensures correctness near the source.
                             is_causality = true;
                         }
                         break;
                     case 1:  //characteristic travels from -p, -t, +r
-                        if (charact_p >= 0 && charact_t >= 0 && charact_r <= 0 && tmp_tau > 0){
+                        if (charact_p >= 0 && charact_t >= 0 && charact_r <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mp] * grid.tau_loc[ii_mp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mt] * grid.tau_loc[ii_mt]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pr] * grid.tau_loc[ii_pr]){
                             is_causality = true;
                         }
                         break;
                     case 2:  //characteristic travels from -p, +t, -r
-                        if (charact_p >= 0 && charact_t <= 0 && charact_r >= 0 && tmp_tau > 0){
+                        if (charact_p >= 0 && charact_t <= 0 && charact_r >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_mp] * grid.tau_loc[ii_mp]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pt] * grid.tau_loc[ii_pt]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_mr] * grid.tau_loc[ii_mr]){
                             is_causality = true;
                         }
                         break;
                     case 3:  //characteristic travels from -p, +t, +r
-                        if (charact_p >= 0 && charact_t <= 0 && charact_r <= 0 && tmp_tau > 0){
+                        if (charact_p >= 0 && charact_t <= 0 && charact_r <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_mp] * grid.tau_loc[ii_mp]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pt] * grid.tau_loc[ii_pt]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pr] * grid.tau_loc[ii_pr]){
                             is_causality = true;
                         }
                         break;
                     case 4:  //characteristic travels from +p, -t, -r
-                        if (charact_p <= 0 && charact_t >= 0 && charact_r >= 0 && tmp_tau > 0){
+                        if (charact_p <= 0 && charact_t >= 0 && charact_r >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pp] * grid.tau_loc[ii_pp]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_mt] * grid.tau_loc[ii_mt]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_mr] * grid.tau_loc[ii_mr]){
                             is_causality = true;
                         }
                         break;
                     case 5:  //characteristic travels from +p, -t, +r
-                        if (charact_p <= 0 && charact_t >= 0 && charact_r <= 0 && tmp_tau > 0){
+                        if (charact_p <= 0 && charact_t >= 0 && charact_r <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pp] * grid.tau_loc[ii_pp]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_mt] * grid.tau_loc[ii_mt]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pr] * grid.tau_loc[ii_pr]){
                             is_causality = true;
                         }
                         break;
                     case 6:  //characteristic travels from +p, +t, -r
-                        if (charact_p <= 0 && charact_t <= 0 && charact_r >= 0 && tmp_tau > 0){
+                        if (charact_p <= 0 && charact_t <= 0 && charact_r >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pp] * grid.tau_loc[ii_pp]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pt] * grid.tau_loc[ii_pt]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_mr] * grid.tau_loc[ii_mr]){
                             is_causality = true;
                         }
                         break;
                     case 7:  //characteristic travels from +p, +t, +r
-                        if (charact_p <= 0 && charact_t <= 0 && charact_r <= 0 && tmp_tau > 0){
+                        if (charact_p <= 0 && charact_t <= 0 && charact_r <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pp] * grid.tau_loc[ii_pp]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pt] * grid.tau_loc[ii_pt]
+                            && tmp_tau * grid.T0v_loc[ii] <= grid.T0v_loc[ii_pr] * grid.tau_loc[ii_pr]){
                             is_causality = true;
                         }
                         break;
@@ -1194,6 +1227,57 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                                 << i_case << ", " << i_solution << ", " << is_causality << ", " << tmp_tau << ", "
                                 << grid.T0v_loc[I2V(iip,jjt,kkr)] << ", " << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                                 << ", " << std::endl;
+                    switch (i_case) {
+                        case 0: //characteristic travels from -p, -t, -r
+                            std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", "
+                                        << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", "
+                                        << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 1: //characteristic travels from -p, -t, +r
+                            std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", "
+                                        << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", "
+                                        << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 2: //characteristic travels from -p, +t, -r
+                            std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", "
+                                        << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", "
+                                        << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 3: //characteristic travels from -p, +t, +r
+                            std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", "
+                                        << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", "
+                                        << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 4: //characteristic travels from +p, -t, -r
+                            std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", "
+                                        << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", "
+                                        << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 5: //characteristic travels from +p, -t, +r
+                            std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", "
+                                        << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", "
+                                        << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 6: //characteristic travels from +p, +t, -r
+                            std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", "
+                                        << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", "
+                                        << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 7: //characteristic travels from +p, +t, +r
+                            std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", "
+                                        << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", "
+                                        << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                    }
+                    
                 }
 
 
@@ -1239,10 +1323,10 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 + (bc-f^2)/c*(at*tau+bt)^2 = s^2
-        eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR);
-        eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * at * bt;
-        eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
-              - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
+        eqn_a = grid.fac_a_loc[ii] * std::pow(ar, _2_CR) + bc_f2/grid.fac_c_loc[ii] * std::pow(at, _2_CR);
+        eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*bc_f2/grid.fac_c_loc[ii] * at * bt;
+        eqn_c = grid.fac_a_loc[ii] * std::pow(br, _2_CR) + bc_f2/grid.fac_c_loc[ii] * std::pow(bt, _2_CR)
+              - std::pow(grid.fun_loc[ii], _2_CR);
         eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
@@ -1261,28 +1345,36 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 T_r = ar*tmp_tau + br;
                 T_t = at*tmp_tau + bt;
 
-                charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
-                charact_t = bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_t;
+                charact_r = grid.fac_a_loc[ii]*T_r;
+                charact_t = bc_f2/grid.fac_c_loc[ii]*T_t;
 
                 is_causality = false;
                 switch (i_case){
                     case 0:  //characteristic travels from -t, -r
-                        if (charact_t >= 0 && charact_r >= 0 && tmp_tau > 0){
+                        if (charact_t >= 0 && charact_r >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mt] * grid.tau_loc[ii_mt]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mr] * grid.tau_loc[ii_mr]){
                             is_causality = true;
                         }
                         break;
                     case 1:  //characteristic travels from -t, +r
-                        if (charact_t >= 0 && charact_r <= 0 && tmp_tau > 0){
+                        if (charact_t >= 0 && charact_r <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mt] * grid.tau_loc[ii_mt]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pr] * grid.tau_loc[ii_pr]){
                             is_causality = true;
                         }
                         break;
                     case 2:  //characteristic travels from +t, -r
-                        if (charact_t <= 0 && charact_r >= 0 && tmp_tau > 0){
+                        if (charact_t <= 0 && charact_r >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pt] * grid.tau_loc[ii_pt]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mr] * grid.tau_loc[ii_mr]){
                             is_causality = true;
                         }
                         break;
                     case 3:  //characteristic travels from +t, +r
-                        if (charact_t <= 0 && charact_r <= 0 && tmp_tau > 0){
+                        if (charact_t <= 0 && charact_r <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pt] * grid.tau_loc[ii_pt]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pr] * grid.tau_loc[ii_pr]){
                             is_causality = true;
                         }
                         break;
@@ -1299,6 +1391,28 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                                 << i_case << ", " << i_solution << ", " << is_causality << ", " << tmp_tau << ", "
                                 << grid.T0v_loc[I2V(iip,jjt,kkr)] << ", " << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                                 << ", " << std::endl;
+                    switch (i_case) {
+                        case 0: //characteristic travels from -t, -r
+                            std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", "
+                                        << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 1: //characteristic travels from -t, +r
+                            std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", "
+                                        << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 2: //characteristic travels from +t, -r
+                            std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", "
+                                        << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 3: //characteristic travels from +t, +r
+                            std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", "
+                                        << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                    }
                 }
 
             }
@@ -1342,10 +1456,10 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 + (bc-f^2)/b*(ap*tau+bp)^2 = s^2
-        eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR);
-        eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * ap * bp;
-        eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR)
-              - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
+        eqn_a = grid.fac_a_loc[ii] * std::pow(ar, _2_CR) + bc_f2/grid.fac_b_loc[ii] * std::pow(ap, _2_CR);
+        eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*bc_f2/grid.fac_b_loc[ii] * ap * bp;
+        eqn_c = grid.fac_a_loc[ii] * std::pow(br, _2_CR) + bc_f2/grid.fac_b_loc[ii] * std::pow(bp, _2_CR)
+              - std::pow(grid.fun_loc[ii], _2_CR);
         eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
@@ -1364,28 +1478,36 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 T_r = ar*tmp_tau + br;
                 T_p = ap*tmp_tau + bp;
 
-                charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
-                charact_p = bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_p;
+                charact_r = grid.fac_a_loc[ii]*T_r;
+                charact_p = bc_f2/grid.fac_b_loc[ii]*T_p;
 
                 is_causality = false;
                 switch (i_case){
                     case 4:  //characteristic travels from -p, -r
-                        if (charact_p >= 0 && charact_r >= 0 && tmp_tau > 0){
+                        if (charact_p >= 0 && charact_r >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mp] * grid.tau_loc[ii_mp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mr] * grid.tau_loc[ii_mr]){
                             is_causality = true;
                         }
                         break;
                     case 5:  //characteristic travels from -p, +r
-                        if (charact_p >= 0 && charact_r <= 0 && tmp_tau > 0){
+                        if (charact_p >= 0 && charact_r <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mp] * grid.tau_loc[ii_mp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pr] * grid.tau_loc[ii_pr]){
                             is_causality = true;
                         }
                         break;
                     case 6:  //characteristic travels from +p, -r
-                        if (charact_p <= 0 && charact_r >= 0 && tmp_tau > 0){
+                        if (charact_p <= 0 && charact_r >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pp] * grid.tau_loc[ii_pp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mr] * grid.tau_loc[ii_mr]){
                             is_causality = true;
                         }
                         break;
                     case 7:  //characteristic travels from +p, +r
-                        if (charact_p <= 0 && charact_r <= 0 && tmp_tau > 0){
+                        if (charact_p <= 0 && charact_r <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pp] * grid.tau_loc[ii_pp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pr] * grid.tau_loc[ii_pr]){
                             is_causality = true;
                         }
                         break;
@@ -1402,6 +1524,28 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                             << i_case << ", " << i_solution << ", " << is_causality << ", " << tmp_tau << ", "
                             << grid.T0v_loc[I2V(iip,jjt,kkr)] << ", " << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                             << ", " << std::endl;
+                    switch (i_case) {
+                        case 4: // characteristic travels from -p, -r
+                            std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", "
+                                        << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 5: // characteristic travels from -p, +r
+                            std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", "
+                                        << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 6: // characteristic travels from +p, -r
+                            std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", "
+                                        << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 7: // characteristic travels from +p, +r
+                            std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", "
+                                        << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                    }
                 }
 
             }
@@ -1444,13 +1588,13 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_p, T_t into eikonal equation, solve the quadratic equation:  b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR)
-              + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * at * ap;
-        eqn_b = _2_CR*grid.fac_b_loc[I2V(iip,jjt,kkr)] * at * bt
-              + _2_CR*grid.fac_c_loc[I2V(iip,jjt,kkr)] * ap * bp - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * (at*bp + bt*ap);
-        eqn_c = grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
-              + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * bt * bp
-              - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
+        eqn_a = grid.fac_b_loc[ii] * std::pow(at, _2_CR)
+              + grid.fac_c_loc[ii] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[ii] * at * ap;
+        eqn_b = _2_CR*grid.fac_b_loc[ii] * at * bt
+              + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
+        eqn_c = grid.fac_b_loc[ii] * std::pow(bt, _2_CR)
+              + grid.fac_c_loc[ii] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[ii] * bt * bp
+              - std::pow(grid.fun_loc[ii], _2_CR);
         eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
@@ -1469,28 +1613,37 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 T_t = at*tmp_tau + bt;
                 T_p = ap*tmp_tau + bp;
 
-                charact_t = grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_t - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_p;
-                charact_p = grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_p - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_t;
+                charact_t = grid.fac_b_loc[ii]*T_t - grid.fac_f_loc[ii]*T_p;
+                charact_p = grid.fac_c_loc[ii]*T_p - grid.fac_f_loc[ii]*T_t;
 
                 is_causality = false;
                 switch (i_case){
                     case 8:  //characteristic travels from -p, -t
-                        if (charact_p >= 0 && charact_t >= 0 && tmp_tau > 0){
+                        if (charact_p >= 0 && charact_t >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mp] * grid.tau_loc[ii_mp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mt] * grid.tau_loc[ii_mt]){
+                            
                             is_causality = true;
                         }
                         break;
                     case 9:  //characteristic travels from -p, +t
-                        if (charact_p >= 0 && charact_t <= 0 && tmp_tau > 0){
+                        if (charact_p >= 0 && charact_t <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mp] * grid.tau_loc[ii_mp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pt] * grid.tau_loc[ii_pt]){
                             is_causality = true;
                         }
                         break;
                     case 10:  //characteristic travels from +p, -t
-                        if (charact_p <= 0 && charact_t >= 0 && tmp_tau > 0){
+                        if (charact_p <= 0 && charact_t >= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pp] * grid.tau_loc[ii_pp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_mt] * grid.tau_loc[ii_mt]){
                             is_causality = true;
                         }
                         break;
                     case 11:  //characteristic travels from +p, +t
-                        if (charact_p <= 0 && charact_t <= 0 && tmp_tau > 0){
+                        if (charact_p <= 0 && charact_t <= 0 && tmp_tau > 0
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pp] * grid.tau_loc[ii_pp]
+                            && tmp_tau * grid.T0v_loc[ii] > grid.T0v_loc[ii_pt] * grid.tau_loc[ii_pt]){
                             is_causality = true;
                         }
                         break;
@@ -1507,6 +1660,45 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                             << i_case << ", " << i_solution << ", " << is_causality << ", " << tmp_tau << ", "
                             << grid.T0v_loc[I2V(iip,jjt,kkr)] << ", " << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                             << ", " << std::endl;
+                    switch (i_case) {
+                        case 8: // characteristic travels from -p, -t
+                            std::cout   << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", "
+                                        << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 9: // characteristic travels from -p, +t
+                            std::cout   << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", "
+                                        << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 10: // characteristic travels from +p, -t
+                            std::cout   << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", "
+                                        << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
+                                        << std::endl;
+                            break;
+                        case 11: // characteristic travels from +p, +t
+                            std::cout   << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", "
+                                        << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
+                                        << "T_t: " << T_t << ", T_p: " << T_p << ", "
+                                        << std::endl;
+                            // // T_t = (T0v * tau)_t = 
+                            // std::cout << " check T_t. " << std::endl;
+                            // std::cout << "T_+ = T0v_loc[I2V(iip,jjt+1,kkr)] * tau_loc[I2V(iip,jjt+1,kkr)]:" << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << std::endl;
+                            // std::cout << "T   = T0v_loc[I2V(iip,jjt,kkr)]   * tmp_tau  :" << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau << std::endl;
+                            // std::cout << "T_t_1 = (T_+ - T)/dt = " 
+                            //           <<  (grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] 
+                            //             - grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau) / grid.dt << std::endl;
+                            // std::cout << "T_t_2 = T0v * (tau_+ - tau)/dt + T0t * tau " << std::endl; 
+                            // std::cout << "T0v_+ : " << grid.T0v_loc[I2V(iip,jjt+1,kkr)] << std::endl;
+                            // std::cout << "T0v   : " << grid.T0v_loc[I2V(iip  ,jjt,kkr)] << std::endl;
+                            // std::cout << "tau_+ : " << grid.tau_loc[I2V(iip, jjt+1, kkr)] << std::endl;
+                            // std::cout << "tau : " << tmp_tau << std::endl;
+                            // std::cout << "T0t : " << grid.T0t_loc[I2V(iip,jjt,kkr)] << std::endl;
+                            // std::cout << "T_t_2 = "
+                            //           << grid.T0v_loc[I2V(iip,jjt,kkr)] * (grid.tau_loc[I2V(iip, jjt+1, kkr)] - tmp_tau) / grid.dt
+                            //           + grid.T0t_loc[I2V(iip,jjt,kkr)] * tmp_tau << std::endl;
+                            //           break;
+                    }
                 }
 
             }
@@ -1539,10 +1731,10 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)/grid.fac_a_loc[I2V(iip,jjt,kkr)]) - br)/ar;
+                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)/grid.fac_a_loc[ii]) - br)/ar;
                     break;
                 case 1:
-                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)/grid.fac_a_loc[I2V(iip,jjt,kkr)]) - br)/ar;
+                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)/grid.fac_a_loc[ii]) - br)/ar;
                     break;
             }
 
@@ -1551,14 +1743,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
             is_causality = false;
             switch (i_case){
                 case 0:  //characteristic travels from -r (we can simply compare the traveltime, which is the same as check the direction of characteristic)
-                    if (tmp_tau * grid.T0v_loc[I2V(iip,jjt,kkr)] > grid.tau_loc[I2V(iip,jjt,kkr-1)] * grid.T0v_loc[I2V(iip,jjt,kkr-1)]
-                        && tmp_tau > grid.tau_loc[I2V(iip,jjt,kkr-1)]/_2_CR && tmp_tau > 0){   // this additional condition ensures the causality near the source
+                    if (tmp_tau * grid.T0v_loc[ii] > grid.tau_loc[ii_mr] * grid.T0v_loc[ii_mr]
+                        && tmp_tau > grid.tau_loc[ii_mr]/_2_CR && tmp_tau > 0){   // this additional condition ensures the causality near the source
                         is_causality = true;
                     }
                     break;
                 case 1:  //characteristic travels from +r
-                    if (tmp_tau * grid.T0v_loc[I2V(iip,jjt,kkr)] > grid.tau_loc[I2V(iip,jjt,kkr+1)] * grid.T0v_loc[I2V(iip,jjt,kkr+1)]
-                        && tmp_tau > grid.tau_loc[I2V(iip,jjt,kkr+1)]/_2_CR && tmp_tau > 0){
+                    if (tmp_tau * grid.T0v_loc[ii] > grid.tau_loc[ii_pr] * grid.T0v_loc[ii_pr]
+                        && tmp_tau > grid.tau_loc[ii_pr]/_2_CR && tmp_tau > 0){
                         is_causality = true;
                     }
                     break;
@@ -1575,6 +1767,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                             << i_case << ", " << i_solution << ", " << is_causality << ", " << tmp_tau << ", "
                             << grid.T0v_loc[I2V(iip,jjt,kkr)] << ", " << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                             << ", " << std::endl;
+                switch (i_case) {
+                    case 0: //characteristic travels from -r
+                        std::cout   << "-r: " << grid.T0v_loc[I2V(iip,jjt,kkr-1)]*grid.tau_loc[I2V(iip, jjt, kkr-1)] << ", " << std::endl;
+                        break;
+                    case 1: //characteristic travels from +r
+                        std::cout   << "+r: " << grid.T0v_loc[I2V(iip,jjt,kkr+1)]*grid.tau_loc[I2V(iip, jjt, kkr+1)] << ", " << std::endl;
+                        break;
+                }
             }
 
         }
@@ -1606,10 +1806,10 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_c_loc[I2V(iip,jjt,kkr)]/bc_f2) - bt)/at;
+                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)*grid.fac_c_loc[ii]/bc_f2) - bt)/at;
                     break;
                 case 1:
-                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_c_loc[I2V(iip,jjt,kkr)]/bc_f2) - bt)/at;
+                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)*grid.fac_c_loc[ii]/bc_f2) - bt)/at;
                     break;
             }
 
@@ -1618,14 +1818,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
             is_causality = false;
             switch (i_case){
                 case 2:  //characteristic travels from -t (we can simply compare the traveltime, which is the same as check the direction of characteristic)
-                    if (tmp_tau * grid.T0v_loc[I2V(iip,jjt,kkr)] > grid.tau_loc[I2V(iip,jjt-1,kkr)] * grid.T0v_loc[I2V(iip,jjt-1,kkr)]
-                        && tmp_tau > grid.tau_loc[I2V(iip,jjt-1,kkr)]/_2_CR && tmp_tau > 0){   // this additional condition ensures the causality near the source
+                    if (tmp_tau * grid.T0v_loc[ii] > grid.tau_loc[ii_mt] * grid.T0v_loc[ii_mt]
+                        && tmp_tau > grid.tau_loc[ii_mt]/_2_CR && tmp_tau > 0){   // this additional condition ensures the causality near the source
                         is_causality = true;
                     }
                     break;
                 case 3:  //characteristic travels from +t
-                    if (tmp_tau * grid.T0v_loc[I2V(iip,jjt,kkr)] > grid.tau_loc[I2V(iip,jjt+1,kkr)] * grid.T0v_loc[I2V(iip,jjt+1,kkr)]
-                        && tmp_tau > grid.tau_loc[I2V(iip,jjt+1,kkr)]/_2_CR && tmp_tau > 0){
+                    if (tmp_tau * grid.T0v_loc[ii] > grid.tau_loc[ii_pt] * grid.T0v_loc[ii_pt]
+                        && tmp_tau > grid.tau_loc[ii_pt]/_2_CR && tmp_tau > 0){
                         is_causality = true;
                     }
                     break;
@@ -1643,6 +1843,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                             << i_case << ", " << i_solution << ", " << is_causality << ", " << tmp_tau << ", "
                             << grid.T0v_loc[I2V(iip,jjt,kkr)] << ", " << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                             << ", " << std::endl;
+                switch (i_case) {
+                    case 2: //characteristic travels from -t
+                        std::cout   << "-t: " << grid.T0v_loc[I2V(iip,jjt-1,kkr)]*grid.tau_loc[I2V(iip, jjt-1, kkr)] << ", " << std::endl;
+                        break;
+                    case 3: //characteristic travels from +t
+                        std::cout   << "+t: " << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << ", " << std::endl;
+                        break;
+                }
             }
 
         }
@@ -1674,10 +1882,10 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_b_loc[I2V(iip,jjt,kkr)]/bc_f2) - bp)/ap;
+                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)*grid.fac_b_loc[ii]/bc_f2) - bp)/ap;
                     break;
                 case 1:
-                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_b_loc[I2V(iip,jjt,kkr)]/bc_f2) - bp)/ap;
+                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)*grid.fac_b_loc[ii]/bc_f2) - bp)/ap;
                     break;
             }
 
@@ -1686,14 +1894,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
             is_causality = false;
             switch (i_case){
                 case 4:  //characteristic travels from -p (we can simply compare the traveltime, which is the same as check the direction of characteristic)
-                    if (tmp_tau * grid.T0v_loc[I2V(iip,jjt,kkr)] > grid.tau_loc[I2V(iip-1,jjt,kkr)] * grid.T0v_loc[I2V(iip-1,jjt,kkr)]
-                        && tmp_tau > grid.tau_loc[I2V(iip-1,jjt,kkr)]/_2_CR && tmp_tau > 0){   // this additional condition ensures the causality near the source
+                    if (tmp_tau * grid.T0v_loc[ii] > grid.tau_loc[ii_mp] * grid.T0v_loc[ii_mp]
+                        && tmp_tau > grid.tau_loc[ii_mp]/_2_CR && tmp_tau > 0){   // this additional condition ensures the causality near the source
                         is_causality = true;
                     }
                     break;
                 case 5:  //characteristic travels from +p
-                    if (tmp_tau * grid.T0v_loc[I2V(iip,jjt,kkr)] > grid.tau_loc[I2V(iip+1,jjt,kkr)] * grid.T0v_loc[I2V(iip+1,jjt,kkr)]
-                        && tmp_tau > grid.tau_loc[I2V(iip+1,jjt,kkr)]/_2_CR && tmp_tau > 0){
+                    if (tmp_tau * grid.T0v_loc[ii] > grid.tau_loc[ii_pp] * grid.T0v_loc[ii_pp]
+                        && tmp_tau > grid.tau_loc[ii_pp]/_2_CR && tmp_tau > 0){
                         is_causality = true;
                     }
                     break;
@@ -1705,6 +1913,35 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                             << i_case << ", " << i_solution << ", " << is_causality << ", " << tmp_tau << ", "
                             << grid.T0v_loc[I2V(iip,jjt,kkr)] << ", " << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                             << ", " << std::endl;
+                switch (i_case) {
+                    case 4: //characteristic travels from -p
+                        std::cout   << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", " << std::endl;
+                        
+                        // T_p = (T0v * tau)_p = 
+                        std::cout << " check T_p. " << std::endl;
+                        std::cout << "T_- = T0v_loc[I2V(iip-1,jjt,kkr)] * tau_loc[I2V(iip-1,jjt,kkr)]:" << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << std::endl;
+                        std::cout << "T   = T0v_loc[I2V(iip,jjt,kkr)]   * tmp_tau  :" << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau << std::endl;
+                        std::cout << "T_p_1 = (T - T_-)/dp = " 
+                                    <<  (grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau 
+                                    - grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)]) / grid.dp << std::endl;
+                        std::cout << "T_p_2 = T0v * (tau - tau_-)/dt + T0t * tau " << std::endl; 
+                        std::cout << "T0v : " << grid.T0v_loc[I2V(iip,jjt,kkr)] << std::endl;
+                        std::cout << "T0v_-   : " << grid.T0v_loc[I2V(iip-1,jjt,kkr)] << std::endl;
+                        std::cout << "grid.dp: " << grid.dp << std::endl;
+                        std::cout << "tau : " << tmp_tau << std::endl;
+                        std::cout << "tau_- : " << grid.tau_loc[I2V(iip-1, jjt, kkr)] << std::endl;
+                        std::cout << "T0p : " << grid.T0p_loc[I2V(iip,jjt,kkr)] << std::endl;
+                        std::cout << "T_p_2 = "
+                                    << grid.T0v_loc[I2V(iip,jjt,kkr)] * (tmp_tau - grid.tau_loc[I2V(iip-1, jjt, kkr)]) / grid.dp
+                                    + grid.T0t_loc[I2V(iip,jjt,kkr)] * tmp_tau << std::endl;
+                                    break;
+
+
+                        break;
+                    case 5: //characteristic travels from +p
+                        std::cout   << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", " << std::endl;
+                        break;
+                }
             }
 
             // if satisfying the causility condition, retain it as a canditate solution

@@ -514,13 +514,20 @@ void Grid::memory_allocation() {
             Ks_density_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 93);
             Kxi_density_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 94);
             Keta_density_loc         = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 95);
+
             Ks_inv_loc               = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid, 96);
             Kxi_inv_loc              = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid_ani, 97);
             Keta_inv_loc             = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid_ani, 98);
+            Ks_density_inv_loc       = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid, 99);
+            Kxi_density_inv_loc      = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid_ani, 100);
+            Keta_density_inv_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid_ani, 101);
 
             Ks_update_loc            = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 99);
             Kxi_update_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 100);
             Keta_update_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 101);
+            Ks_density_update_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
+            Kxi_density_update_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
+            Keta_density_update_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
 
             Ks_update_loc_previous   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
             Kxi_update_loc_previous  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
@@ -821,11 +828,15 @@ void Grid::memory_deallocation() {
             delete[] Ks_inv_loc;
             delete[] Kxi_inv_loc;
             delete[] Keta_inv_loc;
-            // delete[] Kdensity_inv_loc;
+            delete[] Ks_density_inv_loc;
+            delete[] Kxi_density_inv_loc;
+            delete[] Keta_density_inv_loc;
             delete[] Ks_update_loc;
             delete[] Kxi_update_loc;
             delete[] Keta_update_loc;
-            // delete[] Kdensity_update_loc;
+            delete[] Ks_density_update_loc;
+            delete[] Kxi_density_update_loc;
+            delete[] Keta_density_update_loc;
             delete[] Ks_update_loc_previous;
             delete[] Kxi_update_loc_previous;
             delete[] Keta_update_loc_previous;
@@ -1040,12 +1051,41 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         }
     } // end of for loop
 
+
+    // check model discontinuity
+    if (id_sim == 0 && (!IP.get_ignore_velocity_discontinuity())){
+        check_velocity_discontinuity();
+    }
+
+
     // setup parameters for inversion grids
 //    if (inverse_flag)
 //        setup_inv_grid_params(IP);
 
 }
 
+
+void Grid::check_velocity_discontinuity(){
+    
+    for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+        for (int i_lon = 0; i_lon < loc_I; i_lon++){
+            for (int k_r = 0; k_r < loc_K-1; k_r++) {
+                CUSTOMREAL vel_bottom  = 1.0/fun_loc[I2V(i_lon,j_lat,k_r)];
+                CUSTOMREAL vel_top     = 1.0/fun_loc[I2V(i_lon,j_lat,k_r+1)];
+                if (vel_top > vel_bottom * 1.2 || vel_top < vel_bottom * 0.8){
+                    std::cout << "Velocity discontinuity detected at i = " << i_lon << " j = " << j_lat << " k = " << k_r << std::endl;
+                    std::cout << "vel_loc[I2V(i,j,k)] = "   << vel_bottom << std::endl;
+                    std::cout << "vel_loc[I2V(i,j,k+1)] = " << vel_top << std::endl;
+                    std::cout << std::endl;
+                    std::cout << "Smoothing the input model using Gaussian filter is highly recommended." << std::endl;
+                    std::cout << "Please set the flag ignore_velocity_discontinuity = True in the input_params.yaml file if you want to solve in a model with discontinuity. " << std::endl;
+                    std::cout << "Unexpected bias may occur in traveltime and kernel." << std::endl;
+                    exit(1);
+                }
+            }
+        }
+    }
+}
 
 
 void Grid::initialize_kernels(){
@@ -1232,7 +1272,7 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
                 }
 
                 if (IP.get_stencil_order() == 1){
-                    source_width = _1_CR-0.1;
+                    source_width = _1_CR * 0.9;
                 } else {
                     source_width = _2_CR;
                 }
@@ -1274,6 +1314,17 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
             } // end loop i
         } // end loop j
     } // end loop k
+
+    // int iip_out = 6;
+    // int jjt_out = 41;
+    // int kkr_out = 49;
+    
+    // std::cout << "T0v_loc[I2V(iip_out-2,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out-2,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0v_loc[I2V(iip_out-1,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out-1,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0v_loc[I2V(iip_out  ,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0v_loc[I2V(iip_out+1,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out+1,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0v_loc[I2V(iip_out+2,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out+2,jjt_out,kkr_out)] << std::endl;
+    // std::cout << "T0p_loc[I2V(iip_out  ,jjt_out,kkr_out)]: " << T0p_loc[I2V(iip_out  ,jjt_out,kkr_out)] << std::endl;
 
     // std::cout << "p_loc_1d (lon): " << p_loc_1d[25]*RAD2DEG << ", id_i: " << 25
     //           << "t_loc_1d (lat): " << t_loc_1d[29]*RAD2DEG << ", id_j: " << 29

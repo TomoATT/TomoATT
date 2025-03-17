@@ -1431,23 +1431,59 @@ void IO_utils::write_Keta_update(Grid& grid, int i_inv) {
     }
 }
 
-// void IO_utils::write_Kdensity_update(Grid& grid, int i_inv) {
-//     if (!subdom_main) return;
+void IO_utils::write_Ks_density_update(Grid& grid, int i_inv) {
+    if (!subdom_main) return;
 
-//     if (output_format==OUTPUT_FORMAT_HDF5){
-// #ifdef USE_HDF5
-//         std::string h5_dset_name = "Kdensity_update";
-//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Kdensity_update(), i_inv, model_data);
-// #else
-//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
-//         exit(1);
-// #endif
-//     } else if (output_format==OUTPUT_FORMAT_ASCII){
-//         std::string dset_name = "Kdensity_update_inv_" + int2string_zero_fill(i_inv);
-//         std::string fname = create_fname_ascii_model(dset_name);
-//         write_data_ascii(grid, fname, grid.get_Kdensity_update());
-//     }
-// }
+    if (output_format==OUTPUT_FORMAT_HDF5){
+#ifdef USE_HDF5
+        std::string h5_dset_name = "Ks_density_update";
+        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Ks_density_update(), i_inv, model_data);
+#else
+        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+        exit(1);
+#endif
+    } else if (output_format==OUTPUT_FORMAT_ASCII){
+        std::string dset_name = "Ks_density_update_inv_" + int2string_zero_fill(i_inv);
+        std::string fname = create_fname_ascii_model(dset_name);
+        write_data_ascii(grid, fname, grid.get_Ks_density_update());
+    }
+}
+
+void IO_utils::write_Kxi_density_update(Grid& grid, int i_inv) {
+    if (!subdom_main) return;
+
+    if (output_format==OUTPUT_FORMAT_HDF5){
+#ifdef USE_HDF5
+        std::string h5_dset_name = "Kxi_density_update";
+        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Kxi_density_update(), i_inv, model_data);
+#else
+        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+        exit(1);
+#endif
+    } else if (output_format==OUTPUT_FORMAT_ASCII){
+        std::string dset_name = "Kxi_density_update_inv_" + int2string_zero_fill(i_inv);
+        std::string fname = create_fname_ascii_model(dset_name);
+        write_data_ascii(grid, fname, grid.get_Kxi_density_update());
+    }
+}
+
+void IO_utils::write_Keta_density_update(Grid& grid, int i_inv) {
+    if (!subdom_main) return;
+
+    if (output_format==OUTPUT_FORMAT_HDF5){
+#ifdef USE_HDF5
+        std::string h5_dset_name = "Keta_density_update";
+        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Keta_density_update(), i_inv, model_data);
+#else
+        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+        exit(1);
+#endif
+    } else if (output_format==OUTPUT_FORMAT_ASCII){
+        std::string dset_name = "Keta_density_update_inv_" + int2string_zero_fill(i_inv);
+        std::string fname = create_fname_ascii_model(dset_name);
+        write_data_ascii(grid, fname, grid.get_Keta_density_update());
+    }
+}
 
 void IO_utils::write_Ks_descent_dir(Grid& grid, int i_inv) {
     if (!subdom_main) return;

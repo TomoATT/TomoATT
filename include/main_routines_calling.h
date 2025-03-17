@@ -119,9 +119,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         }
 
         // output src rec file with the result arrival times
-        if (IP.get_if_output_in_process_data()){
-            IP.write_src_rec_file(i_inv,0);
-        } else if (i_inv == IP.get_max_iter_inv()-1 || i_inv==0) {
+        if (IP.get_if_output_in_process_data() || i_inv == IP.get_max_iter_inv()-1 || i_inv==0) {
             IP.write_src_rec_file(i_inv,0);
         }
 
@@ -298,7 +296,7 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
         write_objective_function(IP, i_iter, v_obj_misfit, out_main, "relocation");
 
         // write out new src_rec_file
-        if (IP.get_if_output_in_process_data()){
+        if (IP.get_if_output_in_process_data() || i_iter == N_ITER_MAX_SRC_RELOC-1 || i_iter==0){
             IP.write_src_rec_file(0,i_iter);
         }
 

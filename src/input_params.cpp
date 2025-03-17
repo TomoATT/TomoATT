@@ -207,6 +207,10 @@ InputParams::InputParams(std::string& input_file){
             getNodeValue(config, "have_tele_data", have_tele_data);
         }
 
+        if (config["ignore_velocity_discontinuity"]) {
+            getNodeValue(config, "ignore_velocity_discontinuity", ignore_velocity_discontinuity);
+        }
+
         //
         // model update
         //
@@ -1035,12 +1039,15 @@ void InputParams::write_params_to_file() {
     fout << "#                                     ['model']['Ks_density_inv_XXXX'], kernel density of Ks at iteration XXXX" << std::endl;
     fout << "#                                     ['model']['Kxi_density_inv_XXXX'], kernel density of Kxi at iteration XXXX" << std::endl;
     fout << "#                                     ['model']['Keta_density_inv_XXXX'], kernel density of Keta at iteration XXXX" << std::endl;
-    fout << "#                                     ['model']['Ks_over_Kden_inv_XXXX'], slowness kernel over kernel density at iteration XXXX" << std::endl;
-    fout << "#                                     ['model']['Kxi_over_Kden_inv_XXXX'], xi kernel over kernel density at iteration XXXX" << std::endl;
-    fout << "#                                     ['model']['Keta_over_Kden_inv_XXXX'], eta kernel over kernel density at iteration XXXX" << std::endl;
-    fout << "#                                     ['model']['Ks_update_inv_XXXX'], slowness kernel over kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
-    fout << "#                                     ['model']['Kxi_update_inv_XXXX'], xi kernel over kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
-    fout << "#                                     ['model']['Keta_update_inv_XXXX'], eta kernel over kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
+    // fout << "#                                     ['model']['Ks_over_Kden_inv_XXXX'], slowness kernel over kernel density at iteration XXXX" << std::endl;
+    // fout << "#                                     ['model']['Kxi_over_Kden_inv_XXXX'], xi kernel over kernel density at iteration XXXX" << std::endl;
+    // fout << "#                                     ['model']['Keta_over_Kden_inv_XXXX'], eta kernel over kernel density at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Ks_update_inv_XXXX'], slowness kernel smoothed by inversion grid over the samely smoothed kernel density at iteration XXXX, " << std::endl;
+    fout << "#                                     ['model']['Kxi_update_inv_XXXX'], xi kernel smoothed by inversion grid over the samely smoothed kernel density at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Keta_update_inv_XXXX'], eta kernel smoothed by inversion grid over the samely smoothed kernel density at iteration XXXX" << std::endl;
+    fout << "#                                     ['model']['Ks_density_update_inv_XXXX'], slowness kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
+    fout << "#                                     ['model']['Kxi_density_update_inv_XXXX'], xi kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
+    fout << "#                                     ['model']['Keta_density_update_inv_XXXX'], eta kernel density at iteration XXXX, smoothed by inversion grid" << std::endl;
     fout << "#                                     ['1dinv']['vel_1dinv_inv_XXXX'], 2d velocity model at iteration XXXX, in 1d inversion mode" << std::endl;
     fout << "#                                     ['1dinv']['r_1dinv'], r coordinates (depth), in 1d inversion mode" << std::endl;
     fout << "#                                     ['1dinv']['t_1dinv'], t coordinates (epicenter distance), in 1d inversion mode" << std::endl;
@@ -1069,6 +1076,8 @@ void InputParams::write_params_to_file() {
     fout << std::endl;
 
     fout << "have_tele_data: " << have_tele_data << " # An error will be reported if false but source out of study region is used. Default: false." << std::endl;
+    fout << "ignore_velocity_discontinuity: " << ignore_velocity_discontinuity << " # An error will be reported if false but there is velocity discontinuity (v[ix,iy,iz+1] > v[ix,iy,iz] * 1.2 or v[ix,iy,iz+1] < v[ix,iy,iz] * 0.8) in the input model. Default: false." << std::endl;
+    fout << "# velocity discontinuity will lead to unexpected bais in traveltime and kernel. Smoothing the model with Gaussian filter is highly recommended. If you really want to use the model with discontinuity, please set True. " << std::endl;
     fout << std::endl;
     fout << std::endl;
 
