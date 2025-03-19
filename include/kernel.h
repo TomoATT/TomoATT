@@ -47,7 +47,6 @@ void calculate_sensitivity_kernel(Grid& grid, InputParams& IP, const std::string
                     // grid.Keta_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)]; 
                     grid.Keta_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)] * azi_ratio;
                                                             
-
                     // mask within one grid around the source
                     if (std::abs(grid.r_loc_1d[kkr]-src_r)   >= dr \
                      || std::abs(grid.t_loc_1d[jjt]-src_lat) >= dt \
