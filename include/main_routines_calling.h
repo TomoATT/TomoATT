@@ -140,27 +140,12 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
                     goto end_of_inversion;
             }
         }
-        
-        synchronize_all_world();
-        if(myrank == 0 && id_sim ==0){
-            std::cout << "ckp, model update finished ... " << std::endl;
-        }
 
         // output station correction file (only for teleseismic differential data)
         IP.write_station_correction_file(i_inv + 1);
 
-        synchronize_all_world();
-        if(myrank == 0 && id_sim ==0){
-            std::cout << "ckp, write_station_correction_file finished ... " << std::endl;
-        }
-
         // output objective function
         write_objective_function(IP, i_inv, v_obj_misfit, out_main, "model update");
-
-        synchronize_all_world();
-        if(myrank == 0 && id_sim ==0){
-            std::cout << "ckp, write_objective_function finished ... " << std::endl;
-        }
 
         // since model is update. The written traveltime field should be discraded.
         // initialize is_T_written_into_file
@@ -169,11 +154,6 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
 
             if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
                 IP.src_map[name_sim_src].is_T_written_into_file = false;
-        }
-
-        synchronize_all_world();
-        if(myrank == 0 && id_sim ==0){
-            std::cout << "ckp, initialize is_T_written_into_file finished ... " << std::endl;
         }
 
         // output updated model
@@ -204,18 +184,8 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
 
         }
 
-        synchronize_all_world();
-        if(myrank == 0 && id_sim ==0){
-            std::cout << "ckp, output updated model finished ... " << std::endl;
-        }
-
         // writeout temporary xdmf file
         io.update_xdmf_file();
-
-        synchronize_all_world();
-        if(myrank == 0 && id_sim ==0){
-            std::cout << "ckp, update_xdmf_file finished ... " << std::endl;
-        }
 
         // wait for all processes to finish
         synchronize_all_world();
