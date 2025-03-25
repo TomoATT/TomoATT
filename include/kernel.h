@@ -172,7 +172,7 @@ void check_kernel_density(Grid& grid, InputParams& IP) {
         for (int i_loc = 0; i_loc < loc_I; i_loc++) {
             for (int j_loc = 0; j_loc < loc_J; j_loc++) {
                 for (int k_loc = 0; k_loc < loc_K; k_loc++) {
-                    if (grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)] < 10e-6){
+                    if (grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)] < -10e-6){
                         std::cout   << "Warning, id_sim: " << id_sim << ", grid.Ks_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " 
                                     << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]   
                                     << std::endl;
