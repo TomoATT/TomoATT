@@ -179,7 +179,7 @@ void check_kernel_density(Grid& grid, InputParams& IP) {
                         // print the source name
                         for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
                             // get source info
-                            std::string name_sim_src   = IP.get_src_name(i_src);
+                            const std::string name_sim_src   = IP.get_src_name(i_src);
                             std::cout   << "id_sim: " << id_sim << ", "
                                         << i_src + 1 << "/" << IP.n_src_this_sim_group << ", source name: " << name_sim_src << std::endl;
                         }

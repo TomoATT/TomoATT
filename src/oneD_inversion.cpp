@@ -184,7 +184,7 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
         
         if (myrank == 0){
-            std::string name_sim_src  = IP.get_src_name(i_src);
+            const std::string name_sim_src  = IP.get_src_name(i_src);
             std::cout << "id_sim: " << id_sim << ", calculating source (" << i_src+1 << "/" << IP.n_src_this_sim_group
                     << "), name: "
                     << name_sim_src << ", lat: " << IP.src_map[name_sim_src].lat
