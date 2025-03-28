@@ -781,7 +781,8 @@ InputParams::InputParams(std::string& input_file){
 
     broadcast_i_single(run_mode, 0);
     broadcast_bool_single(have_tele_data, 0);
-
+    broadcast_bool_single(ignore_velocity_discontinuity, 0);
+    
     broadcast_i_single(max_iter_inv, 0);
     broadcast_i_single(optim_method, 0);
     broadcast_i_single(step_method, 0);

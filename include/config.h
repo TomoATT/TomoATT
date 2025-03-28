@@ -74,6 +74,14 @@ inline bool isZero(CUSTOMREAL x) {
     return fabs(x) < eps;
 }
 
+inline bool isNegative(CUSTOMREAL x) {
+    return (x) < -eps;
+}
+
+inline bool isPositive(CUSTOMREAL x) {
+    return (x) > eps;
+}
+
 inline bool isZeroAdj(CUSTOMREAL x) {
     return fabs(x) < epsAdj;
 }

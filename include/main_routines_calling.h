@@ -184,7 +184,6 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
 
         }
 
-
         // writeout temporary xdmf file
         io.update_xdmf_file();
 
