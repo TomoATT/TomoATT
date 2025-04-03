@@ -160,7 +160,7 @@ jobs:
         #echo ""
         #echo "h5pcc version: $(h5pcc --version), path: $(which h5pcc)"
 
-        cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+        cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
       run: |
@@ -184,7 +184,7 @@ jobs:
 
     - name: Configure
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
       run: |
@@ -286,7 +286,7 @@ jobs:
           echo "HDF5_DIR=${{github.workspace}}/HDF5_DIR" >> $GITHUB_ENV
           export PATH=${HDF5_DIR}/bin:$PATH
         fi
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_PREFIX_PATH=${HDF5_DIR}
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_PREFIX_PATH=${HDF5_DIR} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
       run: |
@@ -307,7 +307,7 @@ jobs:
 
     - name: Configure
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
       run: |
@@ -335,7 +335,7 @@ jobs:
 
     - name: Configure
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
       run: |
@@ -363,7 +363,7 @@ jobs:
 
     - name: Configure
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     - name: Build
       run: |
