@@ -36,10 +36,9 @@ void calculate_sensitivity_kernel(Grid& grid, InputParams& IP, const std::string
                     CUSTOMREAL azi_ratio = std::sqrt((my_square(Ttheta_km) + my_square(Tphi_km))/(my_square(Tr_km) + my_square(Ttheta_km) + my_square(Tphi_km)));
                                                                          
                     // mask within one grid around the source
-                    if (std::abs(grid.r_loc_1d[kkr]-src_r)   >= dr \
-                     || std::abs(grid.t_loc_1d[jjt]-src_lat) >= dt \
-                     || std::abs(grid.p_loc_1d[iip]-src_lon) >= dp) {
-                        
+                    if ((std::abs(grid.r_loc_1d[kkr] - src_r) >= dr) ||
+                        (std::abs(grid.t_loc_1d[jjt] - src_lat) >= dt) ||
+                        (std::abs(grid.p_loc_1d[iip] - src_lon) >= dp)) {
                         // density of ks
                         grid.Ks_density_loc[I2V(iip,jjt,kkr)]   += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)];  
                         
