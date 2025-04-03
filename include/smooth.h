@@ -234,13 +234,13 @@ inline void smooth_inv_kernels_orig(Grid& grid, InputParams& IP) {
     for (int i_loc = 0; i_loc < loc_I; i_loc++) {
         for (int j_loc = 0; j_loc < loc_J; j_loc++) {
             for (int k_loc = 0; k_loc < loc_K; k_loc++) {
-                if (grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)] < 0){
+                if (isNegative(grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)])){
                     std::cout   << "Warning: grid.Ks_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)] << std::endl;
                 }
-                if (grid.Kxi_density_loc[I2V(i_loc,j_loc,k_loc)] < 0){
+                if (isNegative(grid.Kxi_density_loc[I2V(i_loc,j_loc,k_loc)])){
                     std::cout << "Warning: grid.Kxi_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " << grid.Kxi_density_loc[I2V(i_loc,j_loc,k_loc)] << std::endl;
                 }
-                if (grid.Keta_density_loc[I2V(i_loc,j_loc,k_loc)] < 0){
+                if (isNegative(grid.Keta_density_loc[I2V(i_loc,j_loc,k_loc)])){
                     std::cout << "Warning: grid.Keta_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " << grid.Keta_density_loc[I2V(i_loc,j_loc,k_loc)] << std::endl;
                 }
             }
@@ -508,7 +508,7 @@ inline void smooth_inv_kernels_orig(Grid& grid, InputParams& IP) {
                     if(isZero(grid.Ks_density_inv_loc[I2V_INV_KNL(i,j,k)])){
                         // do nothing
                     } else {
-                        if (grid.Ks_density_inv_loc[I2V_INV_KNL(i,j,k)] < 0){
+                        if (isNegative(grid.Ks_density_inv_loc[I2V_INV_KNL(i,j,k)])){
                             std::cout   << "Warning: grid.Ks_density_inv_loc[I2V_INV_KNL(" << i << "," << j << "," << k << ")] is less than 0, = " 
                                         << grid.Ks_density_inv_loc[I2V_INV_KNL(i,j,k)]   
                                         << ", using absolute value instead."                   
@@ -526,9 +526,9 @@ inline void smooth_inv_kernels_orig(Grid& grid, InputParams& IP) {
                     if(isZero(grid.Keta_density_inv_loc[I2V_INV_ANI_KNL(i,j,k)])){
                         // do nothing
                     } else {
-                        if (grid.Keta_density_inv_loc[I2V_INV_ANI_KNL(i,j,k)] < 0){
+                        if (isNegative(grid.Keta_density_inv_loc[I2V_INV_ANI_KNL(i,j,k)])){
                             std::cout   << "Warning: grid.Keta_density_inv_loc[I2V_INV_ANI_KNL(" << i << "," << j << "," << k << ")] is less than 0, = " 
-                                        << grid.Keta_inv_loc[I2V_INV_ANI_KNL(i,j,k)]   
+                                        << grid.Keta_density_inv_loc[I2V_INV_ANI_KNL(i,j,k)]   
                                         << ", using absolute value instead."                   
                                         << std::endl;
                         }
@@ -538,9 +538,9 @@ inline void smooth_inv_kernels_orig(Grid& grid, InputParams& IP) {
                     if(isZero(grid.Kxi_density_inv_loc[I2V_INV_ANI_KNL(i,j,k)])){
                         // do nothing
                     } else {
-                        if (grid.Kxi_density_inv_loc[I2V_INV_ANI_KNL(i,j,k)] < 0){
+                        if (isNegative(grid.Kxi_density_inv_loc[I2V_INV_ANI_KNL(i,j,k)])){
                             std::cout   << "Warning: grid.Kxi_density_inv_loc[I2V_INV_ANI_KNL(" << i << "," << j << "," << k << ")] is less than 0, = " 
-                                        << grid.Kxi_inv_loc[I2V_INV_ANI_KNL(i,j,k)]   
+                                        << grid.Kxi_density_inv_loc[I2V_INV_ANI_KNL(i,j,k)]   
                                         << ", using absolute value instead."                   
                                         << std::endl;
                         }
