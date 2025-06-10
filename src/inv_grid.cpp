@@ -172,7 +172,7 @@ InvGrid1d::InvGrid1d(InputParams& IP, const int n_inv_loc,
             dinv_l = (arr_input_pos[n_inv_loc-1] - arr_input_pos[n_inv_loc-2]) / n_inv_grids;
 
         for (int l = 0; l < n_inv_grids; l++)
-            arr[I2V_INV_GRIDS_1D_GENERIC(i, l, n_inv_loc)] = arr_input_pos[i] - l*dinv_l;
+            arr[I2V_INV_GRIDS_1D_GENERIC(i, l, n_inv_loc)] = arr_input_pos[i] + l*dinv_l;
     }
 
     delete[] arr_input_pos;
@@ -217,7 +217,7 @@ InvGrid1d::InvGrid1d(InputParams& IP, const int n_inv_loc,
                 else
                     ratio = input_trapezoid[0];
 
-                arr[I2V_INV_GRIDS_2D_GENERIC(i,k,l,n_inv_loc,n_inv_loc_k)] = mid_value + (arr_input_pos[i] - l*dinv_l - mid_value) * ratio;
+                arr[I2V_INV_GRIDS_2D_GENERIC(i,k,l,n_inv_loc,n_inv_loc_k)] = mid_value + (arr_input_pos[i] + l*dinv_l - mid_value) * ratio;
             }
         }
     }
