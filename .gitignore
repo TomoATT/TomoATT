@@ -77,3 +77,5 @@ examples/scripts_of_plotting/files_for_plotting.tar.gz
 examples/*/img
 
 include/version.h
+
+examples/eg4_1d_inversion/*.ipynb
