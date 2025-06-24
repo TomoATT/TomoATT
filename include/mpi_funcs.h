@@ -14,8 +14,12 @@
 #include <omp.h>
 #endif
 
+// Forward declaration for Grid class
+class Grid;
+
 inline void initialize_mpi();
 inline void finalize_mpi();
+inline void cleanup_all_mpi_windows(); // Add cleanup function declaration
 
 inline void mpi_debug(char const* str);
 
@@ -133,6 +137,9 @@ inline void initialize_mpi(){
 inline void finalize_mpi(){
 
     synchronize_all_world();
+
+    // Clean up all MPI windows before finalizing MPI
+    cleanup_all_mpi_windows();
 
     // free communicators if necessary
     //if (sub_comm != MPI_COMM_NULL)
@@ -1024,6 +1031,28 @@ inline void init_mpi_wins(std::initializer_list<MPI_Win*> wins) {
 
     if (if_verbose && world_rank == 0 && initialized_count > 0) {
         std::cout << "Initialized " << initialized_count << " MPI windows to MPI_WIN_NULL." << std::endl;
+    }
+}
+
+// Simple flag to track if MPI windows have been cleaned up
+inline bool& get_mpi_windows_cleaned_flag() {
+    static bool mpi_windows_cleaned = false;
+    return mpi_windows_cleaned;
+}
+
+// Clean up all MPI windows before MPI_Finalize (called once)
+inline void cleanup_all_mpi_windows() {
+    bool& cleaned = get_mpi_windows_cleaned_flag();
+
+    if (!cleaned) {
+        if (world_rank == 0 && if_verbose) {
+            std::cout << "Cleaning up all MPI windows before MPI_Finalize..." << std::endl;
+        }
+        cleaned = true;
+
+        if (world_rank == 0 && if_verbose) {
+            std::cout << "All MPI windows cleaned up successfully." << std::endl;
+        }
     }
 }
 

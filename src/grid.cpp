@@ -663,7 +663,6 @@ void Grid::shm_memory_deallocation() {
                       &win_Tadj_loc, &win_Tadj_density_loc});
 }
 
-
 // function for memory allocation, called only for subdomain.
 void Grid::memory_deallocation() {
    // shm array deallocation is done in shm_memory_deallocation() if shm is used
