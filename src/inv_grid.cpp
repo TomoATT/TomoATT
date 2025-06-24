@@ -204,7 +204,7 @@ InvGrid1d::InvGrid1d(InputParams& IP, const int n_inv_loc,
     for (int i = 0; i < n_inv_loc; i++){
         if (i < n_inv_loc-1)
             dinv_l = (arr_input_pos[i+1] - arr_input_pos[i]) / n_inv_grids;
-        elsegit 
+        else
             dinv_l = (arr_input_pos[n_inv_loc-1] - arr_input_pos[n_inv_loc-2]) / n_inv_grids;
 
         for (int l = 0; l < n_inv_grids; l++) {
