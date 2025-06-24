@@ -3,6 +3,15 @@
 Grid::Grid(InputParams& IP, IO_utils& io) {
     stdout_by_main("--- grid object initialization starts. ---");
 
+    // Initialize all MPI_Win variables to NULL to ensure proper cleanup
+    init_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
+                   &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+                   &win_tau_loc, &win_fun_loc, &win_is_changed,
+                   &win_T_loc, &win_tau_old_loc,
+                   &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+                   &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
+                   &win_Tadj_loc, &win_Tadj_density_loc});
+
     // initialize grid parameters are done by only the main process of each subdomain
     if (subdom_main) {
         // domain decomposition
@@ -643,7 +652,15 @@ void Grid::shm_memory_allocation() {
 
 
 void Grid::shm_memory_deallocation() {
-    // add if necessary
+    // Free MPI shared memory windows before MPI_Finalize to avoid Intel OneAPI errors
+    // These windows were allocated in shm_memory_allocation()
+    cleanup_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
+                      &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+                      &win_tau_loc, &win_fun_loc, &win_is_changed,
+                      &win_T_loc, &win_tau_old_loc,
+                      &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+                      &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
+                      &win_Tadj_loc, &win_Tadj_density_loc});
 }
 
 
@@ -1066,7 +1083,7 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
 
 
 void Grid::check_velocity_discontinuity(){
-    
+
     for (int j_lat = 0; j_lat < loc_J; j_lat++) {
         for (int i_lon = 0; i_lon < loc_I; i_lon++){
             for (int k_r = 0; k_r < loc_K-1; k_r++) {
@@ -1318,7 +1335,7 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
     // int iip_out = 6;
     // int jjt_out = 41;
     // int kkr_out = 49;
-    
+
     // std::cout << "T0v_loc[I2V(iip_out-2,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out-2,jjt_out,kkr_out)] << std::endl;
     // std::cout << "T0v_loc[I2V(iip_out-1,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out-1,jjt_out,kkr_out)] << std::endl;
     // std::cout << "T0v_loc[I2V(iip_out  ,jjt_out,kkr_out)]: " << T0v_loc[I2V(iip_out,jjt_out,kkr_out)] << std::endl;

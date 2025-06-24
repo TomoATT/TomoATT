@@ -81,6 +81,9 @@ inline void broadcast_cr_sub(CUSTOMREAL*, int, int);
 inline void broadcast_cr_single_inter_and_intra_sim(CUSTOMREAL&, int);
 inline void prepare_shm_array_cr(int, CUSTOMREAL*&, MPI_Win&);
 inline void prepare_shm_array_bool(int, bool*&, MPI_Win&);
+inline void cleanup_mpi_win(MPI_Win&);
+inline void cleanup_mpi_wins(std::initializer_list<MPI_Win*>);
+inline void init_mpi_wins(std::initializer_list<MPI_Win*>);
 
 inline void wait_req(MPI_Request&);
 inline void shm_fence(MPI_Win&);
@@ -949,6 +952,79 @@ inline void wait_req(MPI_Request& req){
 
 inline void shm_fence(MPI_Win& win){
     MPI_Win_fence(0, win);
+}
+
+// Function to safely free a single MPI window
+inline void cleanup_mpi_win(MPI_Win& win) {
+    if (win != MPI_WIN_NULL) {
+        int mpi_error = MPI_Win_free(&win);
+        if (mpi_error != MPI_SUCCESS) {
+            char error_string[MPI_MAX_ERROR_STRING];
+            int length_of_error_string;
+            MPI_Error_string(mpi_error, error_string, &length_of_error_string);
+            std::cerr << "ERROR: MPI_Win_free failed with error code " << mpi_error
+                      << ": " << error_string << std::endl;
+            std::cerr << "This may indicate issues with Intel OneAPI MPI shared memory cleanup." << std::endl;
+            // Don't call MPI_Abort here as we're likely in cleanup phase
+        } else {
+            win = MPI_WIN_NULL;
+        }
+    }
+}
+
+// Function to safely free multiple MPI windows
+inline void cleanup_mpi_wins(std::initializer_list<MPI_Win*> wins) {
+    int error_count = 0;
+    int total_windows = 0;
+
+    for (MPI_Win* win : wins) {
+        if (win != nullptr) {
+            total_windows++;
+            if (*win != MPI_WIN_NULL) {
+                int mpi_error = MPI_Win_free(win);
+                if (mpi_error != MPI_SUCCESS) {
+                    error_count++;
+                    char error_string[MPI_MAX_ERROR_STRING];
+                    int length_of_error_string;
+                    MPI_Error_string(mpi_error, error_string, &length_of_error_string);
+                    std::cerr << "ERROR: MPI_Win_free failed for window " << total_windows
+                              << " with error code " << mpi_error
+                              << ": " << error_string << std::endl;
+                } else {
+                    *win = MPI_WIN_NULL;
+                }
+            }
+        }
+    }
+
+    if (error_count > 0) {
+        std::cerr << "WARNING: " << error_count << " out of " << total_windows
+                  << " MPI windows failed to free properly." << std::endl;
+        std::cerr << "This may indicate Intel OneAPI MPI shared memory cleanup issues." << std::endl;
+    } else if (total_windows > 0) {
+        // Only show success message in verbose mode or for debugging
+        if (if_verbose && world_rank == 0) {
+            std::cout << "Successfully freed " << total_windows << " MPI shared memory windows." << std::endl;
+        }
+    }
+}
+
+// Function to initialize multiple MPI windows to NULL
+inline void init_mpi_wins(std::initializer_list<MPI_Win*> wins) {
+    int initialized_count = 0;
+
+    for (MPI_Win* win : wins) {
+        if (win != nullptr) {
+            *win = MPI_WIN_NULL;
+            initialized_count++;
+        } else {
+            std::cerr << "WARNING: Null pointer passed to init_mpi_wins, skipping." << std::endl;
+        }
+    }
+
+    if (if_verbose && world_rank == 0 && initialized_count > 0) {
+        std::cout << "Initialized " << initialized_count << " MPI windows to MPI_WIN_NULL." << std::endl;
+    }
 }
 
 
