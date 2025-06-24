@@ -1,0 +1,10 @@
+--- a/src/emitterutils.cpp
++++ b/src/emitterutils.cpp
+@@ -1,6 +1,7 @@
+ #include <algorithm>
+ #include <iomanip>
+ #include <sstream>
++#include <cstdint>
+
+ #include "emitterutils.h"
+ #include "exp.h"
