@@ -20,7 +20,11 @@ inline void prepare_header_line(InputParams &IP, std::ofstream &out_main) {
             // if (optim_method == HALVE_STEPPING_MODE)
             //     out_main << std::setw(8) << std::right << "subiter,";        (TODO in the future)
             std::string tmp = "obj(";
-            tmp.append(std::to_string(IP.N_data));
+            if(IP.get_run_mode() == ONED_INVERSION){
+                tmp.append(std::to_string(IP.N_abs_local_data));  // for 1d inversion, only absolute time residual is considered in obj
+            } else {
+                tmp.append(std::to_string(IP.N_data));
+            }
             tmp.append("),");
             out_main << std::setw(20) << tmp;
 
@@ -166,7 +170,7 @@ inline void write_objective_function(InputParams& IP, int i_inv, std::vector<CUS
         } else {
             out_main << "," << std::setw(24) << "0.0/0.0";
         }
-        if(type == "model update")
+        if(type == "model update" || type == "1d inversion")
             out_main << "," << std::setw(19) << step_length_init << ",";
 
         out_main << std::endl;

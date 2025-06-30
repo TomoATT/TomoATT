@@ -73,9 +73,6 @@ protected:
     CUSTOMREAL dr, dt, dp;          // grid spacing on the direction r, theta, phi
     int st_level;                   // start level for sweeping
     int ed_level;                   // end level for sweeping
-    MPI_Win win_nr, win_nt, win_np; // windows for grid point information
-    MPI_Win win_dr, win_dt, win_dp; // windows for grid point information
-
     std::vector< std::vector<int> > ijk_for_this_subproc; // ijk=I2V(i,j,k) for this process (level, ijk)
     int max_n_nodes_plane;                                // maximum number of nodes on a plane
 

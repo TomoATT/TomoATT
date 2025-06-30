@@ -13,7 +13,7 @@ domain:
 #            traveltime data file path          #
 #################################################
 source:
-  src_rec_file: OUTPUT_FILES/OUTPUT_FILES_signal/src_rec_file_forward_noisy.dat # source receiver file path
+  src_rec_file: OUTPUT_FILES/OUTPUT_FILES_1dinv_signal/src_rec_file_step_0000.dat # source receiver file path
   swap_src_rec: true # swap source and receiver (only valid for regional source and receiver, those of tele remain unchanged)
 
 #################################################
@@ -36,8 +36,8 @@ parallel: # parameters for parallel computation
 #            output file setting           #
 ############################################
 output_setting:
-  output_dir: OUTPUT_FILES/OUTPUT_FILES_inv # path to output director (default is ./OUTPUT_FILES/)
-  output_source_field:     false # True: output the traveltime field and adjoint field of all sources at each iteration. Default: false. File: 'out_data_sim_group_X'.
+  output_dir: OUTPUT_FILES/OUTPUT_FILES_1dinv_inv # path to output director (default is ./OUTPUT_FILES/)
+  output_source_field:     true # True: output the traveltime field and adjoint field of all sources at each iteration. Default: false. File: 'out_data_sim_group_X'.
   output_kernel:           false # True: output sensitivity kernel and kernel density. Default: false. File: 'out_data_sim_group_X'.
   output_final_model:      true # True: output merged final model. This file can be used as the input model for TomoATT. Default: true. File: 'model_final.h5'.
   output_middle_model:     false # True: output merged intermediate models during inversion. This file can be used as the input model for TomoATT. Default: false. File: 'middle_model_step_XXXX.h5'
@@ -93,7 +93,7 @@ output_setting:
 # 2 for earthquake relocation
 # 3 for inversion + earthquake relocation
 # 4 for 1d model inversion
-run_mode: 1
+run_mode: 4
 
 have_tele_data: false # An error will be reported if false but source out of study region is used. Default: false.
 
@@ -101,7 +101,7 @@ have_tele_data: false # An error will be reported if false but source out of stu
 #          model update parameters setting        #
 ###################################################
 model_update:
-  max_iterations: 40 # maximum number of inversion iterations
+  max_iterations: 200 # maximum number of inversion iterations
   optim_method: 0 # optimization method. 0 : grad_descent, 1 : halve-stepping, 2 : lbfgs (EXPERIMENTAL)
 
   #common parameters for all optim methods
@@ -129,13 +129,13 @@ model_update:
   # inversion grid can be viewed in OUTPUT_FILES/inversion_grid.txt
   n_inversion_grid: 5 # number of inversion grid sets
 
-  uniform_inv_grid_dep: false # true if use uniform inversion grid for dep, false if use flexible inversion grid
+  uniform_inv_grid_dep: true # true if use uniform inversion grid for dep, false if use flexible inversion grid
   uniform_inv_grid_lat: true # true if use uniform inversion grid for lat, false if use flexible inversion grid
   uniform_inv_grid_lon: true # true if use uniform inversion grid for lon, false if use flexible inversion grid
 
   # -------------- uniform inversion grid setting -------------- 
   # settings for uniform inversion grid
-  n_inv_dep_lat_lon: [12, 9, 9] # number of the base inversion grid points
+  n_inv_dep_lat_lon: [13, 9, 9] # number of the base inversion grid points
   min_max_dep_inv: [-10, 50] # depth in km (Radius of the earth is defined in config.h/R_earth)
   min_max_lat_inv: [0, 2] # latitude in degree
   min_max_lon_inv: [0, 2] # longitude in degree
@@ -212,4 +212,4 @@ model_update:
 
   # -------------- inversion parameters --------------
   update_slowness : true # update slowness (velocity) or not.              default: true
-  update_azi_ani  : true # update azimuthal anisotropy (xi, eta) or not.   default: false
+  update_azi_ani  : false # update azimuthal anisotropy (xi, eta) or not.   default: false

@@ -1,0 +1,50 @@
+version: 3
+
+#################################################
+#            computational domian               #
+#################################################
+domain:
+  min_max_dep: [-10, 50] # depth in km
+  min_max_lat: [0, 1] # latitude in degree
+  min_max_lon: [0, 2] # longitude in degree
+  n_rtp: [61, 51, 101] # number of nodes in depth,latitude,longitude direction
+
+#################################################
+#            traveltime data file path          #
+#################################################
+source:
+  src_rec_file: 1_src_rec_files/src_rec_config.dat # source receiver file path
+  swap_src_rec: true # swap source and receiver
+
+#################################################
+#            initial model file path            #
+#################################################
+model:
+  init_model_path: 2_models/model_ckb_N61_51_101.h5 # path to initial model file 
+
+#################################################
+#            parallel computation settings      #
+#################################################
+parallel: # parameters for parallel computation
+  n_sims: 8 # number of simultanoues runs (parallel the sources)
+  ndiv_rtp: [1, 1, 1] # number of subdivision on each direction (parallel the computional domain)
+
+############################################
+#            output file setting           #
+############################################
+output_setting:
+  output_dir: OUTPUT_FILES/OUTPUT_FILES_signal # path to output director (default is ./OUTPUT_FILES/)                
+  output_final_model:      true # output merged final model (final_model.h5) or not.                                
+  output_in_process:       false # output model at each inv iteration or not.                       
+  output_in_process_data:  false # output src_rec_file at each inv iteration or not.                       
+  output_file_format: 0
+
+#################################################
+#          inversion or forward modeling        #
+#################################################
+# run mode
+# 0 for forward simulation only,
+# 1 for inversion
+# 2 for earthquake relocation
+# 3 for inversion + earthquake relocation
+run_mode: 0

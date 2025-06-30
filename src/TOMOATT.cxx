@@ -15,6 +15,7 @@
 #include "main_routines_calling.h"
 #include "eikonal_solver_2d.h"
 #include "version.h"
+#include "oneD_inversion.h"
 
 #ifdef USE_CUDA
 #include "cuda_initialize.cuh"
@@ -68,43 +69,50 @@ int main(int argc, char *argv[])
     // initialize file IO object
     IO_utils io(IP); // create IO object for main and non-main process as well
 
-    // initialize compute grids
-    Grid grid(IP, io); // member objects are created in only the main process of subdomain groups
+    {
+        // initialize compute grids (use scope block to ensure destruction before MPI_Finalize)
+        Grid grid(IP, io); // member objects are created in only the main process of subdomain groups
 
-    // output inversion grid file (by main process)
-    grid.inv_grid->write_inversion_grid_to_file();
+        // output inversion grid file (by main process)
+        grid.inv_grid->write_inversion_grid_to_file();
 
-    if (subdom_main) {
-        // output grid data (grid data is only output in the main simulation)
-        io.write_grid(grid);
-    }
+        if (subdom_main) {
+            // output grid data (grid data is only output in the main simulation)
+            io.write_grid(grid);
+        }
 
-    // preapre teleseismic boundary conditions (do nothinng if no teleseismic source is defined)
-    prepare_teleseismic_boundary_conditions(IP, grid, io);      // not ready for new version of src rec data
+        // preapre teleseismic boundary conditions (do nothinng if no teleseismic source is defined)
+        prepare_teleseismic_boundary_conditions(IP, grid, io);      // not ready for new version of src rec data
 
-    synchronize_all_world();
+        synchronize_all_world();
 
-    //
-    // run main calculation routines depending on specified mode
-    //
-    if (IP.get_run_mode() == ONLY_FORWARD || IP.get_run_mode() == DO_INVERSION){
-        run_forward_only_or_inversion(IP, grid, io);
-    } else if (IP.get_run_mode() == TELESEIS_PREPROCESS) {
-        // terminate the program here if the run mode is TELESEIS_PREPROCESS
-        // because prepare_teleseismic_boundary_conditions is already called.
-    } else if (IP.get_run_mode() == SRC_RELOCATION) {
-        run_earthquake_relocation(IP, grid, io);
-    } else if (IP.get_run_mode() == INV_RELOC) {
-        run_inversion_and_relocation(IP,grid,io);
-    } else {
-        std::cerr << "Error: invalid run mode is specified." << std::endl;
-        exit(1);
-    }
+        //
+        // run main calculation routines depending on specified mode
+        //
+        if (IP.get_run_mode() == ONLY_FORWARD || IP.get_run_mode() == DO_INVERSION){
+            run_forward_only_or_inversion(IP, grid, io);
+        } else if (IP.get_run_mode() == TELESEIS_PREPROCESS) {
+            // terminate the program here if the run mode is TELESEIS_PREPROCESS
+            // because prepare_teleseismic_boundary_conditions is already called.
+        } else if (IP.get_run_mode() == SRC_RELOCATION) {
+            run_earthquake_relocation(IP, grid, io);
+        } else if (IP.get_run_mode() == INV_RELOC) {
+            run_inversion_and_relocation(IP,grid,io);
+        } else if (IP.get_run_mode() == ONED_INVERSION) {
+            run_1d_inversion(IP,grid,io);
+        } else {
+            std::cerr << "Error: invalid run mode is specified." << std::endl;
+            exit(1);
+        }
 
-    // output final state of the model
-    if (IP.get_if_output_final_model()) {
-        io.write_merged_model(grid, IP, "final_model.h5");
-    }
+        // output final state of the model
+        if (IP.get_if_output_final_model()) {
+            io.write_merged_model(grid, IP, "final_model.h5");
+        }
+
+        synchronize_all_world();
+
+    } // Grid destructor called here - before finalize_mpi()!
 
 
     // finalize cuda

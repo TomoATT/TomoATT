@@ -64,6 +64,7 @@ examples/utils/functions_for_data.ipynb
 examples/eg1*/*.ipynb
 examples/eg2*/*.ipynb
 examples/eg3*/*.ipynb
+examples/eg4*/*.ipynb
 
 examples/realcase1*/*.ipynb
 examples/realcase2*/*.ipynb
@@ -76,3 +77,8 @@ examples/scripts_of_plotting/files_for_plotting.tar.gz
 examples/*/img
 
 include/version.h
+
+examples/eg4_1d_inversion/*.ipynb
+
+examples/scripts_of_generate_hdf5_model/*.ipynb
+examples/scripts_of_generate_hdf5_model/figs

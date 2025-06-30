@@ -26,6 +26,9 @@
 inline void model_optimize(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, \
                     CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool& first_src, std::ofstream& out_main) {
 
+    // check kernel density
+    check_kernel_density(grid, IP);
+
     // sum kernels among all simultaneous runs
     sumup_kernels(grid);
 
@@ -53,15 +56,20 @@ inline void model_optimize(InputParams& IP, Grid& grid, IO_utils& io, int i_inv,
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
 
-        // kernel over density
-        io.write_Ks_over_Kden(grid, i_inv);
-        io.write_Keta_over_Kden(grid, i_inv);
-        io.write_Kxi_over_Kden(grid, i_inv);
+        // // kernel over density
+        // io.write_Ks_over_Kden(grid, i_inv);
+        // io.write_Keta_over_Kden(grid, i_inv);
+        // io.write_Kxi_over_Kden(grid, i_inv);
 
         // kernel over density with smoothing
         io.write_Ks_update(grid, i_inv);
         io.write_Keta_update(grid, i_inv);
         io.write_Kxi_update(grid, i_inv);
+
+        // density with smoothing
+        io.write_Ks_density_update(grid, i_inv);
+        io.write_Kxi_density_update(grid, i_inv);
+        io.write_Keta_density_update(grid, i_inv);
     }
 
     // change stepsize

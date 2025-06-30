@@ -619,6 +619,62 @@ void IO_utils::write_data_merged_ascii(Grid& grid, std::string& fname){
 
 }
 
+void IO_utils::write_1dinv_field(CUSTOMREAL* field_1dinv, CUSTOMREAL* r_1dinv, CUSTOMREAL* t_1dinv, int nr_1dinv, int nt_1dinv, std::string& field_name){
+    if (myrank == 0) {
+        if (output_format==OUTPUT_FORMAT_HDF5){
+#ifdef USE_HDF5
+            // open h5 file
+            std::string fout = output_dir + "/" + h5_output_fname;
+            hid_t tmp_file_id = H5Fopen(fout.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+      
+            // try to create and open group "1dinv"
+            if (!H5Lexists(tmp_file_id, "1dinv", H5P_DEFAULT)) {
+                file_id_2d = H5Gcreate(tmp_file_id, "1dinv", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                // close group
+                H5Gclose(file_id_2d);
+            }
+            file_id_2d = H5Gopen(tmp_file_id, "1dinv", H5P_DEFAULT);
+
+            // force to use CUSTOMREAL type for 2D fields
+            int dtype = check_data_type(field_1dinv[0]);
+
+            // create dataset and write
+            int dims_array[2] = {nr_1dinv, nt_1dinv};
+            std::string str_dset = field_name;
+            
+            if (H5Lexists(file_id_2d, str_dset.c_str(), H5P_DEFAULT) > 0){
+                H5Ldelete(file_id_2d, str_dset.c_str(), H5P_DEFAULT);  // delete nit
+            }
+            h5_create_and_write_dataset_2d(str_dset, 2, dims_array, dtype, field_1dinv);
+
+            if (H5Lexists(file_id_2d, "r_1dinv", H5P_DEFAULT) > 0){
+                H5Ldelete(file_id_2d, "r_1dinv", H5P_DEFAULT);  // delete nit
+            } 
+            str_dset = "r_1dinv";
+            h5_create_and_write_dataset_2d(str_dset, 1, &nr_1dinv, dtype, r_1dinv);
+            
+            if (H5Lexists(file_id_2d, "t_1dinv", H5P_DEFAULT) > 0){
+                H5Ldelete(file_id_2d, "t_1dinv", H5P_DEFAULT);  // delete nit
+            }
+            str_dset = "t_1dinv";
+            h5_create_and_write_dataset_2d(str_dset, 1, &nt_1dinv, dtype, t_1dinv);
+
+            // close groud 
+            H5Gclose(file_id_2d);
+
+            // close h5 file
+            H5Fclose(tmp_file_id);
+#else
+            std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+            exit(1);
+#endif
+        } else if (output_format==OUTPUT_FORMAT_ASCII){
+            std::cout << "ERROR: ASCII is not supported for 1dinv field output now" << std::endl;
+            exit(1);
+        }
+    }
+}
+
 
 void IO_utils::write_2d_travel_time_field(CUSTOMREAL* T, CUSTOMREAL* r, CUSTOMREAL* t, int nr, int nt, CUSTOMREAL src_dep){
 
@@ -1375,23 +1431,59 @@ void IO_utils::write_Keta_update(Grid& grid, int i_inv) {
     }
 }
 
-// void IO_utils::write_Kdensity_update(Grid& grid, int i_inv) {
-//     if (!subdom_main) return;
+void IO_utils::write_Ks_density_update(Grid& grid, int i_inv) {
+    if (!subdom_main) return;
 
-//     if (output_format==OUTPUT_FORMAT_HDF5){
-// #ifdef USE_HDF5
-//         std::string h5_dset_name = "Kdensity_update";
-//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Kdensity_update(), i_inv, model_data);
-// #else
-//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
-//         exit(1);
-// #endif
-//     } else if (output_format==OUTPUT_FORMAT_ASCII){
-//         std::string dset_name = "Kdensity_update_inv_" + int2string_zero_fill(i_inv);
-//         std::string fname = create_fname_ascii_model(dset_name);
-//         write_data_ascii(grid, fname, grid.get_Kdensity_update());
-//     }
-// }
+    if (output_format==OUTPUT_FORMAT_HDF5){
+#ifdef USE_HDF5
+        std::string h5_dset_name = "Ks_density_update";
+        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Ks_density_update(), i_inv, model_data);
+#else
+        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+        exit(1);
+#endif
+    } else if (output_format==OUTPUT_FORMAT_ASCII){
+        std::string dset_name = "Ks_density_update_inv_" + int2string_zero_fill(i_inv);
+        std::string fname = create_fname_ascii_model(dset_name);
+        write_data_ascii(grid, fname, grid.get_Ks_density_update());
+    }
+}
+
+void IO_utils::write_Kxi_density_update(Grid& grid, int i_inv) {
+    if (!subdom_main) return;
+
+    if (output_format==OUTPUT_FORMAT_HDF5){
+#ifdef USE_HDF5
+        std::string h5_dset_name = "Kxi_density_update";
+        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Kxi_density_update(), i_inv, model_data);
+#else
+        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+        exit(1);
+#endif
+    } else if (output_format==OUTPUT_FORMAT_ASCII){
+        std::string dset_name = "Kxi_density_update_inv_" + int2string_zero_fill(i_inv);
+        std::string fname = create_fname_ascii_model(dset_name);
+        write_data_ascii(grid, fname, grid.get_Kxi_density_update());
+    }
+}
+
+void IO_utils::write_Keta_density_update(Grid& grid, int i_inv) {
+    if (!subdom_main) return;
+
+    if (output_format==OUTPUT_FORMAT_HDF5){
+#ifdef USE_HDF5
+        std::string h5_dset_name = "Keta_density_update";
+        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Keta_density_update(), i_inv, model_data);
+#else
+        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+        exit(1);
+#endif
+    } else if (output_format==OUTPUT_FORMAT_ASCII){
+        std::string dset_name = "Keta_density_update_inv_" + int2string_zero_fill(i_inv);
+        std::string fname = create_fname_ascii_model(dset_name);
+        write_data_ascii(grid, fname, grid.get_Keta_density_update());
+    }
+}
 
 void IO_utils::write_Ks_descent_dir(Grid& grid, int i_inv) {
     if (!subdom_main) return;

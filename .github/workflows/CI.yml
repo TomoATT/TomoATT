@@ -191,8 +191,8 @@ jobs:
         cmake --build ${{github.workspace}}/build -j2
 
   linuxCheck-Intel:
-    name: Test Intel on ubuntu-20.04
-    runs-on: ubuntu-20.04
+    name: Test Intel on ubuntu-22.04
+    runs-on: ubuntu-22.04
     needs: changesCheck
 
     steps:

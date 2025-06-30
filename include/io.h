@@ -125,8 +125,12 @@ public:
     void write_Kxi_update(Grid&, int);
     // Keta_update
     void write_Keta_update(Grid&, int);
-    // Kdensity_update
-    // void write_Kdensity_update(Grid&, int);
+    // Ks_density_update
+    void write_Ks_density_update(Grid&, int);
+    // Kxi_density_update
+    void write_Kxi_density_update(Grid&, int);
+    // Keta_density_update
+    void write_Keta_density_update(Grid&, int);
     // Ks_descent_dir_loc
     void write_Ks_descent_dir(Grid&, int);
     // Kxi_descent_dir_loc
@@ -142,6 +146,9 @@ public:
     void write_2d_travel_time_field(CUSTOMREAL*, CUSTOMREAL*, CUSTOMREAL*, int, int, CUSTOMREAL);
     void h5_create_and_write_dataset_2d(std::string&, int, int*, int, CUSTOMREAL*);
     void read_2d_travel_time_field(std::string&, CUSTOMREAL*, int, int);
+
+    // 2d field for 1dinv
+    void write_1dinv_field(CUSTOMREAL*, CUSTOMREAL*, CUSTOMREAL*, int, int, std::string&);
 
     // merged model
     void write_T_merged(Grid&, InputParams&, int);
