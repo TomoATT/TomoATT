@@ -19,11 +19,11 @@ TomoATT is a library which implements an eikonal equation solver based Adjoint-s
 
   - Tong, P. (2021). Adjoint‐state traveltime tomography for azimuthally anisotropic media and insight into the crustal structure of central California near Parkfield. Journal of Geophysical Research: Solid Earth, 126(10), e2021JB022365. [DOI](https://doi.org/10.1029/2021JB022365).
 
-- **Regional tomography in Spherical coordinate**
+- **Regional tomography in Spherical coordinates**
 
   - Chen, J., Chen, G., Nagaso, M., & Tong, P. (2023). Adjoint-state traveltime tomography for azimuthally anisotropic media in spherical coordinates. Geophysical Journal International, 234(1), 712-736. [DOI](https://doi.org/10.1093/gji/ggad093).
 
-- **Teleseismic tomography in Spherical coordinate**
+- **Teleseismic tomography in Spherical coordinates**
 
   - Chen, J., Wu, S., Xu, M., Nagaso, M., Yao, J., Wang, K., ... & Tong, P. (2023). Adjoint‐state teleseismic traveltime tomography: Method and application to Thailand in Indochina Peninsula. Journal of Geophysical Research: Solid Earth, 128(12), e2023JB027348. [DOI](https://doi.org/10.1029/2023JB027348).
 
