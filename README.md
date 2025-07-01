@@ -13,7 +13,7 @@ TomoATT is a library which implements an eikonal equation solver based Adjoint-s
 - **The TomoATT software package**
   - Chen, J., Nagaso, M., Xu, M., & Tong, P. (2025). TomoATT: An open-source package for Eikonal equation-based adjoint-state traveltime tomography for seismic velocity and azimuthal anisotropy. Computers & Geosciences, 105995. [DOI](https://doi.org/10.1016/j.cageo.2025.105995).
 
-- **Regional tomography in Cartesian coordinate**
+- **Regional tomography in Cartesian coordinates**
 
   - Tong, P. (2021). Adjoint‐state traveltime tomography: Eikonal equation‐based methods and application to the Anza area in southern California. Journal of Geophysical Research: Solid Earth, 126(5), e2021JB021818. [DOI](https://doi.org/10.1029/2021JB021818).
 
