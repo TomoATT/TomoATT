@@ -10,13 +10,23 @@
 
 TomoATT is a library which implements an eikonal equation solver based Adjoint-state Traveltime Tomography for a very large-scale computation, which implements the methods described in the publications:
 
-- [Ping Tong (2021)](https://doi.org/10.1029/2021JB021818), regional tomography in Cartesian coordinate,
+- **The TomoATT software package**
+  - Chen, J., Nagaso, M., Xu, M., & Tong, P. (2025). TomoATT: An open-source package for Eikonal equation-based adjoint-state traveltime tomography for seismic velocity and azimuthal anisotropy. Computers & Geosciences, 105995. [DOI](https://doi.org/10.1016/j.cageo.2025.105995).
 
-- [Jing Chen, et al. (2023)](https://doi.org/10.1093/gji/ggad093), regional tomography in Spherical coordinate,
+- **Regional tomography in Cartesian coordinates**
 
-- [Jing Chen, et al. (2023)](https://doi.org/10.1029/2023JB027348), teleseismic tomography in Spherical coordinate,
+  - Tong, P. (2021). Adjoint‐state traveltime tomography: Eikonal equation‐based methods and application to the Anza area in southern California. Journal of Geophysical Research: Solid Earth, 126(5), e2021JB021818. [DOI](https://doi.org/10.1029/2021JB021818).
 
-- [Jing Chen, et al. (2024)](https://doi.org/10.48550/arXiv.2412.00031), softwave package.
+  - Tong, P. (2021). Adjoint‐state traveltime tomography for azimuthally anisotropic media and insight into the crustal structure of central California near Parkfield. Journal of Geophysical Research: Solid Earth, 126(10), e2021JB022365. [DOI](https://doi.org/10.1029/2021JB022365).
+
+- **Regional tomography in Spherical coordinates**
+
+  - Chen, J., Chen, G., Nagaso, M., & Tong, P. (2023). Adjoint-state traveltime tomography for azimuthally anisotropic media in spherical coordinates. Geophysical Journal International, 234(1), 712-736. [DOI](https://doi.org/10.1093/gji/ggad093).
+
+- **Teleseismic tomography in Spherical coordinates**
+
+  - Chen, J., Wu, S., Xu, M., Nagaso, M., Yao, J., Wang, K., ... & Tong, P. (2023). Adjoint‐state teleseismic traveltime tomography: Method and application to Thailand in Indochina Peninsula. Journal of Geophysical Research: Solid Earth, 128(12), e2023JB027348. [DOI](https://doi.org/10.1029/2023JB027348).
+
 
 Thanks to the efficiency of an eikonal equation solver, the computation of the travel-time is very fast and requires less amount of computational resources.
 As an input data for TomoATT is travel times at seismic stations, we can easily prepare a great amount of input data for the computation.
