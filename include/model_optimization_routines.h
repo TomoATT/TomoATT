@@ -176,6 +176,9 @@ inline std::vector<CUSTOMREAL> model_optimize_halve_stepping(InputParams& IP, Gr
     // smooth kernels
     smooth_kernels(grid, IP);
 
+    // normalize kernels
+    normalize_gradient(grid);
+
     // backup the initial model
     grid.back_up_fun_xi_eta_bcf();
 
