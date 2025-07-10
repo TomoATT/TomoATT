@@ -557,7 +557,7 @@ inline CUSTOMREAL compute_volume_domain(Grid& grid) {
 inline void compute_damp_weights(const Grid& grid) {
     // (size/sum)**2
 
-    if(subdom_main){
+    if(subdom_main && id_sim==0){
         CUSTOMREAL sum_fun = std::accumulate(grid.fun_prior_loc, grid.fun_prior_loc + loc_I*loc_J*loc_K, _0_CR);
         //CUSTOMREAL sum_eta = std::accumulate(grid.eta_prior_loc, grid.eta_prior_loc + loc_I*loc_J*loc_K, _0_CR); // do not use
         //CUSTOMREAL sum_xi  = std::accumulate(grid.xi_prior_loc, grid.xi_prior_loc + loc_I*loc_J*loc_K, _0_CR);
