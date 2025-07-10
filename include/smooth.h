@@ -792,29 +792,6 @@ inline void smooth_inv_kernels_orig(Grid& grid, InputParams& IP) {
         }
     }
 
-    // get the maximum scaling factor among subdomains
-    CUSTOMREAL Linf_tmp;
-    allreduce_cr_single_max(Linf_Ks, Linf_tmp);   Linf_Ks = Linf_tmp;
-    allreduce_cr_single_max(Linf_Keta, Linf_tmp); Linf_Keta = Linf_tmp;
-    allreduce_cr_single_max(Linf_Kxi, Linf_tmp);  Linf_Kxi = Linf_tmp;
-
-    CUSTOMREAL Linf_all = _0_CR;
-    Linf_all = std::max(Linf_Ks, std::max(Linf_Keta, Linf_Kxi));
-
-    Linf_Ks = Linf_all;
-    Linf_Keta = Linf_all;
-    Linf_Kxi = Linf_all;
-
-    // rescale the kernel update
-    for (int k = 0; k < loc_K; k++) {
-        for (int j = 0; j < loc_J; j++) {
-            for (int i = 0; i < loc_I; i++) {
-                grid.Ks_update_loc[I2V(i,j,k)]      /= Linf_Ks;
-                grid.Keta_update_loc[I2V(i,j,k)]    /= Linf_Keta;
-                grid.Kxi_update_loc[I2V(i,j,k)]     /= Linf_Kxi;
-            }
-        }
-    }
     // free memory
     delete[] weights_iso;
     delete[] weights_ani;

@@ -51,6 +51,9 @@ inline void model_optimize(InputParams& IP, Grid& grid, IO_utils& io, int i_inv,
     // smooth kernels (multigrid, and kdensity normalization)
     smooth_kernels(grid, IP);
 
+    // normalize kernels
+    normalize_gradient(grid);
+
     // write out modified kernels
     if (id_sim==0 && subdom_main && IP.get_if_output_kernel() && (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2 || i_inv == 0)) {
         // store kernel only in the first src datafile
