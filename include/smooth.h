@@ -455,7 +455,7 @@ inline void smooth_inv_kernels_orig(Grid& grid, InputParams& IP) {
                     weights_ani[I2V_INV_ANI_KNL(idp_ani+1, jdt_ani, kdr_ani)] += wt;
                     grid.Keta_inv_loc[I2V_INV_ANI_KNL(idp_ani+1,jdt_ani,kdr_ani)] += wt*grid.Keta_loc[I2V(i_loc,j_loc,k_loc)] * dxdydz;
                     grid.Kxi_inv_loc[ I2V_INV_ANI_KNL(idp_ani+1,jdt_ani,kdr_ani)] += wt*grid.Kxi_loc[ I2V(i_loc,j_loc,k_loc)] * dxdydz;
-                    grid.Keta_density_inv_loc[I2V_INV_ANI_KNL(idp_ani+1,jdt_ani,kdr_ani)] += wt*r_p_ani*grid.Keta_density_loc[I2V(i_loc,j_loc,k_loc)] * dxdydz;
+                    grid.Keta_density_inv_loc[I2V_INV_ANI_KNL(idp_ani+1,jdt_ani,kdr_ani)] += wt*grid.Keta_density_loc[I2V(i_loc,j_loc,k_loc)] * dxdydz;
                     grid.Kxi_density_inv_loc[ I2V_INV_ANI_KNL(idp_ani+1,jdt_ani,kdr_ani)] += wt*r_p_ani*grid.Kxi_density_loc[ I2V(i_loc,j_loc,k_loc)] * dxdydz;
                     
                     // -p, +t, +r
