@@ -151,24 +151,27 @@ void smooth_kernels(Grid& grid, InputParams& IP) {
 
 
 void normalize_gradient(Grid& gird){
-    CUSTOMREAL Linf_Ks, Linf_Keta, Linf_Kxi;
-    Linf_Ks = find_absmax(gird.Ks_update_loc, loc_I*loc_J*loc_K);
-    Linf_Keta = find_absmax(gird.Keta_update_loc, loc_I*loc_J*loc_K);
-    Linf_Kxi = find_absmax(gird.Kxi_update_loc, loc_I*loc_J*loc_K);
+    if (subdom_main){
+        CUSTOMREAL Linf_Ks, Linf_Keta, Linf_Kxi;
+        Linf_Ks = find_absmax(gird.Ks_update_loc, loc_I*loc_J*loc_K);
+        Linf_Keta = find_absmax(gird.Keta_update_loc, loc_I*loc_J*loc_K);
+        Linf_Kxi = find_absmax(gird.Kxi_update_loc, loc_I*loc_J*loc_K);
 
-    CUSTOMREAL Linf_tmp;
-    allreduce_cr_single_max(Linf_Ks, Linf_tmp);   Linf_Ks = Linf_tmp;
-    allreduce_cr_single_max(Linf_Keta, Linf_tmp); Linf_Keta = Linf_tmp;
-    allreduce_cr_single_max(Linf_Kxi, Linf_tmp);  Linf_Kxi = Linf_tmp;
+        CUSTOMREAL Linf_tmp;
+        allreduce_cr_single_max(Linf_Ks, Linf_tmp);   Linf_Ks = Linf_tmp;
+        allreduce_cr_single_max(Linf_Keta, Linf_tmp); Linf_Keta = Linf_tmp;
+        allreduce_cr_single_max(Linf_Kxi, Linf_tmp);  Linf_Kxi = Linf_tmp;
 
-    CUSTOMREAL Linf_all = _0_CR;
-    Linf_all = std::max(Linf_Ks, std::max(Linf_Keta, Linf_Kxi));
+        CUSTOMREAL Linf_all = _0_CR;
+        Linf_all = std::max(Linf_Ks, std::max(Linf_Keta, Linf_Kxi));
 
-    for (int i = 0; i < loc_I*loc_J*loc_K; i++) {
-        gird.Ks_update_loc[i]   /= Linf_all;
-        gird.Keta_update_loc[i] /= Linf_all;
-        gird.Kxi_update_loc[i]  /= Linf_all;
+        for (int i = 0; i < loc_I*loc_J*loc_K; i++) {
+            gird.Ks_update_loc[i]   /= Linf_all;
+            gird.Keta_update_loc[i] /= Linf_all;
+            gird.Kxi_update_loc[i]  /= Linf_all;
+        }
     }
+    synchronize_all_world();
 }
 
 // smooth gradient regularization term
