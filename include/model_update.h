@@ -166,9 +166,9 @@ void normalize_gradient(Grid& grid){
         Linf_all = std::max(Linf_Ks, std::max(Linf_Keta, Linf_Kxi));
 
         for (int i = 0; i < loc_I*loc_J*loc_K; i++) {
-            gird.Ks_update_loc[i]   /= Linf_all;
-            gird.Keta_update_loc[i] /= Linf_all;
-            gird.Kxi_update_loc[i]  /= Linf_all;
+            grid.Ks_update_loc[i]   /= Linf_all;
+            grid.Keta_update_loc[i] /= Linf_all;
+            grid.Kxi_update_loc[i]  /= Linf_all;
         }
     }
     synchronize_all_world();
