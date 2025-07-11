@@ -150,12 +150,12 @@ void smooth_kernels(Grid& grid, InputParams& IP) {
 }
 
 
-void normalize_gradient(Grid& gird){
+void normalize_gradient(Grid& grid){
     if (subdom_main){
         CUSTOMREAL Linf_Ks, Linf_Keta, Linf_Kxi;
-        Linf_Ks = find_absmax(gird.Ks_update_loc, loc_I*loc_J*loc_K);
-        Linf_Keta = find_absmax(gird.Keta_update_loc, loc_I*loc_J*loc_K);
-        Linf_Kxi = find_absmax(gird.Kxi_update_loc, loc_I*loc_J*loc_K);
+        Linf_Ks = find_absmax(grid.Ks_update_loc, loc_I*loc_J*loc_K);
+        Linf_Keta = find_absmax(grid.Keta_update_loc, loc_I*loc_J*loc_K);
+        Linf_Kxi = find_absmax(grid.Kxi_update_loc, loc_I*loc_J*loc_K);
 
         CUSTOMREAL Linf_tmp;
         allreduce_cr_single_max(Linf_Ks, Linf_tmp);   Linf_Ks = Linf_tmp;
