@@ -1078,7 +1078,7 @@ void Grid::check_velocity_discontinuity(){
                     std::cout << "vel_loc[I2V(i,j,k+1)] = " << vel_top << std::endl;
                     std::cout << std::endl;
                     std::cout << "Smoothing the input model using Gaussian filter is highly recommended." << std::endl;
-                    std::cout << "Please set the flag ignore_velocity_discontinuity = True in the input_params.yaml file if you want to solve in a model with discontinuity. " << std::endl;
+                    std::cout << "Please set the flag ignore_velocity_discontinuity: True in the input_params.yaml file (below run_mode) if you want to solve in a model with discontinuity. " << std::endl;
                     std::cout << "Unexpected bias may occur in traveltime and kernel." << std::endl;
                     exit(1);
                 }
