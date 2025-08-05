@@ -1481,50 +1481,7 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                 // earthquake should be below the surface (0 km)
                 if (IP.rec_map[name_rec].dep + update_dep_km < 0){
                     // update_dep_km = - IP.rec_map[name_rec].dep;
-                    // report it to users
-                    // std::cout << "Warning: source " << name_rec << " exceeds the minimum depth (0 km): "
-                    //           << IP.rec_map[name_rec].dep << " -> " << IP.rec_map[name_rec].dep + update_dep_km << ", so it is set to: "
-                    //           << - IP.rec_map[name_rec].dep - update_dep_km << " km." << std::endl;
                     update_dep_km = - 2.0 * IP.rec_map[name_rec].dep - update_dep_km;
-                    
-                }
-
-                // earthquake should be within the domain
-                // if the new lat is smaller than the minimum latitude, then set it to the minimum latitude
-                CUSTOMREAL update_lat_deg = update_lat_km / R_earth * RAD2DEG;
-                if (IP.rec_map[name_rec].lat + update_lat_deg <= (IP.get_min_lat() + _0_5_CR * grid.dlat) * RAD2DEG){
-                    update_lat_km = ((IP.get_min_lat() + _0_5_CR * grid.dlat) * RAD2DEG - update_lat_deg) * R_earth * DEG2RAD;
-                    // report it to users
-                    std::cout << "Warning: source " << name_rec << " exceeds the minimum latitude: "
-                              << IP.rec_map[name_rec].lat << " -> " << IP.rec_map[name_rec].lat + update_lat_deg << ", so it is set to the minimum latitude: "
-                              << (IP.get_min_lat() + _0_5_CR * grid.dlat) * RAD2DEG << " degree." << std::endl;
-                }
-                
-                // if the new lat is larger than the maximum latitude, then set it to the maximum latitude
-                if (IP.rec_map[name_rec].lat + update_lat_deg >= (IP.get_max_lat() - _0_5_CR * grid.dlat) * RAD2DEG){
-                    update_lat_km = ((IP.get_max_lat() - _0_5_CR * grid.dlat) * RAD2DEG - update_lat_deg) * R_earth * DEG2RAD;
-                    // report it to users
-                    std::cout << "Warning: source " << name_rec << " exceeds the maximum latitude: "
-                              << IP.rec_map[name_rec].lat << " -> " << IP.rec_map[name_rec].lat + update_lat_deg << ", so it is set to the maximum latitude: "
-                              << (IP.get_max_lat() - _0_5_CR * grid.dlat) * RAD2DEG << " degree." << std::endl; 
-                }
-
-                // if the new lon is smaller than the minimum longitude, then set it to the minimum longitude
-                CUSTOMREAL update_lon_deg = update_lon_km / (R_earth * cos(IP.rec_map[name_rec].lat * DEG2RAD)) * RAD2DEG;
-                if (IP.rec_map[name_rec].lon + update_lon_deg <= (IP.get_min_lon() + _0_5_CR * grid.dlon) * RAD2DEG){
-                    update_lon_km = ((IP.get_min_lon() + _0_5_CR * grid.dlon) * RAD2DEG - update_lon_deg) * (R_earth * cos(IP.rec_map[name_rec].lat * DEG2RAD)) * DEG2RAD;
-                    // report it to users
-                    std::cout << "Warning: source " << name_rec << " exceeds the minimum longitude: "
-                              << IP.rec_map[name_rec].lon << " -> " << IP.rec_map[name_rec].lon + update_lon_deg << ", so it is set to the minimum longitude: "
-                              << (IP.get_min_lon() + _0_5_CR * grid.dlon) * RAD2DEG << " degree." << std::endl;
-                }
-                // if the new lon is larger than the maximum longitude, then set it to the maximum longitude
-                if (IP.rec_map[name_rec].lon + update_lon_deg >= (IP.get_max_lon() - _0_5_CR * grid.dlon) * RAD2DEG){
-                    update_lon_km = ((IP.get_max_lon() - _0_5_CR * grid.dlon) * RAD2DEG - update_lon_deg) * (R_earth * cos(IP.rec_map[name_rec].lat * DEG2RAD)) * DEG2RAD;
-                    // report it to users
-                    std::cout << "Warning: source " << name_rec << " exceeds the maximum longitude: "
-                              << IP.rec_map[name_rec].lon << " -> " << IP.rec_map[name_rec].lon + update_lon_deg << ", so it is set to the maximum longitude: "
-                              << (IP.get_max_lon() - _0_5_CR * grid.dlon) * RAD2DEG << " degree." << std::endl;
                 }
 
 
@@ -1545,6 +1502,8 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                 // if (IP.rec_map[name_rec].step_length_max < TOL_step_length){
                 //     IP.rec_map[name_rec].is_stop = true;
                 // }
+
+                
 
 
                 // detect nan and inf then exit the program
@@ -1573,22 +1532,40 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                 // if not then set the receiver position to the closest point on the domain
 
                 // grid size + 1% mergin to avoid the receiver position is exactly on the boundary
-                CUSTOMREAL mergin_lon = 1.01 * grid.get_delta_lon();
-                CUSTOMREAL mergin_lat = 1.01 * grid.get_delta_lat();
+                CUSTOMREAL mergin_lon = 1.01 * grid.get_delta_lon() * RAD2DEG;
+                CUSTOMREAL mergin_lat = 1.01 * grid.get_delta_lat() * RAD2DEG;
                 CUSTOMREAL mergin_r   = 1.01 * grid.get_delta_r();
 
-                if (IP.rec_map[name_rec].lon < IP.get_min_lon()*RAD2DEG)
+                if (IP.rec_map[name_rec].lon < IP.get_min_lon()*RAD2DEG){
                     IP.rec_map[name_rec].lon = IP.get_min_lon()*RAD2DEG + mergin_lon;
-                if (IP.rec_map[name_rec].lon > IP.get_max_lon()*RAD2DEG)
+                    // report to user
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in longitude, set to min_lon + mergin: " << IP.get_min_lon()*RAD2DEG + mergin_lon << std::endl;
+                }
+                if (IP.rec_map[name_rec].lon > IP.get_max_lon()*RAD2DEG){
                     IP.rec_map[name_rec].lon = IP.get_max_lon()*RAD2DEG - mergin_lon;
-                if (IP.rec_map[name_rec].lat < IP.get_min_lat()*RAD2DEG)
+                    // report to user
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in longitude, set to max_lon - mergin: " << IP.get_max_lon()*RAD2DEG - mergin_lon << std::endl;
+                }
+                if (IP.rec_map[name_rec].lat < IP.get_min_lat()*RAD2DEG){
                     IP.rec_map[name_rec].lat = IP.get_min_lat()*RAD2DEG + mergin_lat;
-                if (IP.rec_map[name_rec].lat > IP.get_max_lat()*RAD2DEG)
+                    // report to user
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in latitude, set to min_lat + mergin: " << IP.get_min_lat()*RAD2DEG + mergin_lat << std::endl;
+                }
+                if (IP.rec_map[name_rec].lat > IP.get_max_lat()*RAD2DEG){
                     IP.rec_map[name_rec].lat = IP.get_max_lat()*RAD2DEG - mergin_lat;
-                if (IP.rec_map[name_rec].dep < IP.get_min_dep())
+                    // report to user
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in latitude, set to max_lat - mergin: " << IP.get_max_lat()*RAD2DEG - mergin_lat << std::endl;
+                }
+                if (IP.rec_map[name_rec].dep < IP.get_min_dep()){
                     IP.rec_map[name_rec].dep = IP.get_min_dep() + mergin_r;
-                if (IP.rec_map[name_rec].dep > IP.get_max_dep())
+                    // report to user
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in depth, set to min_dep + mergin: " << IP.get_min_dep() + mergin_r << std::endl;
+                }
+                if (IP.rec_map[name_rec].dep > IP.get_max_dep()){
                     IP.rec_map[name_rec].dep = IP.get_max_dep() - mergin_r;
+                    // report to user
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in depth, set to max_dep - mergin: " << IP.get_max_dep() - mergin_r << std::endl;
+                }   
             }
 
             // share the flag of stop within the same simultanoue run group
