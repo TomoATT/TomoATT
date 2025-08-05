@@ -1482,9 +1482,9 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                 if (IP.rec_map[name_rec].dep + update_dep_km < 0){
                     // update_dep_km = - IP.rec_map[name_rec].dep;
                     // report it to users
-                    std::cout << "Warning: source " << name_rec << " exceeds the minimum depth (0 km): "
-                              << IP.rec_map[name_rec].dep << " -> " << IP.rec_map[name_rec].dep + update_dep_km << ", so it is set to: "
-                              << - IP.rec_map[name_rec].dep - update_dep_km << " km." << std::endl;
+                    // std::cout << "Warning: source " << name_rec << " exceeds the minimum depth (0 km): "
+                    //           << IP.rec_map[name_rec].dep << " -> " << IP.rec_map[name_rec].dep + update_dep_km << ", so it is set to: "
+                    //           << - IP.rec_map[name_rec].dep - update_dep_km << " km." << std::endl;
                     update_dep_km = - 2.0 * IP.rec_map[name_rec].dep - update_dep_km;
                     
                 }
