@@ -1478,11 +1478,33 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                 // remark:  in the case of  local search for ortime, change of ortime need to be checked as above
                 //          in the case of global search for ortime, update_ortime is always zero (because grad_ortime = 0), thus always satisfied
 
-                // earthquake should be below the surface
+                // earthquake should be below the surface (0 km)
                 if (IP.rec_map[name_rec].dep + update_dep_km < 0){
                     // update_dep_km = - IP.rec_map[name_rec].dep;
                     update_dep_km = - 2.0 * IP.rec_map[name_rec].dep - update_dep_km;
                 }
+
+                // earthquake should be within the domain
+                // if the new lat is smaller than the minimum latitude, then set it to the minimum latitude
+                CUSTOMREAL update_lat_deg = update_lat_km / R_earth * RAD2DEG;
+                if (IP.rec_map[name_rec].lat + update_lat_deg <= (IP.get_min_lat() + _0_5_CR * grid.dlat) * RAD2DEG){
+                    update_lat_km = ((IP.get_min_lat() + _0_5_CR * grid.dlat) * RAD2DEG - update_lat_deg) * R_earth * DEG2RAD;
+                }
+                // if the new lat is larger than the maximum latitude, then set it to the maximum latitude
+                if (IP.rec_map[name_rec].lat + update_lat_deg >= (IP.get_max_lat() - _0_5_CR * grid.dlat) * RAD2DEG){
+                    update_lat_km = ((IP.get_max_lat() - _0_5_CR * grid.dlat) * RAD2DEG - update_lat_deg) * R_earth * DEG2RAD;
+                }
+
+                // if the new lon is smaller than the minimum longitude, then set it to the minimum longitude
+                CUSTOMREAL update_lon_deg = update_lon_km / (R_earth * cos(IP.rec_map[name_rec].lat * DEG2RAD)) * RAD2DEG;
+                if (IP.rec_map[name_rec].lon + update_lon_deg <= (IP.get_min_lon() + _0_5_CR * grid.dlon) * RAD2DEG){
+                    update_lon_km = ((IP.get_min_lon() + _0_5_CR * grid.dlon) * RAD2DEG - update_lon_deg) * (R_earth * cos(IP.rec_map[name_rec].lat * DEG2RAD)) * DEG2RAD;
+                }
+                // if the new lon is larger than the maximum longitude, then set it to the maximum longitude
+                if (IP.rec_map[name_rec].lon + update_lon_deg >= (IP.get_max_lon() - _0_5_CR * grid.dlon) * RAD2DEG){
+                    update_lon_km = ((IP.get_max_lon() - _0_5_CR * grid.dlon) * RAD2DEG - update_lon_deg) * (R_earth * cos(IP.rec_map[name_rec].lat * DEG2RAD)) * DEG2RAD;
+                }
+
 
                 // update value for dep (km), lat (degree), lon (degree)
                 IP.rec_map[name_rec].vobj_grad_norm_src_reloc = norm_grad;
