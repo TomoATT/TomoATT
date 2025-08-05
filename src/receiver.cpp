@@ -1532,9 +1532,9 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                 // if not then set the receiver position to the closest point on the domain
 
                 // grid size + 1% mergin to avoid the receiver position is exactly on the boundary
-                CUSTOMREAL mergin_lon = 1.01 * grid.get_delta_lon() * RAD2DEG;
-                CUSTOMREAL mergin_lat = 1.01 * grid.get_delta_lat() * RAD2DEG;
-                CUSTOMREAL mergin_r   = 1.01 * grid.get_delta_r();
+                CUSTOMREAL mergin_lon = _0_5_CR * grid.get_delta_lon() * RAD2DEG;
+                CUSTOMREAL mergin_lat = _0_5_CR * grid.get_delta_lat() * RAD2DEG;
+                CUSTOMREAL mergin_r   = _0_5_CR * grid.get_delta_r();
 
                 if (IP.rec_map[name_rec].lon < IP.get_min_lon()*RAD2DEG){
                     IP.rec_map[name_rec].lon = IP.get_min_lon()*RAD2DEG + mergin_lon;
