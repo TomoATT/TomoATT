@@ -1531,40 +1531,40 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                 // check if the new receiver position is within the domain
                 // if not then set the receiver position to the closest point on the domain
 
-                // grid size + 1% mergin to avoid the receiver position is exactly on the boundary
-                CUSTOMREAL mergin_lon = _0_5_CR * grid.get_delta_lon() * RAD2DEG;
-                CUSTOMREAL mergin_lat = _0_5_CR * grid.get_delta_lat() * RAD2DEG;
-                CUSTOMREAL mergin_r   = _0_5_CR * grid.get_delta_r();
+                // gap to boundary
+                CUSTOMREAL boundary_gap_lon = _0_5_CR * grid.get_delta_lon() * RAD2DEG;
+                CUSTOMREAL boundary_gap_lat = _0_5_CR * grid.get_delta_lat() * RAD2DEG;
+                CUSTOMREAL boundary_gap_r   = _0_5_CR * grid.get_delta_r();
 
                 if (IP.rec_map[name_rec].lon < IP.get_min_lon()*RAD2DEG){
-                    IP.rec_map[name_rec].lon = IP.get_min_lon()*RAD2DEG + mergin_lon;
+                    IP.rec_map[name_rec].lon = IP.get_min_lon()*RAD2DEG + boundary_gap_lon;
                     // report to user
-                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in longitude, set the location near min_lon boundary: " << IP.get_min_lon()*RAD2DEG + mergin_lon << std::endl;
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in longitude, set the location near min_lon boundary: " << IP.get_min_lon()*RAD2DEG + boundary_gap_lon << std::endl;
                 }
                 if (IP.rec_map[name_rec].lon > IP.get_max_lon()*RAD2DEG){
-                    IP.rec_map[name_rec].lon = IP.get_max_lon()*RAD2DEG - mergin_lon;
+                    IP.rec_map[name_rec].lon = IP.get_max_lon()*RAD2DEG - boundary_gap_lon;
                     // report to user
-                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in longitude, set the location near max_lon boundary: " << IP.get_max_lon()*RAD2DEG - mergin_lon << std::endl;
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in longitude, set the location near max_lon boundary: " << IP.get_max_lon()*RAD2DEG - boundary_gap_lon << std::endl;
                 }
                 if (IP.rec_map[name_rec].lat < IP.get_min_lat()*RAD2DEG){
-                    IP.rec_map[name_rec].lat = IP.get_min_lat()*RAD2DEG + mergin_lat;
+                    IP.rec_map[name_rec].lat = IP.get_min_lat()*RAD2DEG + boundary_gap_lat;
                     // report to user
-                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in latitude, set the location near min_lat boundary: " << IP.get_min_lat()*RAD2DEG + mergin_lat << std::endl;
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in latitude, set the location near min_lat boundary: " << IP.get_min_lat()*RAD2DEG + boundary_gap_lat << std::endl;
                 }
                 if (IP.rec_map[name_rec].lat > IP.get_max_lat()*RAD2DEG){
-                    IP.rec_map[name_rec].lat = IP.get_max_lat()*RAD2DEG - mergin_lat;
+                    IP.rec_map[name_rec].lat = IP.get_max_lat()*RAD2DEG - boundary_gap_lat;
                     // report to user
-                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in latitude, set the location near max_lat boundary: " << IP.get_max_lat()*RAD2DEG - mergin_lat << std::endl;
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in latitude, set the location near max_lat boundary: " << IP.get_max_lat()*RAD2DEG - boundary_gap_lat << std::endl;
                 }
                 if (IP.rec_map[name_rec].dep < IP.get_min_dep()){
-                    IP.rec_map[name_rec].dep = IP.get_min_dep() + mergin_r;
+                    IP.rec_map[name_rec].dep = IP.get_min_dep() + boundary_gap_r;
                     // report to user
-                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in depth, set the location near min_dep boundary: " << IP.get_min_dep() + mergin_r << std::endl;
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in depth, set the location near min_dep boundary: " << IP.get_min_dep() + boundary_gap_r << std::endl;
                 }
                 if (IP.rec_map[name_rec].dep > IP.get_max_dep()){
-                    IP.rec_map[name_rec].dep = IP.get_max_dep() - mergin_r;
+                    IP.rec_map[name_rec].dep = IP.get_max_dep() - boundary_gap_r;
                     // report to user
-                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in depth, set the location near max_dep boundary: " << IP.get_max_dep() - mergin_r << std::endl;
+                    std::cout << "Warning: source/receiver " << name_rec << " is out of domain in depth, set the location near max_dep boundary: " << IP.get_max_dep() - boundary_gap_r << std::endl;
                 }   
             }
 
