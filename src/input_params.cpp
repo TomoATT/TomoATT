@@ -74,7 +74,7 @@ InputParams::InputParams(std::string& input_file){
                 src_rec_file_exist = true;
                 getNodeValue(config["source"], "src_rec_file", src_rec_file);
             } else {
-                std::cout << "src_rec_file is not defined. stop." << std::endl;
+                std::cout << "ERROR, tag src_rec_file is not included. Please check YAML file." << std::endl;
                 exit(1);
             }
             // swap src rec
@@ -93,6 +93,8 @@ InputParams::InputParams(std::string& input_file){
             // model file path
             if (config["model"]["init_model_path"]) {
                 getNodeValue(config["model"], "init_model_path", init_model_path);
+            } else {
+                std::cout << "WARNING: tag init_model_path is not included. Please check YAML file." << std::endl;
             }
             // model file path
             if (config["model"]["model_1d_name"]) {
