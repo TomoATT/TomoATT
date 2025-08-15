@@ -69,12 +69,6 @@ InputParams::InputParams(std::string& input_file){
         // source
         //
         if (config["source"]) {
-            // source depth(km) lat lon
-            if (config["source"]["src_dep_lat_lon"]) {
-                getNodeValue(config["source"], "src_dep_lat_lon", src_dep, 0);
-                getNodeValue(config["source"], "src_dep_lat_lon", src_lat, 1);
-                getNodeValue(config["source"], "src_dep_lat_lon", src_lon, 2);
-            }
             // src rec file
             if (config["source"]["src_rec_file"]) {
                 src_rec_file_exist = true;
