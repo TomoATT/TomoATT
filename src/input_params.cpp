@@ -73,6 +73,9 @@ InputParams::InputParams(std::string& input_file){
             if (config["source"]["src_rec_file"]) {
                 src_rec_file_exist = true;
                 getNodeValue(config["source"], "src_rec_file", src_rec_file);
+            } else {
+                std::cout << "src_rec_file is not defined. stop." << std::endl;
+                exit(1);
             }
             // swap src rec
             if (config["source"]["swap_src_rec"]) {
