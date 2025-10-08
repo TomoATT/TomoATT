@@ -46,7 +46,7 @@ This library is available in the [conda-forge channel](https://anaconda.org/cond
 conda install -c conda-forge tomoatt pytomoatt
 ```
 
-TomoATT is also capable of running on high-performance computing (HPC) systems and. Detailed installation instructions are described in the [installation manual](https://tomoatt.com/docs/GetStarted/Dependencies).
+TomoATT is also capable of running on high-performance computing (HPC) systems and. Detailed installation instructions are described in the [installation manual](https://tomoatt.com/docs/GetStarted/Installation/Dependencies).
 
 <!-- 
 
@@ -77,7 +77,7 @@ cmake .. -DUSE_CUDA=True && make -j 8
 ``` bash
 mpirun -n 4 ./TOMOATT -i ./input_params.yml
 ```
-Please check the [user manual](./docs/manual/index.md) and `examples` directory for the details.
+Please check the [user manual](https://tomoatt.com/docs) and `examples` directory for the details.
 
 
 <!-- ## FAQs.
