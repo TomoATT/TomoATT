@@ -67,7 +67,7 @@ cmake .. -DUSE_CUDA=True && make -j 8
 ``` bash
 mpirun -n 4 ./TOMOATT -i ./input_params.yml
 ```
-Please check the [user manual](./docs/manual/index.md) and `examples` directory for the details.
+Please check the [user manual](https://tomoatt.com/docs) and `examples` directory for the details.
 
 
 <!-- ## FAQs.
