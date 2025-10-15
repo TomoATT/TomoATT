@@ -92,9 +92,9 @@ par_file    = 'input_params/input_params.yaml'                   # parameter fil
 att_model = ATTModel.read(init_model_file, par_file)
 init_model = att_model.to_xarray()
 
-# interp vel at depth = 20 km
-depth = 20.0
-vel_init    = init_model.interp_dep(depth, field='vel')    # vel_init[i,:] are (lon, lat, vel)
+# # interp vel at depth = 20 km
+# depth = 20.0
+# vel_init    = init_model.interp_dep(depth, field='vel')    # vel_init[i,:] are (lon, lat, vel)
 
 # ----------------- pygmt plot ------------------
 
@@ -161,10 +161,10 @@ init_model = att_model.to_xarray()
 att_model = ATTModel.read(ckb_model_file, par_file)
 ckb_model = att_model.to_xarray()
 
-# interp vel at depth = 20 km
-depth = 20.0
-vel_init    = init_model.interp_dep(depth, field='vel')    # vel_init[i,:] are (lon, lat, vel)
-vel_ckb     = ckb_model.interp_dep(depth, field='vel')    # vel_ckb[i,:] are (lon, lat, vel)
+# # interp vel at depth = 20 km
+# depth = 20.0
+# vel_init    = init_model.interp_dep(depth, field='vel')    # vel_init[i,:] are (lon, lat, vel)
+# vel_ckb     = ckb_model.interp_dep(depth, field='vel')    # vel_ckb[i,:] are (lon, lat, vel)
 
 # ----------------- pygmt plot ------------------
 
@@ -254,10 +254,10 @@ init_model = att_model.to_xarray()
 att_model = ATTModel.read(ckb_model_file, par_file)
 ckb_model = att_model.to_xarray()
 
-# interp vel at depth = 20 km
-depth = 20.0
-vel_init    = init_model.interp_dep(depth, field='vel')    # vel_init[i,:] are (lon, lat, vel)
-vel_ckb     = ckb_model.interp_dep(depth, field='vel')    # vel_ckb[i,:] are (lon, lat, vel)
+# # interp vel at depth = 20 km
+# depth = 20.0
+# vel_init    = init_model.interp_dep(depth, field='vel')    # vel_init[i,:] are (lon, lat, vel)
+# vel_ckb     = ckb_model.interp_dep(depth, field='vel')    # vel_ckb[i,:] are (lon, lat, vel)
 
 # ----------------- pygmt plot ------------------
 
