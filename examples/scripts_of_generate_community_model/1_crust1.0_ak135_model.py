@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 # # Step 1. Generate the ATT model based on the crust1.0 model.
 
 # %%
-# generate the .h5 model for TomoATT based on the crust1.0 model. Nearest extrapolation is used.
+# generate the .h5 model for TomoATT based on the crust1.0 model. Nearest extropolation is used.
 
 param_file = "./3_input_params/input_params_real.yaml"
 am_crust1p0 = ATTModel(param_file)
@@ -20,6 +20,10 @@ am_crust1p0.grid_data_crust1(type="vp")
 
 # %%
 # Step 2. Generate the ATT model based on ak135 model.
+
+# ak135.h5 has a three-colume dataset 'model'. First column: depth (in km), second column: Vp (in km/s), third column: Vs (in km/s).
+# a text version of the ak135 model can be found in Kennett et al. (1995):
+# Kennett, B. L., Engdahl, E. R., & Buland, R. (1995). Constraints on seismic velocities in the Earth from traveltimes. Geophysical Journal International, 122(1), 108-124.
 
 # Load the 1D ak135 model from the .h5 file.
 with h5py.File('ak135.h5', 'r') as f:
@@ -64,7 +68,7 @@ am_combined.vel = am_crust1p0.vel * (1 - ratio_3d) + am_ak135.vel * ratio_3d
 am_processed = ATTModel(param_file)
 am_processed.vel = am_combined.vel.copy()
 
-# 1. (OPTIONAL) monotonic increase check
+# 1. (OPTIONAL) monotonic increase check (OPTIONAL)
 # Ensure that the velocity model increases monotonically with depth.
 am_processed.vel[::-1,:,:] = np.maximum.accumulate(am_processed.vel[::-1,:,:], axis=0) 
 
