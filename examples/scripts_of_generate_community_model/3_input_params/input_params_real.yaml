@@ -1,0 +1,186 @@
+version: 3
+
+#################################################
+#            computational domain               #
+#################################################
+domain:
+  min_max_dep: [-50, 550] # depth in km
+  min_max_lat: [10.5, 22.5] # latitude in degree
+  min_max_lon: [95.5, 107.5] # longitude in degree
+  n_rtp: [121, 121, 121] # number of nodes in depth,latitude,longitude direction
+
+#################################################
+#            traveltime data file path          #
+#################################################
+source:
+  src_rec_file: 1_src_rec_files/src_rec_file.dat # source receiver file path
+  swap_src_rec: false # swap source and receiver
+
+#################################################
+#            initial model file path            #
+#################################################
+model:
+  init_model_path: 2_models/model_init_N121_121_121.h5 # path to initial model file 
+
+#################################################
+#            parallel computation settings      #
+#################################################
+parallel: # parameters for parallel computation
+  n_sims: 8 # number of simultaneous runs (parallel the sources)
+  ndiv_rtp: [1, 1, 1] # number of subdivision on each direction (parallel the computional domain)
+
+############################################
+#            output file setting           #
+############################################
+output_setting:
+  output_dir: OUTPUT_FILES/OUTPUT_FILES_real # path to output directory (default is ./OUTPUT_FILES/)
+  output_source_field:     false # True: output the traveltime field and adjoint field of all sources at each iteration. Default: false. File: 'out_data_sim_group_X'.                                         
+  output_kernel:           false
+  output_final_model:      true # True: output merged final model. This file can be used as the input model for TomoATT. Default: true. File: 'model_final.h5'.                                
+  output_middle_model:     false # True: output merged intermediate models during inversion. This file can be used as the input model for TomoATT. Default: false. File: 'middle_model_step_XXXX.h5'                                
+  output_in_process:       false # True: output at each inv iteration, otherwise, only output step 0, Niter-1, Niter. Default: true. File: 'out_data_sim_group_0'. 
+  output_in_process_data:  false # True: output src_rec_file at each inv iteration, otherwise, only output step 0, Niter-2, Niter-1. Default: true. File: 'src_rec_file_step_XXXX.dat'                      
+  single_precision_output: false # True: output results in single precision. Default: false.                       
+  verbose_output_level:    0 # output internal parameters, (to do)
+  output_file_format: 0 # 0: hdf5, 1: ascii
+
+# output files:
+# File: 'out_data_grid.h5'. Keys: ['Mesh']['elem_conn'], element index; 
+#                                 ['Mesh']['node_coords_p'], phi coordinates of nodes; 
+#                                 ['Mesh']['node_coords_t'], theta coordinates of nodes; 
+#                                 ['Mesh']['node_coords_r'], r coordinates of nodes;
+#                                 ['Mesh']['node_coords_x'], phi coordinates of elements; 
+#                                 ['Mesh']['node_coords_y'], theta coordinates of elements; 
+#                                 ['Mesh']['node_coords_z'], r coordinates of elements; 
+# File: 'out_data_sim_group_0'. Keys: ['model']['vel_inv_XXXX'], velocity model at iteration XXXX; 
+#                                     ['model']['xi_inv_XXXX'], xi model at iteration XXXX; 
+#                                     ['model']['eta_inv_XXXX'], eta model at iteration XXXX
+#                                     ['model']['Ks_inv_XXXX'], sensitivity kernel related to slowness at iteration XXXX
+#                                     ['model']['Kxi_inv_XXXX'], sensitivity kernel related to xi at iteration XXXX
+#                                     ['model']['Keta_inv_XXXX'], sensitivity kernel related to eta at iteration XXXX
+#                                     ['model']['Ks_density_inv_XXXX'], kernel density of Ks at iteration XXXX
+#                                     ['model']['Kxi_density_inv_XXXX'], kernel density of Kxi at iteration XXXX
+#                                     ['model']['Keta_density_inv_XXXX'], kernel density of Keta at iteration XXXX
+#                                     ['model']['Ks_over_Kden_inv_XXXX'], slowness kernel over kernel density at iteration XXXX
+#                                     ['model']['Kxi_over_Kden_inv_XXXX'], xi kernel over kernel density at iteration XXXX
+#                                     ['model']['Keta_over_Kden_inv_XXXX'], eta kernel over kernel density at iteration XXXX
+#                                     ['model']['Ks_update_inv_XXXX'], slowness kernel over kernel density at iteration XXXX, smoothed by inversion grid
+#                                     ['model']['Kxi_update_inv_XXXX'], xi kernel over kernel density at iteration XXXX, smoothed by inversion grid
+#                                     ['model']['Keta_update_inv_XXXX'], eta kernel over kernel density at iteration XXXX, smoothed by inversion grid
+#                                     ['1dinv']['vel_1dinv_inv_XXXX'], 2d velocity model at iteration XXXX, in 1d inversion mode
+#                                     ['1dinv']['r_1dinv'], r coordinates (depth), in 1d inversion mode
+#                                     ['1dinv']['t_1dinv'], t coordinates (epicenter distance), in 1d inversion mode
+# File: 'src_rec_file_step_XXXX.dat' or 'src_rec_file_forward.dat'. The synthetic traveltime data file.
+# File: 'final_model.h5'. Keys: ['eta'], ['xi'], ['vel'], the final model.
+# File: 'middle_model_step_XXXX.h5'. Keys: ['eta'], ['xi'], ['vel'], the model at step XXXX.
+# File: 'inversion_grid.txt'. The location of inversion grid nodes
+# File: 'objective_function.txt'. The objective function value at each iteration
+# File: 'out_data_sim_group_X'. Keys: ['src_YYYY']['time_field_inv_XXXX'], traveltime field of source YYYY at iteration XXXX;
+#                                     ['src_YYYY']['adjoint_field_inv_XXXX'], adjoint field of source YYYY at iteration XXXX;
+#                                     ['1dinv']['time_field_1dinv_YYYY_inv_XXXX'], 2d traveltime field of source YYYY at iteration XXXX, in 1d inversion mode
+#                                     ['1dinv']['adjoint_field_1dinv_YYYY_inv_XXXX'], 2d adjoint field of source YYYY at iteration XXXX, in 1d inversion mode
+
+
+#################################################
+#          inversion or forward modeling        #
+#################################################
+# run mode
+# 0 for forward simulation only,
+# 1 for inversion
+# 2 for earthquake relocation
+# 3 for inversion + earthquake relocation
+# 4 for 1d model inversion
+run_mode: 1
+
+have_tele_data: true # An error will be reported if false but source out of study region is used. Default: false.
+
+###################################################
+#          model update parameters setting        #
+###################################################
+model_update:
+  max_iterations: 80 # maximum number of inversion iterations
+
+  step_length: 0.01 # the initial step length of model perturbation. 0.01 means maximum 1% perturbation for each iteration.
+
+  # parameters for optim_method 0 (gradient_descent)
+  optim_method_0:
+    # if step_method:1. if the angle between the current and the previous gradients is greater than step_length_gradient_angle, step size -> step length * step_length_change[0]. 
+    #                                                                                                                otherwise, step size -> step length * step_length_change[1]. 
+    step_length_gradient_angle: 120 # default: 120.0 
+    step_length_change: [0.5, 1.41] # default: [0.5,1.2] 
+    Kdensity_coe: 0.3 # default: 0.0,  range: 0.0 - 1.0
+
+  # parameters for smooth method 0 (multigrid model parametrization)
+  # inversion grid can be viewed in OUTPUT_FILES/inversion_grid.txt
+  n_inversion_grid: 5 # number of inversion grid sets
+
+  uniform_inv_grid_dep: false # true if use uniform inversion grid for dep, false if use flexible inversion grid
+  uniform_inv_grid_lat: false # true if use uniform inversion grid for lat, false if use flexible inversion grid
+  uniform_inv_grid_lon: false # true if use uniform inversion grid for lon, false if use flexible inversion grid
+
+  # settings for flexible inversion grid
+  dep_inv: [-50, -25, 0, 50, 100, 150, 200, 275, 350, 425, 500, 600,700] # inversion grid for vel in depth (km)
+  lat_inv: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23] # inversion grid for vel in latitude (degree)
+  lon_inv: [95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108] # inversion grid for vel in longitude (degree)
+  trapezoid: [1, 0, 50]  # usually set as [1.0, 0.0, 50.0] (default)
+
+  # if we want to use another inversion grid for inverting anisotropy, set invgrid_ani: true (default: false)
+  invgrid_ani: false
+
+  # ---------- flexible inversion grid setting for anisotropy ----------
+  # settings for flexible inversion grid for anisotropy
+  dep_inv_ani: [-5, -2, 0, 3, 7, 12, 17, 23, 30, 38, 47, 57] # inversion grid for ani in depth (km)
+  lat_inv_ani: [-2.8, -2.3, -1.8, -1.3, -0.8, -0.3, 0.2, 0.7, 1.2, 1.7, 2.2, 2.7] # inversion grid for ani in latitude (degree)
+  lon_inv_ani: [-1.2, -0.9, -0.6, -0.3, 0, 0.3, 0.6, 0.9, 1.2] # inversion grid for ani in longitude (degree)
+  trapezoid_ani: [1, 0, 50]  # usually set as [1.0, 0.0, 50.0] (default)
+
+
+  # Carefully change trapezoid and trapezoid_ani, if you really want to use trapezoid inversion grid, increasing the inversion grid spacing with depth to account for the worse data coverage in greater depths.
+  # The trapezoid_ inversion grid with index (i,j,k) in longitude, latitude, and depth is defined as:
+  # if                 dep_inv[k] < trapezoid[1], lon = lon_inv[i];                   
+  #                                               lat = lat_inv[j];              
+  #                                               dep = dep_inv[k];
+  # if trapezoid[1] <= dep_inv[k] < trapezoid[2], lon = mid_lon_inv+(lon_inv[i]-mid_lon_inv)*(dep_inv[k]-trapezoid[1])/(trapezoid[2]-trapezoid[1])*trapezoid[0]; 
+  #                                               lat = mid_lat_inv+(lat_inv[i]-mid_lat_inv)*(dep_inv[k]-trapezoid[1])/(trapezoid[2]-trapezoid[1])*trapezoid[0]; 
+  #                                               dep = dep_inv[k];
+  # if trapezoid[2] <= dep_inv[k],                lon = mid_lon_inv+(lon_inv[i]-mid_lon_inv)*trapezoid[0]; 
+  #                                               lat = mid_lat_inv+(lat_inv[i]-mid_lat_inv)*trapezoid[0]; 
+  #                                               dep = dep_inv[k];
+  # The shape of trapezoid inversion gird (x) looks like:
+  #
+  #                                 lon_inv[0]   [1]      [2]      [3]      [4]
+  #                                  |<-------- (lon_inv[end] - lon_inv[0]) ---->|   
+  #  dep_inv[0]                      |   x        x        x        x        x   |   
+  #                                  |                                           |   
+  #  dep_inv[1]                      |   x        x        x        x        x   |   
+  #                                  |                                           |   
+  #  dep_inv[2] = trapezoid[1]      /    x        x        x        x        x    \ 
+  #                                /                                               \ 
+  #  dep_inv[3]                   /    x         x         x         x         x    \ 
+  #                              /                                                   \ 
+  #  dep_inv[4] = trapezoid[2]  /    x          x          x          x          x    \ 
+  #                            |                                                       | 
+  #  dep_inv[5]                |     x          x          x          x          x     |  
+  #                            |                                                       |  
+  #  dep_inv[6]                |     x          x          x          x          x     |  
+  #                            |<---- trapezoid[0]* (lon_inv[end] - lon_inv[0]) ------>|  
+
+  # -------------- using absolute traveltime data --------------
+  abs_time:
+    use_abs_time: false # 'true' for using absolute traveltime data to update model parameters; 'false' for not using (no need to set parameters in this section)
+
+  # -------------- using common source differential traveltime data --------------
+  cs_dif_time:
+    use_cs_time: true # 'true' for using common source differential traveltime data to update model parameters; 'false' for not using (no need to set parameters in this section)
+
+  # -------------- using common receiver differential traveltime data --------------
+  cr_dif_time:
+    use_cr_time: false # 'true' for using common receiver differential traveltime data to update model parameters; 'false' for not using (no need to set parameters in this section)
+
+  # -------------- inversion parameters --------------
+  update_slowness : true # update slowness (velocity) or not.              default: true
+  update_azi_ani  : false # update azimuthal anisotropy (xi, eta) or not.   default: false
+
+  use_sta_correction: true
+  # initial_sta_correction_file: 4_initial_station_correct/station_correction_file_step_0010.dat  # the path of initial station correction 
+  step_length_sta_correction: 0.01 # step length relate to the update of station correction terms
