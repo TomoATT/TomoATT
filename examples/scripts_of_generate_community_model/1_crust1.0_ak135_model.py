@@ -64,7 +64,7 @@ am_combined.vel = am_crust1p0.vel * (1 - ratio_3d) + am_ak135.vel * ratio_3d
 am_processed = ATTModel(param_file)
 am_processed.vel = am_combined.vel.copy()
 
-# 1. (OPTIONAL) monotonic increase check (OPTIONAL)
+# 1. (OPTIONAL) monotonic increase check
 # Ensure that the velocity model increases monotonically with depth.
 am_processed.vel[::-1,:,:] = np.maximum.accumulate(am_processed.vel[::-1,:,:], axis=0) 
 
