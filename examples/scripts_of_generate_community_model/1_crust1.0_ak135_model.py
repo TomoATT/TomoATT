@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 # # Step 1. Generate the ATT model based on the crust1.0 model.
 
 # %%
-# generate the .h5 model for TomoATT based on the crust1.0 model. Nearest extropolation is used.
+# generate the .h5 model for TomoATT based on the crust1.0 model. Nearest extrapolation is used.
 
 param_file = "./3_input_params/input_params_real.yaml"
 am_crust1p0 = ATTModel(param_file)
@@ -68,7 +68,7 @@ am_combined.vel = am_crust1p0.vel * (1 - ratio_3d) + am_ak135.vel * ratio_3d
 am_processed = ATTModel(param_file)
 am_processed.vel = am_combined.vel.copy()
 
-# 1. (OPTIONAL) monotonic increase check (OPTIONAL)
+# 1. (OPTIONAL) monotonic increase check
 # Ensure that the velocity model increases monotonically with depth.
 am_processed.vel[::-1,:,:] = np.maximum.accumulate(am_processed.vel[::-1,:,:], axis=0) 
 
