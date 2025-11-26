@@ -26,7 +26,7 @@ model:
 #            parallel computation settings      #
 #################################################
 parallel: # parameters for parallel computation
-  n_sims: 8 # number of simultanoues runs (parallel the sources)
+  n_sims: 8 # number of simultaneous runs (parallel the sources)
   ndiv_rtp: [1, 1, 1] # number of subdivision on each direction (parallel the computional domain)
 
 ############################################
