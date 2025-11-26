@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# run the script to generate HDF5 model files based one community models
+# run the script to generate HDF5 model files based on community models
 # 1. crust1.0 (Laske et al., 2013) + ak135 model (Kennett et al., 1995)
 python 1_crust1.0_ak135_model.py
 
