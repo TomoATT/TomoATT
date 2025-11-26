@@ -1,7 +1,7 @@
 version: 3
 
 #################################################
-#            computational domian               #
+#            computational domain               #
 #################################################
 domain:
   min_max_dep: [-50, 550] # depth in km
