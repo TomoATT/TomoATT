@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 # # Step 1. Generate the ATT model based on the crust1.0 model.
 
 # %%
-# generate the .h5 model for TomoATT based on the crust1.0 model. Nearest extropolation is used.
+# generate the .h5 model for TomoATT based on the crust1.0 model. Nearest extrapolation is used.
 
 param_file = "./3_input_params/input_params_real.yaml"
 am_crust1p0 = ATTModel(param_file)
