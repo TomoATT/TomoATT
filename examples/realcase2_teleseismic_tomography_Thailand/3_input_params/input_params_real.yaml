@@ -93,6 +93,7 @@ output_setting:
 run_mode: 1
 
 have_tele_data: true # An error will be reported if false but source out of study region is used. Default: false.
+ignore_velocity_discontinuity: true # An error will be reported if false but there is velocity discontinuity (v[ix,iy,iz+1] > v[ix,iy,iz] * 1.2 or v[ix,iy,iz+1] < v[ix,iy,iz] * 0.8) in the input model. Default: false.
 
 ###################################################
 #          model update parameters setting        #

@@ -85,3 +85,4 @@ examples/scripts_of_generate_hdf5_model/figs
 
 examples/scripts_of_generate_community_model/*.ipynb
 examples/scripts_of_generate_community_model/figs
+!examples/scripts_of_generate_community_model/ak135.h5
