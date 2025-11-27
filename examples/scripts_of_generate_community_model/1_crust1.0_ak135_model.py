@@ -3,8 +3,6 @@ from pytomoatt.model import ATTModel
 import os
 import numpy as np
 import h5py
-from scipy.ndimage import gaussian_filter
-
 # %% [markdown]
 # # Step 1. Generate the ATT model based on the crust1.0 model.
 
@@ -21,6 +19,10 @@ am_crust1p0.grid_data_crust1(type="vp")
 # %%
 # Step 2. Generate the ATT model based on ak135 model.
 
+# ak135.h5 has a three-column dataset 'model'. First column: depth (in km), second column: Vp (in km/s), third column: Vs (in km/s).
+# a text version of the ak135 model can be found in Kennett et al. (1995):
+# Kennett, B. L., Engdahl, E. R., & Buland, R. (1995). Constraints on seismic velocities in the Earth from traveltimes. Geophysical Journal International, 122(1), 108-124.
+
 # Load the 1D ak135 model from the .h5 file.
 with h5py.File('ak135.h5', 'r') as f:
     points_ak135 = f['model'][:]
@@ -28,8 +30,7 @@ with h5py.File('ak135.h5', 'r') as f:
 am_ak135 = ATTModel(param_file)
 
 # interpolate the 1D ak135 velocity model to the depths of the ATT model.
-am_depths = am_ak135.depths
-vel_1d = np.interp(am_depths, points_ak135[:,0], points_ak135[:,1], left=points_ak135[0,1], right=points_ak135[-1,1])
+vel_1d = np.interp(am_ak135.depths, points_ak135[:,0], points_ak135[:,1], left=points_ak135[0,1], right=points_ak135[-1,1])
 
 # Set the 3D velocity model by tiling the 1D velocity model along lat and lon directions.
 am_ak135.vel = np.tile(vel_1d[:, None, None], (1, am_ak135.n_rtp[1], am_ak135.n_rtp[2]))
@@ -49,8 +50,7 @@ am_combined = ATTModel(param_file)
 depth_1 = 35.0  
 depth_2 = 70.0  
 
-am_depths = am_ak135.depths
-ratio = (am_depths - depth_1) / (depth_2 - depth_1)
+ratio = (am_ak135.depths - depth_1) / (depth_2 - depth_1)
 ratio = np.clip(ratio, 0.0, 1.0)
 ratio_3d = np.tile(ratio[:, None, None], (1, am_ak135.n_rtp[1], am_ak135.n_rtp[2]))
 
@@ -61,22 +61,21 @@ am_combined.vel = am_crust1p0.vel * (1 - ratio_3d) + am_ak135.vel * ratio_3d
 # # Step 4. post processing (OPTIONAL)
 
 # %%
-am_processed = ATTModel(param_file)
-am_processed.vel = am_combined.vel.copy()
+am_processed = am_combined.copy()
 
 # 1. (OPTIONAL) monotonic increase check
 # Ensure that the velocity model increases monotonically with depth.
 am_processed.vel[::-1,:,:] = np.maximum.accumulate(am_processed.vel[::-1,:,:], axis=0) 
 
 # 2. (OPTIONAL) Gaussian smoothing to the combined model to avoid sharp discontinuities.
-sigma = [1, 1, 1]  # standard deviation for Gaussian kernel along each axis (ddep, dlat, dlon)
-am_processed.vel = gaussian_filter(am_processed.vel, sigma=sigma, mode='nearest')
+## Upgrade PyTomoATT to version 0.2.10 or later to use this function.
+am_processed.smooth(sigma=am_processed.d_rtp, unit_deg=True, mode='nearest') # standard deviation for Gaussian kernel along each axis (ddep, dlat, dlon)
 
 
 # %%
 # output as .h5 file
 n_rtp = am_processed.n_rtp
-fname = "constant_velocity_N%d_%d_%d_PyTomoATT.h5"%(n_rtp[0], n_rtp[1], n_rtp[2])
+fname = f"constant_velocity_N{n_rtp[0]:d}_{n_rtp[1]:d}_{n_rtp[2]:d}_PyTomoATT.h5"
 am_processed.write(fname)
 
 # %%
