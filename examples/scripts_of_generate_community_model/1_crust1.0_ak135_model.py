@@ -21,7 +21,7 @@ am_crust1p0.grid_data_crust1(type="vp")
 # %%
 # Step 2. Generate the ATT model based on ak135 model.
 
-# ak135.h5 has a three-colume dataset 'model'. First column: depth (in km), second column: Vp (in km/s), third column: Vs (in km/s).
+# ak135.h5 has a three-column dataset 'model'. First column: depth (in km), second column: Vp (in km/s), third column: Vs (in km/s).
 # a text version of the ak135 model can be found in Kennett et al. (1995):
 # Kennett, B. L., Engdahl, E. R., & Buland, R. (1995). Constraints on seismic velocities in the Earth from traveltimes. Geophysical Journal International, 122(1), 108-124.
 
