@@ -225,7 +225,10 @@ inline int output_format = OUTPUT_FORMAT_HDF5; // 0 - ascii, 1 - hdf5, 2 - binar
 #endif
 
 // smooth parameters
-inline int        smooth_method = 0; // 0: multi grid parametrization, 1: laplacian smoothing
+#define MULTI_GRID_SMOOTHING 0
+#define LAPLACIAN_SMOOTHING  1
+
+inline int        smooth_method = MULTI_GRID_SMOOTHING; // 0: multi grid parametrization, 1: laplacian smoothing
 inline CUSTOMREAL smooth_lp = 1.0;
 inline CUSTOMREAL smooth_lt = 1.0;
 inline CUSTOMREAL smooth_lr = 1.0;

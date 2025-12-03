@@ -1,7 +1,6 @@
 #include "optimizer_gd.h"
 #include <iostream>
-#include "kernel_smooth.h"
-#include "kernel_normalization.h"
+#include "kernel_postprocessing.h"
 
 Optimizer_gd::Optimizer_gd() {
 }
@@ -19,12 +18,17 @@ void Optimizer_gd::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& 
     sumup_kernels(grid);
 
     // write out original kernels
+    // Ks, Kxi, Keta, Ks_den, Kxi_den, Keta_den
     write_original_kernels(grid, IP, io, i_inv);
 
-    // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
+    // process kernels
+    // Ks_loc, Keta_loc, Kxi_loc
+    // --> 
+    // Ks_update_loc, Keta_update_loc, Kxi_update_loc
     processing_kernels(grid, IP);
 
     // write out modified kernels (descent direction)
+    // Ks_update, Kxi_update, Keta_update, Ks_density_update, Kxi_density_update, Keta_density_update
     write_modified_kernels(grid, IP, io, i_inv);
 
     // determine step length
@@ -47,12 +51,73 @@ void Optimizer_gd::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& 
 // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
 void Optimizer_gd::processing_kernels(Grid& grid, InputParams& IP) {
     
-    // smooth kernels
-    Kernel_smooth::smooth_kernels(grid, IP);
+    // initialize and backup modified kernels
+    initialize_and_backup_modified_kernels(grid);
 
-    // kernel normalization (kernel density normalization, or XXX (to do))
-    Kernel_normalization::normalize_kernels(grid, IP);
+    // check kernel value range
+    check_kernel_value_range(grid);
 
+    // post-processing kernels, depending on the optimization method in the .yaml file
+    // 1. multigrid smoothing + kernel density normalization
+    // 2. XXX (to do)
+    Kernel_postprocessing::process_kernels(grid, IP);
+
+
+}
+
+
+// initialize and backup modified kernels
+void Optimizer_gd::initialize_and_backup_modified_kernels(Grid& grid) {
+    if (subdom_main){ // parallel level 3
+        if (id_sim==0){ // parallel level 1
+
+            // initiaize and backup modified kernel (XX_update_loc) params
+            for (int k = 0; k < loc_K; k++) {
+                for (int j = 0; j < loc_J; j++) {
+                    for (int i = 0; i < loc_I; i++) {
+
+                        // backup previous smoothed kernel
+                        grid.Ks_update_loc_previous[I2V(i,j,k)]   = grid.Ks_update_loc[I2V(i,j,k)];
+                        grid.Keta_update_loc_previous[I2V(i,j,k)] = grid.Keta_update_loc[I2V(i,j,k)];
+                        grid.Kxi_update_loc_previous[I2V(i,j,k)]  = grid.Kxi_update_loc[I2V(i,j,k)];
+
+                        // initialize modified kernel
+                        grid.Ks_update_loc[I2V(i,j,k)]   = _0_CR;
+                        grid.Keta_update_loc[I2V(i,j,k)] = _0_CR;
+                        grid.Kxi_update_loc[I2V(i,j,k)]  = _0_CR;
+
+                    }
+                }
+            }
+
+        }
+    }
+
+    // synchronize all processes
+    synchronize_all_world();
+}
+
+
+// check kernel value range
+void Optimizer_gd::check_kernel_value_range(Grid& grid) {
+    if (subdom_main){ // parallel level 3
+        if (id_sim==0){ // parallel level 1
+            // check kernel
+            CUSTOMREAL max_kernel = _0_CR;
+            for (int k = 0; k < loc_K; k++) {
+                for (int j = 0; j < loc_J; j++) {
+                    for (int i = 0; i < loc_I; i++) {
+                        max_kernel = std::max(max_kernel, std::abs(grid.Ks_loc[I2V(i,j,k)]));
+                    }
+                }
+            }
+
+            if (max_kernel <= eps) {    
+                std::cout << "Error: max_kernel is near zero (less than 10^-12), check data residual and whether no data is used" << std::endl;
+                exit(1);
+            }
+        }
+    }
 }
 
 
