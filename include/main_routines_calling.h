@@ -101,6 +101,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         line_search_mode = false;
         // skip for the mode with sub-iteration
         if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
+            
         } else {
             bool is_save_T = false;
             v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
