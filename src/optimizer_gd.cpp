@@ -1,5 +1,7 @@
 #include "optimizer_gd.h"
 #include <iostream>
+#include "kernel_smooth.h"
+#include "kernel_normalization.h"
 
 Optimizer_gd::Optimizer_gd() {
 }
@@ -45,6 +47,12 @@ void Optimizer_gd::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& 
 // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
 void Optimizer_gd::processing_kernels(Grid& grid, InputParams& IP) {
     
+    // smooth kernels
+    Kernel_smooth::smooth_kernels(grid, IP);
+
+    // kernel normalization (kernel density normalization, or XXX (to do))
+    Kernel_normalization::normalize_kernels(grid, IP);
+
 }
 
 
