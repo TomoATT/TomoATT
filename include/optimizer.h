@@ -15,7 +15,7 @@ public:
     virtual ~Optimizer();
 
     // model update function
-    virtual void model_update(InputParams&, Grid&, IO_utils&, int&){}; // virtual function, can be override in derived classes.
+    virtual void model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj){}; // virtual function, can be override in derived classes.
 
 protected:
 
@@ -34,8 +34,8 @@ protected:
     // write out modified kernels (descent direction)
     void write_modified_kernels(Grid&, InputParams& , IO_utils&, int&);
 
-    // determine step length
-    virtual void determine_step_length(){};
+    // // determine step length
+    // virtual void determine_step_length(int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj){};
 
     // set new model
     void set_new_model(Grid&, CUSTOMREAL);
