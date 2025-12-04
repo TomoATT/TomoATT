@@ -8,18 +8,23 @@ public:
     Optimizer_gd();
     ~Optimizer_gd();
 
-    // model update function (main function)
-    void model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) override; 
-
-
 private:
+
+    // ---------------------------------------------------------
+    // ------------------ specified functions ------------------
+    // ---------------------------------------------------------
 
     // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
     void processing_kernels(Grid&, InputParams&) override;
 
     // determine step length
     // void determine_step_length(int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) override;
-    void determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
+    void determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) override;
+
+
+    // ---------------------------------------------------
+    // ------------------ sub functions ------------------
+    // ---------------------------------------------------
 
     // initialize and backup modified kernels
     void initialize_and_backup_modified_kernels(Grid&);

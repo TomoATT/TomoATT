@@ -131,6 +131,12 @@ public:
     void write_Kxi_density_update(Grid&, int);
     // Keta_density_update
     void write_Keta_density_update(Grid&, int);
+    // // bfgs_Ks_update
+    // void write_bfgs_Ks_update(Grid&, int);
+    // // bfgs_Kxi_update
+    // void write_bfgs_Kxi_update(Grid&, int);
+    // // bfgs_Keta_update
+    // void write_bfgs_Keta_update(Grid&, int);
     // Ks_descent_dir_loc
     void write_Ks_descent_dir(Grid&, int);
     // Kxi_descent_dir_loc
@@ -165,6 +171,27 @@ public:
     void read_T(Grid&);
     // read Travel time from a temporal file for earthquake relocation and common receiver double-difference
     void read_T_tmp(Grid&);
+
+    // // read bfgs_Ks_update
+    // void read_bfgs_Ks_update(Grid& grid, int i_inv);
+    // // read bfgs_Kxi_update
+    // void read_bfgs_Kxi_update(Grid& grid, int i_inv);
+    // // read bfgs_Keta_update
+    // void read_bfgs_Keta_update(Grid& grid, int i_inv);
+
+    // read Ks
+    void read_Ks(Grid&, int);
+    // read Kxi
+    void read_Kxi(Grid&, int);
+    // read Keta
+    void read_Keta(Grid&, int);
+
+    // read velocity
+    void read_vel(Grid&, int);
+    // read xi
+    void read_xi(Grid&, int);
+    // read eta
+    void read_eta(Grid&, int);
 
     void read_data_ascii(Grid&, std::string&);
 

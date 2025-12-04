@@ -89,6 +89,9 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         exit(1);
     } else if (optim_method == LBFGS_MODE){
         std::cout << "LBFGS mode not implemented yet." << std::endl;
+
+        // must make output_kernel: true and output_in_process: true in InputParams, because the previous kernels are needed to calculate the gradient difference
+
         exit(1);
     } else {
         std::cout << "Unknown optimization method: " << optim_method << std::endl;

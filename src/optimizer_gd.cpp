@@ -8,45 +8,9 @@ Optimizer_gd::Optimizer_gd() {
 Optimizer_gd::~Optimizer_gd() {
 }
 
-void Optimizer_gd::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
-    if(id_sim == 0 && myrank == 0)
-        std::cout << "Gradient descent update\n";
-
-    // check kernel density
-    check_kernel_density(grid, IP);
-
-    // sum up kernels from all simulateous group (level 1) 
-    sumup_kernels(grid);
-
-    // write out original kernels
-    // Ks, Kxi, Keta, Ks_den, Kxi_den, Keta_den
-    write_original_kernels(grid, IP, io, i_inv);
-
-    // process kernels
-    // Ks_loc, Keta_loc, Kxi_loc
-    // --> 
-    // Ks_update_loc, Keta_update_loc, Kxi_update_loc
-    processing_kernels(grid, IP);
-
-    // write out modified kernels (descent direction)
-    // Ks_update, Kxi_update, Keta_update, Ks_density_update, Kxi_density_update, Keta_density_update
-    write_modified_kernels(grid, IP, io, i_inv);
-
-    // determine step length
-    determine_step_length(grid, i_inv, v_obj_inout, old_v_obj);
-
-    // set new model
-    set_new_model(grid, step_length_init);
-
-    // make station correction
-    IP.station_correction_update(step_length_init_sc);
-
-    // writeout temporary xdmf file
-    if (IP.get_verbose_output_level())
-        io.update_xdmf_file();
-
-    synchronize_all_world();
-}
+// ---------------------------------------------------------
+// ------------------ specified functions ------------------
+// ---------------------------------------------------------
 
 
 // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
@@ -62,9 +26,87 @@ void Optimizer_gd::processing_kernels(Grid& grid, InputParams& IP) {
     // 1. multigrid smoothing + kernel density normalization
     // 2. XXX (to do)
     Kernel_postprocessing::process_kernels(grid, IP);
-
-
 }
+
+
+// determine step length
+void Optimizer_gd::determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
+
+    // change stepsize
+    // Option 1: the step length is modulated when obj changes.
+    if (step_method == OBJ_DEFINED){
+        if(i_inv != 0){
+            if (v_obj_inout < old_v_obj) {
+                step_length_init    = std::min((CUSTOMREAL)0.02, step_length_init);
+                if(myrank == 0 && id_sim == 0){
+                    std::cout << std::endl;
+                    std::cout << "The obj keeps decreasing, from " << old_v_obj << " to " << v_obj_inout
+                            << ", the step length is " << step_length_init << std::endl;
+                    std::cout << std::endl;
+                }
+            } else if (v_obj_inout >= old_v_obj) {
+                step_length_init    = std::max((CUSTOMREAL)0.0001, step_length_init*step_length_decay);
+                if(myrank == 0 && id_sim == 0){
+                    std::cout << std::endl;
+                    std::cout << "The obj keep increases, from " << old_v_obj << " to " << v_obj_inout
+                            << ", the step length decreases from " << step_length_init/step_length_decay
+                            << " to " << step_length_init << std::endl;
+                    std::cout << std::endl;
+                }
+            }
+        } else {
+            if(myrank == 0 && id_sim == 0){
+                std::cout << std::endl;
+                std::cout << "At the first iteration, the step length is " << step_length_init << std::endl;
+                std::cout << std::endl;
+            }
+        }
+    } else if (step_method == GRADIENT_DEFINED){
+        // Option 2: we modulate the step length according to the angle between the previous and current gradient directions.
+        // If the angle is less than XX degree, which means the model update direction is successive, we should enlarge the step size
+        // Otherwise, the step length should decrease
+        CUSTOMREAL angle = direction_change_of_model_update(grid);
+        if(i_inv != 0){
+            if (angle > step_length_gradient_angle){
+                CUSTOMREAL old_step_length = step_length_init;
+                step_length_init    = std::max((CUSTOMREAL)0.0001, step_length_init * step_length_down);
+                if(myrank == 0 && id_sim == 0){
+                    std::cout << std::endl;
+                    std::cout << "The angle between two update darections is " << angle
+                            << ". Because the angle is greater than " << step_length_gradient_angle << " degree, the step length decreases from "
+                            << old_step_length << " to " << step_length_init << std::endl;
+                    std::cout << std::endl;
+                }
+            } else if (angle <= step_length_gradient_angle) {
+                CUSTOMREAL old_step_length = step_length_init;
+                step_length_init    = std::min((CUSTOMREAL)0.02, step_length_init * step_length_up);
+                if(myrank == 0 && id_sim == 0){
+                    std::cout << std::endl;
+                    std::cout << "The angle between two update darections is " << angle
+                            << ". Because the angle is less than " << step_length_gradient_angle << " degree, the step length increases from "
+                            << old_step_length << " to " << step_length_init << std::endl;
+                    std::cout << std::endl;
+                }
+            }
+        } else {
+            if(myrank == 0 && id_sim == 0){
+                std::cout << std::endl;
+                std::cout << "At the first iteration, the step length is " << step_length_init << std::endl;
+                std::cout << std::endl;
+            }
+        }
+    } else {
+        std::cout << std::endl;
+        std::cout << "No supported method for step size change, step keep the same: " << step_length_init << std::endl;
+        std::cout << std::endl;
+    }
+    
+}
+
+
+// ---------------------------------------------------
+// ------------------ sub functions ------------------
+// ---------------------------------------------------
 
 
 // initialize and backup modified kernels
@@ -152,76 +194,6 @@ CUSTOMREAL Optimizer_gd::direction_change_of_model_update(Grid& grid){
 }
 
 
-// determine step length
-void Optimizer_gd::determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
 
-    // change stepsize
-    // Option 1: the step length is modulated when obj changes.
-    if (step_method == OBJ_DEFINED){
-        if(i_inv != 0){
-            if (v_obj_inout < old_v_obj) {
-                step_length_init    = std::min((CUSTOMREAL)0.02, step_length_init);
-                if(myrank == 0 && id_sim == 0){
-                    std::cout << std::endl;
-                    std::cout << "The obj keeps decreasing, from " << old_v_obj << " to " << v_obj_inout
-                            << ", the step length is " << step_length_init << std::endl;
-                    std::cout << std::endl;
-                }
-            } else if (v_obj_inout >= old_v_obj) {
-                step_length_init    = std::max((CUSTOMREAL)0.0001, step_length_init*step_length_decay);
-                if(myrank == 0 && id_sim == 0){
-                    std::cout << std::endl;
-                    std::cout << "The obj keep increases, from " << old_v_obj << " to " << v_obj_inout
-                            << ", the step length decreases from " << step_length_init/step_length_decay
-                            << " to " << step_length_init << std::endl;
-                    std::cout << std::endl;
-                }
-            }
-        } else {
-            if(myrank == 0 && id_sim == 0){
-                std::cout << std::endl;
-                std::cout << "At the first iteration, the step length is " << step_length_init << std::endl;
-                std::cout << std::endl;
-            }
-        }
-    } else if (step_method == GRADIENT_DEFINED){
-        // Option 2: we modulate the step length according to the angle between the previous and current gradient directions.
-        // If the angle is less than XX degree, which means the model update direction is successive, we should enlarge the step size
-        // Otherwise, the step length should decrease
-        CUSTOMREAL angle = direction_change_of_model_update(grid);
-        if(i_inv != 0){
-            if (angle > step_length_gradient_angle){
-                CUSTOMREAL old_step_length = step_length_init;
-                step_length_init    = std::max((CUSTOMREAL)0.0001, step_length_init * step_length_down);
-                if(myrank == 0 && id_sim == 0){
-                    std::cout << std::endl;
-                    std::cout << "The angle between two update darections is " << angle
-                            << ". Because the angle is greater than " << step_length_gradient_angle << " degree, the step length decreases from "
-                            << old_step_length << " to " << step_length_init << std::endl;
-                    std::cout << std::endl;
-                }
-            } else if (angle <= step_length_gradient_angle) {
-                CUSTOMREAL old_step_length = step_length_init;
-                step_length_init    = std::min((CUSTOMREAL)0.02, step_length_init * step_length_up);
-                if(myrank == 0 && id_sim == 0){
-                    std::cout << std::endl;
-                    std::cout << "The angle between two update darections is " << angle
-                            << ". Because the angle is less than " << step_length_gradient_angle << " degree, the step length increases from "
-                            << old_step_length << " to " << step_length_init << std::endl;
-                    std::cout << std::endl;
-                }
-            }
-        } else {
-            if(myrank == 0 && id_sim == 0){
-                std::cout << std::endl;
-                std::cout << "At the first iteration, the step length is " << step_length_init << std::endl;
-                std::cout << std::endl;
-            }
-        }
-    } else {
-        std::cout << std::endl;
-        std::cout << "No supported method for step size change, step keep the same: " << step_length_init << std::endl;
-        std::cout << std::endl;
-    }
-    
-}
+
+

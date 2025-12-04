@@ -1485,6 +1485,60 @@ void IO_utils::write_Keta_density_update(Grid& grid, int i_inv) {
     }
 }
 
+// void IO_utils::write_bfgs_Ks_update(Grid& grid, int i_inv) {
+//     if (!subdom_main) return;
+
+//     if (output_format==OUTPUT_FORMAT_HDF5){
+// #ifdef USE_HDF5
+//         std::string h5_dset_name = "bfgs_Ks_update";
+//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Ks_update(), i_inv, model_data);
+// #else
+//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format==OUTPUT_FORMAT_ASCII){
+//         std::string dset_name = "bfgs_Ks_update_inv_" + int2string_zero_fill(i_inv);
+//         std::string fname = create_fname_ascii_model(dset_name);
+//         write_data_ascii(grid, fname, grid.get_Ks_update());
+//     }
+// }
+
+// void IO_utils::write_bfgs_Kxi_update(Grid& grid, int i_inv) {
+//     if (!subdom_main) return;
+
+//     if (output_format==OUTPUT_FORMAT_HDF5){
+// #ifdef USE_HDF5
+//         std::string h5_dset_name = "bfgs_Kxi_update";
+//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Kxi_update(), i_inv, model_data);
+// #else
+//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format==OUTPUT_FORMAT_ASCII){
+//         std::string dset_name = "bfgs_Kxi_update_inv_" + int2string_zero_fill(i_inv);
+//         std::string fname = create_fname_ascii_model(dset_name);
+//         write_data_ascii(grid, fname, grid.get_Kxi_update());
+//     }
+// }
+
+// void IO_utils::write_bfgs_Keta_update(Grid& grid, int i_inv) {
+//     if (!subdom_main) return;
+
+//     if (output_format==OUTPUT_FORMAT_HDF5){
+// #ifdef USE_HDF5
+//         std::string h5_dset_name = "bfgs_Keta_update";
+//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_Keta_update(), i_inv, model_data);
+// #else
+//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format==OUTPUT_FORMAT_ASCII){
+//         std::string dset_name = "bfgs_Keta_update_inv_" + int2string_zero_fill(i_inv);
+//         std::string fname = create_fname_ascii_model(dset_name);
+//         write_data_ascii(grid, fname, grid.get_Keta_update());
+//     }
+// }
+
 void IO_utils::write_Ks_descent_dir(Grid& grid, int i_inv) {
     if (!subdom_main) return;
 
@@ -1823,6 +1877,216 @@ void IO_utils::read_T_tmp(Grid& grid) {
 }
 
 
+// void IO_utils::read_bfgs_Ks_update(Grid& grid, int i_inv){
+//     if (!subdom_main) return;
+
+//     if (output_format == OUTPUT_FORMAT_HDF5) {
+//         // read traveltime field from HDF5 file
+// #ifdef USE_HDF5
+
+//         std::string h5_dset_name = "bfgs_Ks_update_inv_" + int2string_zero_fill(i_inv);
+//         read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+// #else
+//         std::cerr << "Error: HDF5 is not enabled." << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format == OUTPUT_FORMAT_ASCII) {
+//         // read traveltime field from ASCII file
+//         std::string dset_name = "bfgs_Ks_update_inv_" + int2string_zero_fill(0);
+//         std::string filename = create_fname_ascii(dset_name);
+
+//         read_data_ascii(grid, filename);
+//     }
+
+// }
+
+
+// void IO_utils::read_bfgs_Kxi_update(Grid& grid, int i_inv){
+//     if (!subdom_main) return;
+
+//     if (output_format == OUTPUT_FORMAT_HDF5) {
+//         // read traveltime field from HDF5 file
+// #ifdef USE_HDF5
+
+//         std::string h5_dset_name = "bfgs_Kxi_update_inv_" + int2string_zero_fill(i_inv);
+//         read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+// #else
+//         std::cerr << "Error: HDF5 is not enabled." << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format == OUTPUT_FORMAT_ASCII) {
+//         // read traveltime field from ASCII file
+//         std::string dset_name = "bfgs_Kxi_update_inv_" + int2string_zero_fill(0);
+//         std::string filename = create_fname_ascii(dset_name);
+
+//         read_data_ascii(grid, filename);
+//     }
+// }
+
+
+// void IO_utils::read_bfgs_Keta_update(Grid& grid, int i_inv){
+//     if (!subdom_main) return;
+
+//     if (output_format == OUTPUT_FORMAT_HDF5) {
+//         // read traveltime field from HDF5 file
+// #ifdef USE_HDF5
+
+//         std::string h5_dset_name = "bfgs_Keta_update_inv_" + int2string_zero_fill(i_inv);
+//         read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+// #else
+//         std::cerr << "Error: HDF5 is not enabled." << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format == OUTPUT_FORMAT_ASCII) {
+//         // read traveltime field from ASCII file
+//         std::string dset_name = "bfgs_Keta_update_inv_" + int2string_zero_fill(0);
+//         std::string filename = create_fname_ascii(dset_name);
+
+//         read_data_ascii(grid, filename);
+//     }
+// }
+
+
+void IO_utils::read_Ks(Grid& grid, int i_inv){
+    if (!subdom_main) return;
+
+    if (output_format == OUTPUT_FORMAT_HDF5) {
+        // read traveltime field from HDF5 file
+#ifdef USE_HDF5
+
+        std::string h5_dset_name = "Ks_inv_" + int2string_zero_fill(i_inv);
+        read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+#else
+        std::cerr << "Error: HDF5 is not enabled." << std::endl;
+        exit(1);
+#endif
+    } else if (output_format == OUTPUT_FORMAT_ASCII) {
+        // read traveltime field from ASCII file
+        std::string dset_name = "Ks_inv_" + int2string_zero_fill(0);
+        std::string filename = create_fname_ascii(dset_name);
+
+        read_data_ascii(grid, filename);
+    }
+
+}
+
+
+void IO_utils::read_Kxi(Grid& grid, int i_inv){
+    if (!subdom_main) return;
+
+    if (output_format == OUTPUT_FORMAT_HDF5) {
+        // read traveltime field from HDF5 file
+#ifdef USE_HDF5
+
+        std::string h5_dset_name = "Kxi_inv_" + int2string_zero_fill(i_inv);
+        read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+#else
+        std::cerr << "Error: HDF5 is not enabled." << std::endl;
+        exit(1);
+#endif
+    } else if (output_format == OUTPUT_FORMAT_ASCII) {
+        // read traveltime field from ASCII file
+        std::string dset_name = "Kxi_inv_" + int2string_zero_fill(0);
+        std::string filename = create_fname_ascii(dset_name);
+
+        read_data_ascii(grid, filename);
+    }
+}
+
+
+void IO_utils::read_Keta(Grid& grid, int i_inv){
+    if (!subdom_main) return;
+
+    if (output_format == OUTPUT_FORMAT_HDF5) {
+        // read traveltime field from HDF5 file
+#ifdef USE_HDF5
+
+        std::string h5_dset_name = "Keta_inv_" + int2string_zero_fill(i_inv);
+        read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+#else
+        std::cerr << "Error: HDF5 is not enabled." << std::endl;
+        exit(1);
+#endif
+    } else if (output_format == OUTPUT_FORMAT_ASCII) {
+        // read traveltime field from ASCII file
+        std::string dset_name = "Keta_inv_" + int2string_zero_fill(0);
+        std::string filename = create_fname_ascii(dset_name);
+
+        read_data_ascii(grid, filename);
+    }
+}
+
+
+void IO_utils::read_vel(Grid& grid, int i_inv){
+    if (!subdom_main) return;
+
+    if (output_format == OUTPUT_FORMAT_HDF5) {
+        // read traveltime field from HDF5 file
+#ifdef USE_HDF5
+
+        std::string h5_dset_name = "vel_inv_" + int2string_zero_fill(i_inv);
+        read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+#else
+        std::cerr << "Error: HDF5 is not enabled." << std::endl;
+        exit(1);
+#endif
+    } else if (output_format == OUTPUT_FORMAT_ASCII) {
+        // read traveltime field from ASCII file
+        std::string dset_name = "vel_inv_" + int2string_zero_fill(0);
+        std::string filename = create_fname_ascii(dset_name);
+
+        read_data_ascii(grid, filename);
+    }
+
+}
+
+
+void IO_utils::read_xi(Grid& grid, int i_inv){
+    if (!subdom_main) return;
+
+    if (output_format == OUTPUT_FORMAT_HDF5) {
+        // read traveltime field from HDF5 file
+#ifdef USE_HDF5
+
+        std::string h5_dset_name = "xi_inv_" + int2string_zero_fill(i_inv);
+        read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+#else
+        std::cerr << "Error: HDF5 is not enabled." << std::endl;
+        exit(1);
+#endif
+    } else if (output_format == OUTPUT_FORMAT_ASCII) {
+        // read traveltime field from ASCII file
+        std::string dset_name = "xi_inv_" + int2string_zero_fill(0);
+        std::string filename = create_fname_ascii(dset_name);
+
+        read_data_ascii(grid, filename);
+    }
+
+}
+
+
+void IO_utils::read_eta(Grid& grid, int i_inv){
+    if (!subdom_main) return;
+
+    if (output_format == OUTPUT_FORMAT_HDF5) {
+        // read traveltime field from HDF5 file
+#ifdef USE_HDF5
+
+        std::string h5_dset_name = "eta_inv_" + int2string_zero_fill(i_inv);
+        read_data_h5(grid, grid.vis_data, h5_group_name_data, h5_dset_name);
+#else
+        std::cerr << "Error: HDF5 is not enabled." << std::endl;
+        exit(1);
+#endif
+    } else if (output_format == OUTPUT_FORMAT_ASCII) {
+        // read traveltime field from ASCII file
+        std::string dset_name = "eta_inv_" + int2string_zero_fill(0);
+        std::string filename = create_fname_ascii(dset_name);
+
+        read_data_ascii(grid, filename);
+    }
+
+}
 
 
 

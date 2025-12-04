@@ -5,6 +5,47 @@ Optimizer::Optimizer(){}
 Optimizer::~Optimizer(){}
 
 
+void Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
+    if(id_sim == 0 && myrank == 0)
+        std::cout << "Gradient descent update\n";
+
+    // check kernel density
+    check_kernel_density(grid, IP);
+
+    // sum up kernels from all simulateous group (level 1) 
+    sumup_kernels(grid);
+
+    // write out original kernels
+    // Ks, Kxi, Keta, Ks_den, Kxi_den, Keta_den
+    write_original_kernels(grid, IP, io, i_inv);
+
+    // process kernels (specialized in derived classes)
+    // Ks_loc, Keta_loc, Kxi_loc
+    // --> 
+    // Ks_update_loc, Keta_update_loc, Kxi_update_loc
+    processing_kernels(grid, IP);
+
+    // write out modified kernels (descent direction)
+    // Ks_update, Kxi_update, Keta_update, Ks_density_update, Kxi_density_update, Keta_density_update
+    write_modified_kernels(grid, IP, io, i_inv);
+
+    // determine step length (specialized in derived classes)
+    determine_step_length(grid, i_inv, v_obj_inout, old_v_obj);
+
+    // set new model
+    set_new_model(grid, step_length_init);
+
+    // make station correction
+    IP.station_correction_update(step_length_init_sc);
+
+    // writeout temporary xdmf file
+    if (IP.get_verbose_output_level())
+        io.update_xdmf_file();
+
+    synchronize_all_world();
+}
+
+
 // check kernel density
 void Optimizer::check_kernel_density(Grid& grid, InputParams& IP) {
     if(subdom_main){
