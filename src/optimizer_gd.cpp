@@ -9,7 +9,8 @@ Optimizer_gd::~Optimizer_gd() {
 }
 
 void Optimizer_gd::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
-    std::cout << "Gradient descent update\n";
+    if(id_sim == 0 && myrank == 0)
+        std::cout << "Gradient descent update\n";
 
     // check kernel density
     check_kernel_density(grid, IP);
