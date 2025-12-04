@@ -82,3 +82,5 @@ examples/eg4_1d_inversion/*.ipynb
 
 examples/scripts_of_generate_hdf5_model/*.ipynb
 examples/scripts_of_generate_hdf5_model/figs
+
+examples/scripts_of_generate_community_model
