@@ -69,16 +69,13 @@ InputParams::InputParams(std::string& input_file){
         // source
         //
         if (config["source"]) {
-            // source depth(km) lat lon
-            if (config["source"]["src_dep_lat_lon"]) {
-                getNodeValue(config["source"], "src_dep_lat_lon", src_dep, 0);
-                getNodeValue(config["source"], "src_dep_lat_lon", src_lat, 1);
-                getNodeValue(config["source"], "src_dep_lat_lon", src_lon, 2);
-            }
             // src rec file
             if (config["source"]["src_rec_file"]) {
                 src_rec_file_exist = true;
                 getNodeValue(config["source"], "src_rec_file", src_rec_file);
+            } else {
+                std::cout << "ERROR, tag src_rec_file is not included. Please check YAML file." << std::endl;
+                exit(1);
             }
             // swap src rec
             if (config["source"]["swap_src_rec"]) {
@@ -96,6 +93,8 @@ InputParams::InputParams(std::string& input_file){
             // model file path
             if (config["model"]["init_model_path"]) {
                 getNodeValue(config["model"], "init_model_path", init_model_path);
+            } else {
+                std::cout << "WARNING: tag init_model_path is not included. Please check YAML file." << std::endl;
             }
             // model file path
             if (config["model"]["model_1d_name"]) {

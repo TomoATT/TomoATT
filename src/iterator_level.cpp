@@ -1094,6 +1094,10 @@ void Iterator_level_1st_order_upwind_tele::do_sweep(int iswp, Grid& grid, InputP
             //
             // calculate stencils
             //
+            // if (iip != 0 && iip != np-1 && jjt != 0 && jjt != nt-1 && kkr != 0) {   // top layer is not fixed, otherwise, the top layer will be 2000
+            //     calculate_stencil_1st_order_upwind_tele(grid, iip, jjt, kkr);       // no need to consider the boundary for upwind scheme
+            // }
+
             calculate_stencil_1st_order_upwind_tele(grid, iip, jjt, kkr);
         } // end ijk
 

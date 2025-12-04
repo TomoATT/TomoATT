@@ -341,6 +341,7 @@ void parse_src_rec_file(std::string& src_rec_file, \
         } catch (std::invalid_argument& e) {
                 std::cout << "Error: invalid argument in src_rec_file. Abort." << std::endl;
                 std::cout << "problematic line: \n\n" << line << std::endl;
+                std::cout << "Please carefully check whether n_data is consistent with the number of data of this earthquake." << std::endl << std::endl;
                 exit(1);
                 //MPI_Abort(MPI_COMM_WORLD, 1);
         }

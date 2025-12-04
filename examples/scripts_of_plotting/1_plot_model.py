@@ -121,7 +121,7 @@ print("ani_arrow at depth = ", depth, " km. ani_arrow:", ani_arrow.shape, ", (lo
 
 # plot
 fig = pygmt.Figure()
-fig.basemap(region=[0,2,0,2], frame=["xa1","ya1","+tVelocity perturbation"], projection="M10c")   # base map
+fig.basemap(region=[0,2,0,2], frame=["xa1","ya1","+tAzimuthal Anisotropy"], projection="M10c")   # base map
 pygmt.makecpt(cmap="cool", series=[0, 0.1], background=True, reverse=False)    # colorbar
 
 x = epsilon_inv[:,0];  # longitude
