@@ -24,8 +24,12 @@
 #include "objective_function_utils.h"
 #include "timer.h"
 #include "oneD_inversion.h"
+#include "optimizer.h"
+#include "optimizer_gd.h"
+
 
 // run forward-only or inversion mode
+// run mode: 0 or run mode: 1
 inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils &io) {
 
     // for check if the current source is the first source
@@ -76,6 +80,22 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
     // loop for inversion
     /////////////////////
 
+    // select an optimizer
+    std::unique_ptr<Optimizer> optimizer;  // optimizer pointer
+    if (optim_method == GRADIENT_DESCENT){
+        optimizer = std::make_unique<Optimizer_gd>();
+    } else if (optim_method == HALVE_STEPPING_MODE){
+        std::cout << "Halve stepping mode not implemented yet." << std::endl;
+        exit(1);
+    } else if (optim_method == LBFGS_MODE){
+        std::cout << "LBFGS mode not implemented yet." << std::endl;
+        exit(1);
+    } else {
+        std::cout << "Unknown optimization method: " << optim_method << std::endl;
+        exit(1);
+    }
+    
+
     bool line_search_mode = false; // if true, run_simulation_one_step skips adjoint simulation and only calculates objective function value
 
     // objective function for all src
@@ -101,6 +121,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         line_search_mode = false;
         // skip for the mode with sub-iteration
         if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
+            
         } else {
             bool is_save_T = false;
             v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
@@ -130,15 +151,17 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
             std::cout << "model update starting ... " << std::endl;
 
         if (IP.get_run_mode() == DO_INVERSION) {
-            if (optim_method == GRADIENT_DESCENT)
-                model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
-            else if (optim_method == HALVE_STEPPING_MODE)
-                v_obj_misfit = model_optimize_halve_stepping(IP, grid, io, i_inv, v_obj, first_src, out_main);
-            else if (optim_method == LBFGS_MODE) {
-                bool found_next_step = model_optimize_lbfgs(IP, grid, io, i_inv, v_obj, first_src, out_main);
-                if (!found_next_step)
-                    goto end_of_inversion;
-            }
+            optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj);
+            // if (optim_method == GRADIENT_DESCENT)
+            //     optimizer_gd.model_update(IP, grid, io, i_inv, v_obj, old_v_obj);
+            //     // model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
+            // else if (optim_method == HALVE_STEPPING_MODE)
+            //     v_obj_misfit = model_optimize_halve_stepping(IP, grid, io, i_inv, v_obj, first_src, out_main);
+            // else if (optim_method == LBFGS_MODE) {
+            //     bool found_next_step = model_optimize_lbfgs(IP, grid, io, i_inv, v_obj, first_src, out_main);
+            //     if (!found_next_step)
+            //         goto end_of_inversion;
+            // }
         }
 
         // output station correction file (only for teleseismic differential data)
@@ -218,7 +241,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
 
     } // end loop inverse
 
-end_of_inversion:
+// end_of_inversion:
 
     // close xdmf file
     io.finalize_data_output_file();
@@ -235,6 +258,7 @@ end_of_inversion:
 
 
 // run earthquake relocation mode
+// run mode: 2
 inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io) {
 
     Receiver recs;
@@ -321,6 +345,7 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
 
 
 // run earthquake relocation mode
+// run mode: 3
 inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& io) {
 
     Timer timer("Inv_and_reloc", true);
@@ -797,6 +822,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
 
 
 // run 1D inversion mode
+// run mode: 4
 inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
     OneDInversion oneDInv(IP, grid);
 

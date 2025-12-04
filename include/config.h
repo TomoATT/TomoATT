@@ -181,7 +181,7 @@ inline int      sub_rank;         // mpi rank of this process
 inline int      inter_sub_rank;   // mpi rank of this process in the inter-subdomain communicator
 inline int      inter_sub_nprocs; // number of processes in the inter-subdomain communicator
 inline int      nprocs;           // = n subdomains
-inline int      myrank;           // = id subdomain
+inline int      myrank;           // = id subdomain if submain_main == true; else = -9999
 inline MPI_Comm sim_comm, inter_sim_comm, sub_comm, inter_sub_comm; // mpi communicator for simulation, inter-simulation, subdomain, and inter subdomains
 inline int      n_sims           = 1; // number of mpi groups for simultaneous runs
 inline int      n_procs_each_sim = 1; // number of processes in each simulation group
@@ -225,7 +225,10 @@ inline int output_format = OUTPUT_FORMAT_HDF5; // 0 - ascii, 1 - hdf5, 2 - binar
 #endif
 
 // smooth parameters
-inline int        smooth_method = 0; // 0: multi grid parametrization, 1: laplacian smoothing
+#define MULTI_GRID_SMOOTHING 0
+#define LAPLACIAN_SMOOTHING  1
+
+inline int        smooth_method = MULTI_GRID_SMOOTHING; // 0: multi grid parametrization, 1: laplacian smoothing
 inline CUSTOMREAL smooth_lp = 1.0;
 inline CUSTOMREAL smooth_lt = 1.0;
 inline CUSTOMREAL smooth_lr = 1.0;

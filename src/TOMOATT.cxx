@@ -16,6 +16,7 @@
 #include "eikonal_solver_2d.h"
 #include "version.h"
 #include "oneD_inversion.h"
+#include "optimizer.h"
 
 #ifdef USE_CUDA
 #include "cuda_initialize.cuh"
