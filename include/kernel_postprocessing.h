@@ -28,9 +28,6 @@ namespace Kernel_postprocessing {
     // make the boundary values of updated kernels consistent among subdomains
     void shared_boundary_of_updated_kernels(Grid& grid);
 
-    // broadcast modified kernels to all simultaneous runs
-    void broadcast_kernels(Grid& grid);
-
     // METHOD 1, multigrid parameterization + kernel density normalization (+ kernel rescaling to -1.0 - +1.0)
     void multigrid_parameterization_density_normalization(Grid& grid, InputParams& IP);
 }

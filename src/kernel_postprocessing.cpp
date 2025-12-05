@@ -26,7 +26,12 @@ namespace Kernel_postprocessing {
             } // end if id_sim == 0
 
             // boardcast modified kernels to all simultaneous runs
-            broadcast_kernels(grid);
+            broadcast_cr_inter_sim(grid.Ks_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Kxi_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Keta_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Ks_density_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Kxi_density_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Keta_density_update_loc, loc_I*loc_J*loc_K, 0);
         } // end if subdom_main
 
         synchronize_all_world();
@@ -110,23 +115,6 @@ namespace Kernel_postprocessing {
             }
         }
         
-    }
-
-    
-    // boardcast modified kernels to all simultaneous runs
-    void broadcast_kernels(Grid& grid){
-        // send the updated model to all the simultaneous run
-        broadcast_cr_inter_sim(grid.Ks_update_loc, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Kxi_update_loc, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Keta_update_loc, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Ks_density_update_loc, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Kxi_density_update_loc, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Keta_density_update_loc, loc_I*loc_J*loc_K, 0);
-
-        // send the previous updated model to all the simultaneous run
-        broadcast_cr_inter_sim(grid.Ks_update_loc_previous, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Kxi_update_loc_previous, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Keta_update_loc_previous, loc_I*loc_J*loc_K, 0);
     }
 
 

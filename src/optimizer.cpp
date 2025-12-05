@@ -6,8 +6,6 @@ Optimizer::~Optimizer(){}
 
 
 void Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool is_line_search) {
-    if(id_sim == 0 && myrank == 0)
-        std::cout << "Gradient descent update\n";
 
     // check kernel density
     check_kernel_density(grid, IP);
@@ -120,6 +118,7 @@ void Optimizer::write_original_kernels(Grid& grid, InputParams& IP, IO_utils& io
         io.write_Kxi_density(grid, i_inv);
         io.write_Keta_density(grid, i_inv);
     }
+    synchronize_all_world();
 }
 
 
@@ -264,12 +263,9 @@ void Optimizer::write_new_model(Grid& grid, InputParams& IP, IO_utils& io, int& 
         io.change_group_name_for_model();
 
         // write out model info
-        if (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2){
-            io.write_vel(grid, i_inv+1);
-            io.write_xi( grid, i_inv+1);
-            io.write_eta(grid, i_inv+1);
-        }
-        //io.write_zeta(grid, i_inv); // TODO
+        io.write_vel(grid, i_inv+1);
+        io.write_xi( grid, i_inv+1);
+        io.write_eta(grid, i_inv+1);
 
         if (IP.get_verbose_output_level()){
             io.write_a(grid,   i_inv+1);
@@ -340,6 +336,11 @@ void Optimizer::initialize_and_backup_modified_kernels(Grid& grid) {
             }
 
         }
+
+        // send the previous updated model to all the simultaneous run
+        broadcast_cr_inter_sim(grid.Ks_update_loc_previous, loc_I*loc_J*loc_K, 0);
+        broadcast_cr_inter_sim(grid.Kxi_update_loc_previous, loc_I*loc_J*loc_K, 0);
+        broadcast_cr_inter_sim(grid.Keta_update_loc_previous, loc_I*loc_J*loc_K, 0);
     }
 
     // synchronize all processes

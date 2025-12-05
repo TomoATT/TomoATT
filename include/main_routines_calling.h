@@ -122,13 +122,18 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
         line_search_mode = false;
         // skip for the mode with sub-iteration
-        if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
+        // if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
             
-        } else {
-            bool is_save_T = false;
-            v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
-            v_obj = v_obj_misfit[0];
-        }
+        // } else {
+        //     bool is_save_T = false;
+        //     v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
+        //     v_obj = v_obj_misfit[0];
+        // }
+        // (to do) if line search is applied, run_simulation_one_step should be called inside model_update function of optimizer class
+        bool is_save_T = false;
+        v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
+        v_obj = v_obj_misfit[0];
+
 
         // wait for all processes to finish
         synchronize_all_world();
