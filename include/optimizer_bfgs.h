@@ -24,6 +24,9 @@ private:
     std::vector<CUSTOMREAL> yk_xi;
     std::vector<CUSTOMREAL> yk_eta;
 
+    std::vector<CUSTOMREAL> descent_dir_s;    // bfgs descent direction
+    std::vector<CUSTOMREAL> descent_dir_xi;
+    std::vector<CUSTOMREAL> descent_dir_eta;
 
     // ---------------------------------------------------------
     // ------------------ specified functions ------------------

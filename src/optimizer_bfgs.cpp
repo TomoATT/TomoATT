@@ -14,6 +14,12 @@ Optimizer_bfgs::Optimizer_bfgs() {
     yk_s.resize(n_total_loc_grid_points);
     yk_xi.resize(n_total_loc_grid_points);
     yk_eta.resize(n_total_loc_grid_points);
+
+    descent_dir_s.resize(n_total_loc_grid_points);
+    descent_dir_xi.resize(n_total_loc_grid_points);
+    descent_dir_eta.resize(n_total_loc_grid_points);
+
+
 }
 
 Optimizer_bfgs::~Optimizer_bfgs() {
@@ -43,7 +49,11 @@ void Optimizer_bfgs::determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_
 
 // calculate bfgs descent direction
 void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid) {
-    // to be implemented
+    
+    // step 1,  initialize q = g_k (in this step, descent_dir is q)
+    descent_dir_s   = grid.Ks_loc;
+    descent_dir_xi  = grid.Kxi_loc;
+    descent_dir_eta = grid.Keta_loc;
 
 
 }
