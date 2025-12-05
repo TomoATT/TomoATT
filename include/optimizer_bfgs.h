@@ -14,15 +14,15 @@ private:
     int n_total_loc_grid_points;    // number of local grid points
 
     // historical model and gradient
-    CUSTOMREAL* array_3d_forward;
-    CUSTOMREAL* array_3d_backward;
+    std::vector<CUSTOMREAL> array_3d_forward;
+    std::vector<CUSTOMREAL> array_3d_backward;
 
-    CUSTOMREAL* sk_s;         // s_k = m_{k+1} - m_k, model difference
-    CUSTOMREAL* sk_xi;
-    CUSTOMREAL* sk_eta;
-    CUSTOMREAL* yk_s;         // y_k = g_{k+1} - g_k, gradient difference
-    CUSTOMREAL* yk_xi;
-    CUSTOMREAL* yk_eta;
+    std::vector<CUSTOMREAL> sk_s;       // s_k = m_{k+1} - m_k, model difference
+    std::vector<CUSTOMREAL> sk_xi;
+    std::vector<CUSTOMREAL> sk_eta;
+    std::vector<CUSTOMREAL> yk_s;       // y_k = g_{k+1} - g_k, gradient difference
+    std::vector<CUSTOMREAL> yk_xi;
+    std::vector<CUSTOMREAL> yk_eta;
 
 
     // ---------------------------------------------------------
