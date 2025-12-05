@@ -2,7 +2,7 @@
 #include <iostream>
 #include "kernel_postprocessing.h"
 
-Optimizer_gd::Optimizer_gd() {
+Optimizer_gd::Optimizer_gd() : Optimizer() {
 }
 
 Optimizer_gd::~Optimizer_gd() {

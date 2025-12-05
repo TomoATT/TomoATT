@@ -17,6 +17,7 @@ private:
     std::vector<CUSTOMREAL> array_3d_forward;
     std::vector<CUSTOMREAL> array_3d_backward;
 
+    // vectors in bfgs
     std::vector<CUSTOMREAL> sk_s;       // s_k = m_{k+1} - m_k, model difference
     std::vector<CUSTOMREAL> sk_xi;
     std::vector<CUSTOMREAL> sk_eta;
@@ -27,6 +28,10 @@ private:
     std::vector<CUSTOMREAL> descent_dir_s;    // bfgs descent direction
     std::vector<CUSTOMREAL> descent_dir_xi;
     std::vector<CUSTOMREAL> descent_dir_eta;
+
+    // scalars in bfgs
+    std::vector<CUSTOMREAL> alpha;  // store alpha_i in two-loop recursion
+    std::vector<CUSTOMREAL> rho;    // store rho_i in two-loop recursion
 
     // ---------------------------------------------------------
     // ------------------ specified functions ------------------
@@ -45,7 +50,7 @@ private:
     // ---------------------------------------------------
 
     // calculate bfgs descent direction
-    void calculate_bfgs_descent_direction(Grid& grid);
+    void calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, int& i_inv);
 
     // read and write histrorical model and gradient
     void get_model_dif(Grid& grid, IO_utils& io, int& i_inv);
