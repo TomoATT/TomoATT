@@ -26,6 +26,7 @@
 #include "oneD_inversion.h"
 #include "optimizer.h"
 #include "optimizer_gd.h"
+#include "optimizer_bfgs.h"
 
 
 // run forward-only or inversion mode
@@ -83,16 +84,14 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
     // select an optimizer
     std::unique_ptr<Optimizer> optimizer;  // optimizer pointer
     if (optim_method == GRADIENT_DESCENT){
-        optimizer = std::make_unique<Optimizer_gd>();
+        optimizer = std::make_unique<Optimizer_gd>(IP);
     } else if (optim_method == HALVE_STEPPING_MODE){
         std::cout << "Halve stepping mode not implemented yet." << std::endl;
         exit(1);
     } else if (optim_method == LBFGS_MODE){
-        std::cout << "LBFGS mode not implemented yet." << std::endl;
-
+        // std::cout << "LBFGS mode not implemented yet." << std::endl;
         // must make output_kernel: true and output_in_process: true in InputParams, because the previous kernels are needed to calculate the gradient difference
-
-        exit(1);
+        optimizer = std::make_unique<Optimizer_bfgs>(IP);
     } else {
         std::cout << "Unknown optimization method: " << optim_method << std::endl;
         exit(1);
@@ -154,7 +153,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
             std::cout << "model update starting ... " << std::endl;
 
         if (IP.get_run_mode() == DO_INVERSION) {
-            optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj);
+            optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, false);
             // if (optim_method == GRADIENT_DESCENT)
             //     optimizer_gd.model_update(IP, grid, io, i_inv, v_obj, old_v_obj);
             //     // model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
@@ -182,33 +181,8 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
                 IP.src_map[name_sim_src].is_T_written_into_file = false;
         }
 
-        // output updated model
-        if (id_sim==0) {
-            //io.change_xdmf_obj(0); // change xmf file for next src
-            io.change_group_name_for_model();
+        // output updated model (done in optimizer->model_update)
 
-            // write out model info
-            if (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2){
-                io.write_vel(grid, i_inv+1);
-                io.write_xi( grid, i_inv+1);
-                io.write_eta(grid, i_inv+1);
-            }
-            //io.write_zeta(grid, i_inv); // TODO
-
-            if (IP.get_verbose_output_level()){
-                io.write_a(grid,   i_inv+1);
-                io.write_b(grid,   i_inv+1);
-                io.write_c(grid,   i_inv+1);
-                io.write_f(grid,   i_inv+1);
-                io.write_fun(grid, i_inv+1);
-            }
-
-            // // output model_parameters_inv_0000.dat
-            // if (IP.get_if_output_model_dat()
-            // && (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2))
-            //     io.write_concerning_parameters(grid, i_inv + 1, IP);
-
-        }
 
         // writeout temporary xdmf file
         io.update_xdmf_file();

@@ -5,7 +5,7 @@
 
 class Optimizer_bfgs : public Optimizer {
 public:
-    Optimizer_bfgs();
+    Optimizer_bfgs(InputParams& IP);
     ~Optimizer_bfgs();
 
 private:
@@ -38,11 +38,7 @@ private:
     // ---------------------------------------------------------
 
     // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
-    void processing_kernels(Grid&, InputParams&) override;
-
-    // determine step length
-    // void determine_step_length(int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) override;
-    void determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) override;
+    void processing_kernels(Grid& grid, IO_utils& io, InputParams& IP, int& i_inv) override;
 
 
     // ---------------------------------------------------

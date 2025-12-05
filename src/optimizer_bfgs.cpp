@@ -2,7 +2,12 @@
 #include <iostream>
 #include "kernel_postprocessing.h"
     
-Optimizer_bfgs::Optimizer_bfgs() : Optimizer() {
+Optimizer_bfgs::Optimizer_bfgs(InputParams& IP) : Optimizer(IP) {
+    // for bfgs method, model and kernel should be written
+    need_write_model = true;
+    need_write_original_kernel = true;
+
+    // initialize sizes
     n_total_loc_grid_points = loc_I * loc_J * loc_K;
     
     array_3d_forward.resize(n_total_loc_grid_points);
@@ -35,15 +40,25 @@ Optimizer_bfgs::~Optimizer_bfgs() {
 
 
 // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
-void Optimizer_bfgs::processing_kernels(Grid& grid, InputParams& IP) {
+void Optimizer_bfgs::processing_kernels(Grid& grid, IO_utils& io, InputParams& IP, int& i_inv) {
     
+    // initialize and backup modified kernels
+    initialize_and_backup_modified_kernels(grid);
+
+    // check kernel value range
+    check_kernel_value_range(grid);
+
+    // calculate bfgs descent direction
+    calculate_bfgs_descent_direction(grid, io, i_inv);
+
+
+    // post-processing kernels, depending on the optimization method in the .yaml file
+    // 1. multigrid smoothing + kernel density normalization
+    // 2. XXX (to do)
+    Kernel_postprocessing::process_kernels(grid, IP);
+
 }
 
-
-// determine step length
-void Optimizer_bfgs::determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
-
-}
 
 
 // ---------------------------------------------------
@@ -105,20 +120,16 @@ void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, 
             }
         }
 
-        // --------------- final step, set descent direction
-        // set descent direction = -z
-        for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
-            descent_dir_s[idx]   *= -1.0;
-        }
-
+        // --------------- final step, set modified kernels
+        // assign minus descent direction (modified kernels) to grid.Ks_loc
+        std::copy(descent_dir_s.begin(), descent_dir_s.end(), grid.Ks_loc);
+        std::copy(descent_dir_xi.begin(), descent_dir_xi.end(), grid.Kxi_loc);
+        std::copy(descent_dir_eta.begin(), descent_dir_eta.end(), grid.Keta_loc);
+        
     } else {
-        // for the first iteration, use steepest descent
-        descent_dir_s.assign(grid.Ks_loc, grid.Ks_loc + n_total_loc_grid_points);
-        descent_dir_xi.assign(grid.Kxi_loc, grid.Kxi_loc + n_total_loc_grid_points);
-        descent_dir_eta.assign(grid.Keta_loc, grid.Keta_loc + n_total_loc_grid_points);
+        // for the first iteration, use steepest descent (do nothing)
     }
 }
-
 
 // read histrorical model difference
 void Optimizer_bfgs::get_model_dif(Grid& grid, IO_utils& io, int& i_inv){
