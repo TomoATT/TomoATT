@@ -204,8 +204,8 @@ inline std::vector<CUSTOMREAL> model_optimize_halve_stepping(InputParams& IP, Gr
     // loop till
     while (sub_iter_count < max_sub_iterations) {
         // check the new objective function value
-        // v_obj_new = run_simulation_one_step(IP, grid, io, i_inv, first_src, true); // run simulations with line search mode
-        v_obj_misfit_new = run_simulation_one_step(IP, grid, io, i_inv, first_src, true, false); // run simulations with line search mode
+        // v_obj_new = run_simulation_one_step(IP, grid, io, i_inv, true); // run simulations with line search mode
+        v_obj_misfit_new = run_simulation_one_step(IP, grid, io, i_inv, true, false); // run simulations with line search mode
         v_obj_new = v_obj_misfit_new[0];
         // if the new objective function value is larger than the old one, make the step width to be half of the previous one
         diff_obj = v_obj_new - v_obj_old;
@@ -387,7 +387,7 @@ inline bool model_optimize_lbfgs(InputParams& IP, Grid& grid, IO_utils& io, int 
         set_new_model(grid, step_length);
 
         //// calculate gradient (run onestep forward+adjoint)
-        v_obj_misfit_new = run_simulation_one_step(IP, grid, io, i_inv, first_src, true, false);
+        v_obj_misfit_new = run_simulation_one_step(IP, grid, io, i_inv, true, false);
 
         //// Qt update (=current obj)
         q_t = v_obj_misfit_new[0];

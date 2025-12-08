@@ -8,8 +8,7 @@
 #include "input_params.h"
 #include "grid.h"
 #include "io.h"
-// #include "main_routines_inversion_mode.h"
-// #include "kernel.h"
+#include "main_routines_inversion_mode.h"
 
 class Optimizer {
 public:

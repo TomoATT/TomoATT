@@ -10,7 +10,7 @@
 #include "grid.h"
 #include "io.h"
 #include "main_routines_inversion_mode.h"
-#include "model_optimization_routines.h"
+// #include "model_optimization_routines.h"
 #include "main_routines_earthquake_relocation.h"
 #include "iterator_selector.h"
 #include "iterator.h"
@@ -18,9 +18,9 @@
 #include "iterator_level.h"
 #include "source.h"
 #include "receiver.h"
-#include "kernel.h"
-#include "model_update.h"
-#include "lbfgs.h"
+// #include "kernel.h"
+// #include "model_update.h"
+// #include "lbfgs.h"
 #include "objective_function_utils.h"
 #include "timer.h"
 #include "oneD_inversion.h"
@@ -126,11 +126,11 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
             
         // } else {
         //     bool is_save_T = false;
-        //     v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
+        //     v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, line_search_mode, is_save_T);
         //     v_obj = v_obj_misfit[0];
         // }
         // (to do) if line search is applied, run_simulation_one_step should be called inside model_update function of optimizer class
-        v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, false, false);
+        v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, false);
         v_obj = v_obj_misfit[0];
 
 
@@ -391,6 +391,26 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
     CUSTOMREAL v_obj = 0.0,         old_v_obj = 10000000000.0;
     std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
 
+    /////////////////////
+    // select an optimizer for model update
+    /////////////////////
+    std::unique_ptr<Optimizer> optimizer;  // optimizer pointer
+    if (optim_method == GRADIENT_DESCENT){
+        optimizer = std::make_unique<Optimizer_gd>(IP);
+    } else if (optim_method == HALVE_STEPPING_MODE){
+        std::cout << "Halve stepping mode not implemented yet." << std::endl;
+        exit(1);
+    } else if (optim_method == LBFGS_MODE){
+        // std::cout << "LBFGS mode not implemented yet." << std::endl;
+        // must make output_kernel: true and output_in_process: true in InputParams, because the previous kernels are needed to calculate the gradient difference
+        optimizer = std::make_unique<Optimizer_bfgs>(IP);
+    } else {
+        std::cout << "Unknown optimization method: " << optim_method << std::endl;
+        exit(1);
+    }
+
+
+
     if (inv_mode == ITERATIVE){
 
         /////////////////////
@@ -430,7 +450,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
                 } else {
                     bool is_save_T = false;
-                    v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
+                    v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, line_search_mode, is_save_T);
                     v_obj = v_obj_misfit[0];
                 }
 
@@ -449,16 +469,18 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 // model update
                 ///////////////
 
-                if (optim_method == GRADIENT_DESCENT)
-                    model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
-                else if (optim_method == HALVE_STEPPING_MODE)
-                    v_obj_misfit = model_optimize_halve_stepping(IP, grid, io, i_inv, v_obj, first_src, out_main);
-                else if (optim_method == LBFGS_MODE) {
-                    bool found_next_step = model_optimize_lbfgs(IP, grid, io, i_inv, v_obj, first_src, out_main);
+                optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, false);
 
-                    if (!found_next_step)
-                        break;
-                }
+                // if (optim_method == GRADIENT_DESCENT)
+                //     model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
+                // else if (optim_method == HALVE_STEPPING_MODE)
+                //     v_obj_misfit = model_optimize_halve_stepping(IP, grid, io, i_inv, v_obj, first_src, out_main);
+                // else if (optim_method == LBFGS_MODE) {
+                //     bool found_next_step = model_optimize_lbfgs(IP, grid, io, i_inv, v_obj, first_src, out_main);
+
+                //     if (!found_next_step)
+                //         break;
+                // }
 
                 // define old_v_obj
                 old_v_obj = v_obj;
@@ -640,7 +662,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             if (i_loop > 0 && optim_method != GRADIENT_DESCENT) {
             } else {
                 bool is_save_T = true;
-                v_obj_misfit = run_simulation_one_step(IP, grid, io, i_loop, first_src, line_search_mode, is_save_T);
+                v_obj_misfit = run_simulation_one_step(IP, grid, io, i_loop, line_search_mode, is_save_T);
                 v_obj = v_obj_misfit[0];
             }
 
@@ -656,20 +678,22 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 break;
             }
 
-                ///////////////
-                // model update
-                ///////////////
+            ///////////////
+            // model update
+            ///////////////
 
-            if (optim_method == GRADIENT_DESCENT)
-                model_optimize(IP, grid, io, i_loop, v_obj, old_v_obj, first_src, out_main);
-            else if (optim_method == HALVE_STEPPING_MODE)
-                v_obj_misfit = model_optimize_halve_stepping(IP, grid, io, i_loop, v_obj, first_src, out_main);
-            else if (optim_method == LBFGS_MODE) {
-                bool found_next_step = model_optimize_lbfgs(IP, grid, io, i_loop, v_obj, first_src, out_main);
+            optimizer->model_update(IP, grid, io, i_loop, v_obj, old_v_obj, false);
 
-                if (!found_next_step)
-                    break;
-            }
+            // if (optim_method == GRADIENT_DESCENT)
+            //     model_optimize(IP, grid, io, i_loop, v_obj, old_v_obj, first_src, out_main);
+            // else if (optim_method == HALVE_STEPPING_MODE)
+            //     v_obj_misfit = model_optimize_halve_stepping(IP, grid, io, i_loop, v_obj, first_src, out_main);
+            // else if (optim_method == LBFGS_MODE) {
+            //     bool found_next_step = model_optimize_lbfgs(IP, grid, io, i_loop, v_obj, first_src, out_main);
+
+            //     if (!found_next_step)
+            //         break;
+            // }
 
 
             // output objective function (model update part)

@@ -251,30 +251,29 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
     }
 
     // ----------------------- step 2, do line search -----------------------
-    // CUSTOMREAL alpha = step_length_init;        // initial step length
+    CUSTOMREAL alpha = step_length_init;        // initial step length
     int max_sub_iter = 20;                      // maximum sub-iteration number, (to do)
-    // CUSTOMREAL alpha_R = _0_CR;                 // upper bound of step length
-    // CUSTOMREAL alpha_L = _0_CR;                 // lower bound of step length
+    CUSTOMREAL alpha_R = _0_CR;                 // upper bound of step length
+    CUSTOMREAL alpha_L = _0_CR;                 // lower bound of step length
 
     for(int sub_iter = 0; sub_iter < max_sub_iter; sub_iter++){
 
-        // // substep 1, --------- back to the original model ---------
-        // if (subdom_main){
-        //     std::copy(fun_loc_backup.begin(), fun_loc_backup.end(), grid.fun_loc);
-        //     std::copy(xi_loc_backup.begin(), xi_loc_backup.end(), grid.xi_loc);
-        //     std::copy(eta_loc_backup.begin(), eta_loc_backup.end(), grid.eta_loc);
-        // }
+        // substep 1, --------- back to the original model ---------
+        if (subdom_main){
+            std::copy(fun_loc_backup.begin(), fun_loc_backup.end(), grid.fun_loc);
+            std::copy(xi_loc_backup.begin(), xi_loc_backup.end(), grid.xi_loc);
+            std::copy(eta_loc_backup.begin(), eta_loc_backup.end(), grid.eta_loc);
+        }
 
-        // // substep 2, --------- set new model with current alpha ---------
-        // if (subdom_main){
-        //     set_new_model(grid, alpha);
-        // }
+        // substep 2, --------- set new model with current alpha ---------
+        if (subdom_main){
+            set_new_model(grid, alpha);
+        }
         
         // substep 3, --------- forward modeling + adjoint field + kernel  ---------
-        // std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
-        // bool is_save_T = false;
-        // v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
-        // v_obj = v_obj_misfit[0];
+        std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
+        v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, true, false);
+        CUSTOMREAL v_obj = v_obj_misfit[0];
 
 
         // // run a forward simulation to calculate obj
