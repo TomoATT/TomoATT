@@ -15,7 +15,7 @@ namespace Kernel_postprocessing {
     // Ks_loc, Keta_loc, Kxi_loc
     // --> 
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
-    void process_kernels(Grid& grid, InputParams& IP);
+    void process_kernels(InputParams& IP, Grid& grid);
     
 
     // ---------------------------------------------------
@@ -29,7 +29,7 @@ namespace Kernel_postprocessing {
     void shared_boundary_of_updated_kernels(Grid& grid);
 
     // METHOD 1, multigrid parameterization + kernel density normalization (+ kernel rescaling to -1.0 - +1.0)
-    void multigrid_parameterization_density_normalization(Grid& grid, InputParams& IP);
+    void multigrid_parameterization_density_normalization(InputParams& IP, Grid& grid);
 }
 
 

@@ -7,6 +7,8 @@
 #include "config.h"
 #include "input_params.h"
 #include "grid.h"
+#include "io.h"
+// #include "main_routines_inversion_mode.h"
 // #include "kernel.h"
 
 class Optimizer {
@@ -23,34 +25,41 @@ protected:
     bool need_write_model     = false;
     bool need_write_original_kernel    = false;
 
+    int n_total_loc_grid_points;    // number of local grid points
+    std::vector<CUSTOMREAL> fun_loc_backup;
+    std::vector<CUSTOMREAL> xi_loc_backup;
+    std::vector<CUSTOMREAL> eta_loc_backup;
 
     // ---------------------------------------------------
     // ------------------ main function ------------------
     // ---------------------------------------------------
 
     // check kernel density
-    void check_kernel_density(Grid&, InputParams&);
+    void check_kernel_density(InputParams& IP, Grid& grid);
 
     // sum up kernels from all simulateous group (level 1)
-    void sumup_kernels(Grid&);
+    void sumup_kernels(Grid& grid);
 
     // write out kernels 
-    void write_original_kernels(Grid&, InputParams& , IO_utils&, int&);
+    void write_original_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
     // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
-    virtual void processing_kernels(Grid& grid, IO_utils& io, InputParams& IP, int& i_inv);
+    virtual void processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
     // write out modified kernels (descent direction)
-    void write_modified_kernels(Grid&, InputParams& , IO_utils&, int&);
+    void write_modified_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
-    // determine step length
-    void determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool is_line_search);
+    // determine step length (original method step-size controlled)
+    void determine_step_length_controlled(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
+
+    // determine step length (line search method)
+    void determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
 
     // set new model
     void set_new_model(Grid&, CUSTOMREAL);
 
     // write new model
-    void write_new_model(Grid& grid, InputParams& IP, IO_utils& io, int& i_inv);
+    void write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
     // ---------------------------------------------------
     // ------------------ sub functions ------------------

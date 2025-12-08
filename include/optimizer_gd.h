@@ -15,7 +15,7 @@ private:
     // ---------------------------------------------------------
 
     // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
-    void processing_kernels(Grid& grid, IO_utils& io, InputParams& IP, int& i_inv) override;
+    void processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) override;
     
 };
 

@@ -1,6 +1,16 @@
 #include "optimizer.h"
 
-Optimizer::Optimizer(InputParams& IP){}
+Optimizer::Optimizer(InputParams& IP){
+
+    n_total_loc_grid_points = loc_I * loc_J * loc_K;
+
+    // (to do) only true if line search is applied
+    if(true){    
+        fun_loc_backup.resize(n_total_loc_grid_points);
+        xi_loc_backup.resize(n_total_loc_grid_points);
+        eta_loc_backup.resize(n_total_loc_grid_points);
+    }
+}
 
 Optimizer::~Optimizer(){}
 
@@ -8,33 +18,38 @@ Optimizer::~Optimizer(){}
 void Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool is_line_search) {
 
     // check kernel density
-    check_kernel_density(grid, IP);
+    check_kernel_density(IP, grid);
 
     // sum up kernels from all simulateous group (level 1) 
     sumup_kernels(grid);
 
     // write out original kernels
     // Ks, Kxi, Keta, Ks_den, Kxi_den, Keta_den
-    write_original_kernels(grid, IP, io, i_inv);
+    write_original_kernels(IP, grid, io, i_inv);
 
     // process kernels (specialized in derived classes)
     // Ks_loc, Keta_loc, Kxi_loc
     // --> 
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
-    processing_kernels(grid, io, IP, i_inv);
+    processing_kernels(IP, grid, io, i_inv);    // kernels have been broadcasted to all simultaneous groups 
 
     // write out modified kernels (descent direction)
     // Ks_update, Kxi_update, Keta_update, Ks_density_update, Kxi_density_update, Keta_density_update
-    write_modified_kernels(grid, IP, io, i_inv);
+    write_modified_kernels(IP, grid, io, i_inv);
+    // determine step length (specialized in derived classes) (have been broadcasted to all simultaneous groups)
+    if (!is_line_search){
+        determine_step_length_controlled(grid, i_inv, v_obj_inout, old_v_obj);
+    } else {
+        // (to do) line search implementation
+        determine_step_length_line_search(IP, grid, io, i_inv, v_obj_inout, old_v_obj);
+    }
 
-    // determine step length (specialized in derived classes)
-    determine_step_length(grid, i_inv, v_obj_inout, old_v_obj, is_line_search);
 
     // set new model
     set_new_model(grid, step_length_init);
 
     // write new model
-    write_new_model(grid, IP, io, i_inv);
+    write_new_model(IP, grid, io, i_inv);
 
     // make station correction
     IP.station_correction_update(step_length_init_sc);
@@ -52,7 +67,7 @@ void Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_i
 
 
 // check kernel density
-void Optimizer::check_kernel_density(Grid& grid, InputParams& IP) {
+void Optimizer::check_kernel_density(InputParams& IP, Grid& grid) {
     if(subdom_main){
         // check local kernel density positivity
         for (int i_loc = 0; i_loc < loc_I; i_loc++) {
@@ -103,7 +118,7 @@ void Optimizer::sumup_kernels(Grid& grid) {
 
 
 // write out original kernels
-void Optimizer::write_original_kernels(Grid& grid, InputParams& IP, IO_utils& io, int& i_inv){
+void Optimizer::write_original_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){
     if (is_write_original_kernel(IP, i_inv)) {
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
@@ -123,11 +138,11 @@ void Optimizer::write_original_kernels(Grid& grid, InputParams& IP, IO_utils& io
 
 
 // VIRTUAL function, to be specialized in derived classes
-void Optimizer::processing_kernels(Grid& grid, IO_utils& io, InputParams& IP, int& i_inv){}
+void Optimizer::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){}
 
 
 // write out modified kernels (descent direction)
-void Optimizer::write_modified_kernels(Grid& grid, InputParams& IP, IO_utils& io, int& i_inv){
+void Optimizer::write_modified_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){
     if (is_write_modified_kernel(IP, i_inv)) {
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
@@ -146,9 +161,9 @@ void Optimizer::write_modified_kernels(Grid& grid, InputParams& IP, IO_utils& io
 
 
 // determine step length
-void Optimizer::determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool is_line_search) {
+void Optimizer::determine_step_length_controlled(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
 
-    if (!is_line_search) {
+    if(subdom_main && id_sim == 0){     // main of level 1 and level 3 determine steo
         // change stepsize
         // Option 1: the step length is modulated when obj changes.
         if (step_method == OBJ_DEFINED){
@@ -217,12 +232,90 @@ void Optimizer::determine_step_length(Grid& grid, int i_inv, CUSTOMREAL& v_obj_i
             std::cout << "No supported method for step size change, step keep the same: " << step_length_init << std::endl;
             std::cout << std::endl;
         }
-    } else {
-        if(myrank == 0 && id_sim == 0){
-            std::cout << std::endl;
-            std::cout << "(to do)" << std::endl;
-        }
     }
+
+    // broadcast the step_length
+    broadcast_cr_single(step_length_init,0);
+}
+
+
+// determine step length (line search method)
+void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
+    
+
+    // ----------------------- step 1, backup current model -----------------------
+    if (subdom_main){   // main of level 3 can backup model
+        fun_loc_backup.assign(grid.fun_loc, grid.fun_loc + n_total_loc_grid_points);
+        xi_loc_backup.assign(grid.xi_loc, grid.xi_loc + n_total_loc_grid_points);
+        eta_loc_backup.assign(grid.eta_loc, grid.eta_loc + n_total_loc_grid_points);
+    }
+
+    // ----------------------- step 2, do line search -----------------------
+    // CUSTOMREAL alpha = step_length_init;        // initial step length
+    int max_sub_iter = 20;                      // maximum sub-iteration number, (to do)
+    // CUSTOMREAL alpha_R = _0_CR;                 // upper bound of step length
+    // CUSTOMREAL alpha_L = _0_CR;                 // lower bound of step length
+
+    for(int sub_iter = 0; sub_iter < max_sub_iter; sub_iter++){
+
+        // // substep 1, --------- back to the original model ---------
+        // if (subdom_main){
+        //     std::copy(fun_loc_backup.begin(), fun_loc_backup.end(), grid.fun_loc);
+        //     std::copy(xi_loc_backup.begin(), xi_loc_backup.end(), grid.xi_loc);
+        //     std::copy(eta_loc_backup.begin(), eta_loc_backup.end(), grid.eta_loc);
+        // }
+
+        // // substep 2, --------- set new model with current alpha ---------
+        // if (subdom_main){
+        //     set_new_model(grid, alpha);
+        // }
+        
+        // substep 3, --------- forward modeling + adjoint field + kernel  ---------
+        // std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
+        // bool is_save_T = false;
+        // v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, first_src, line_search_mode, is_save_T);
+        // v_obj = v_obj_misfit[0];
+
+
+        // // run a forward simulation to calculate obj
+        // CUSTOMREAL v_obj_tmp = _0_CR;
+        // io.run_forward_simulation_and_compute_obj(IP, grid, v_obj_tmp);
+
+        // if (sub_iter == 0){
+        //     v_obj_inout = v_obj_tmp;
+        // }
+
+        // if (v_obj_tmp < v_obj_inout){ // success
+        //     v_obj_inout = v_obj_tmp;
+        //     alpha_L = alpha;
+        //     if (alpha_R == _0_CR){
+        //         alpha = alpha * 2.0;
+        //     } else {
+        //         alpha = (alpha_L + alpha_R) / 2.0;
+        //     }
+        // } else { // fail
+        //     alpha_R = alpha;
+        //     if (alpha_L == _0_CR){
+        //         alpha = alpha / 2.0;
+        //     } else {
+        //         alpha = (alpha_L + alpha_R) / 2.0;
+        //     }
+        // }
+
+        // // restore model
+        // grid.fun_loc.assign(fun_loc_backup.begin(), fun_loc_backup.end());
+        // grid.xi_loc.assign(xi_loc_backup.begin(), xi_loc_backup.end());
+        // grid.eta_loc.assign(eta_loc_backup.begin(), eta_loc_backup.end());
+
+    } // end for sub_iter
+
+
+
+    
+
+    // broadcast the step_length
+    broadcast_cr_single(step_length_init,0);
+
 }
 
 
@@ -257,7 +350,7 @@ void Optimizer::set_new_model(Grid& grid, CUSTOMREAL step_length){
 
 
 // write out new models
-void Optimizer::write_new_model(Grid& grid, InputParams& IP, IO_utils& io, int& i_inv){
+void Optimizer::write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){
     if (is_write_model(IP, i_inv)) {
         //io.change_xdmf_obj(0); // change xmf file for next src
         io.change_group_name_for_model();
@@ -276,6 +369,7 @@ void Optimizer::write_new_model(Grid& grid, InputParams& IP, IO_utils& io, int& 
         }
     }
 }
+
 
 // ---------------------------------------------------
 // ------------------ sub functions ------------------

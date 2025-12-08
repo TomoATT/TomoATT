@@ -116,6 +116,9 @@ inline void pre_run_forward_only(InputParams& IP, Grid& grid, IO_utils& io, int 
 
 // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel if requested
 inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, bool& first_src, bool line_search_mode, bool is_save_T){
+    // line_search_mode: if true, time field and adjoint field will not be written into file
+    // is_save_T: if true, save temperory traveltime field into file (just for earthquake)
+
 
     // initialize kernel arrays
     if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC)

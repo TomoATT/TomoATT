@@ -10,7 +10,7 @@ namespace Kernel_postprocessing {
     // Ks_loc, Keta_loc, Kxi_loc
     // --> 
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
-    void process_kernels(Grid& grid, InputParams& IP) {
+    void process_kernels(InputParams& IP, Grid& grid) {
         
         if (subdom_main){ // parallel level 3
             if (id_sim==0){ // parallel level 1
@@ -19,7 +19,7 @@ namespace Kernel_postprocessing {
                     eliminate_ghost_layer_multigrid(grid);
 
                     // multigrid parameterization + kernel density normalization
-                    multigrid_parameterization_density_normalization(grid, IP);
+                    multigrid_parameterization_density_normalization(IP, grid);
                 }
                 // make the boundary values of updated kernels consistent among subdomains
                 shared_boundary_of_updated_kernels(grid);
@@ -139,7 +139,7 @@ namespace Kernel_postprocessing {
 
 
     // METHOD 1, multigrid parameterization + kernel density normalization
-    void multigrid_parameterization_density_normalization(Grid& grid, InputParams& IP) {
+    void multigrid_parameterization_density_normalization(InputParams& IP, Grid& grid) {
         if (!subdom_main){
             std::cout << "Error: eliminate_ghost_layer_multigrid should be called only when subdom_main==true (main proc of level 3)" << std::endl;
             exit(1);

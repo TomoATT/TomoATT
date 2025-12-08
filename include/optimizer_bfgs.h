@@ -11,7 +11,6 @@ public:
 private:
 
     const int Mbfgs = 5; // number of previous steps to store
-    int n_total_loc_grid_points;    // number of local grid points
 
     // historical model and gradient
     std::vector<CUSTOMREAL> array_3d_forward;
@@ -38,7 +37,7 @@ private:
     // ---------------------------------------------------------
 
     // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
-    void processing_kernels(Grid& grid, IO_utils& io, InputParams& IP, int& i_inv) override;
+    void processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) override;
 
 
     // ---------------------------------------------------

@@ -19,7 +19,7 @@ Optimizer_gd::~Optimizer_gd() {
 
 
 // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
-void Optimizer_gd::processing_kernels(Grid& grid, IO_utils& io, InputParams& IP, int& i_inv) {
+void Optimizer_gd::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) {
     
     // initialize and backup modified kernels
     initialize_and_backup_modified_kernels(grid);
@@ -30,7 +30,7 @@ void Optimizer_gd::processing_kernels(Grid& grid, IO_utils& io, InputParams& IP,
     // post-processing kernels, depending on the optimization method in the .yaml file
     // 1. multigrid smoothing + kernel density normalization
     // 2. XXX (to do)
-    Kernel_postprocessing::process_kernels(grid, IP);
+    Kernel_postprocessing::process_kernels(IP, grid);
 }
 
 

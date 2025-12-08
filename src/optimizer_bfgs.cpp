@@ -8,8 +8,6 @@ Optimizer_bfgs::Optimizer_bfgs(InputParams& IP) : Optimizer(IP) {
     need_write_original_kernel = true;
 
     // initialize sizes
-    n_total_loc_grid_points = loc_I * loc_J * loc_K;
-    
     array_3d_forward.resize(n_total_loc_grid_points);
     array_3d_backward.resize(n_total_loc_grid_points);
 
@@ -40,7 +38,7 @@ Optimizer_bfgs::~Optimizer_bfgs() {
 
 
 // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
-void Optimizer_bfgs::processing_kernels(Grid& grid, IO_utils& io, InputParams& IP, int& i_inv) {
+void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) {
     
     // initialize and backup modified kernels
     initialize_and_backup_modified_kernels(grid);
@@ -51,11 +49,8 @@ void Optimizer_bfgs::processing_kernels(Grid& grid, IO_utils& io, InputParams& I
     // calculate bfgs descent direction
     calculate_bfgs_descent_direction(grid, io, i_inv);
 
-
-    // post-processing kernels, depending on the optimization method in the .yaml file
-    // 1. multigrid smoothing + kernel density normalization
-    // 2. XXX (to do)
-    Kernel_postprocessing::process_kernels(grid, IP);
+    // (to do) BFGS should be equipped with proper kernel smoothing and normalization
+    Kernel_postprocessing::process_kernels(IP, grid);       
 
 }
 
@@ -65,7 +60,8 @@ void Optimizer_bfgs::processing_kernels(Grid& grid, IO_utils& io, InputParams& I
 // ------------------ sub functions ------------------
 // ---------------------------------------------------
 
-// calculate bfgs descent direction
+// calculate bfgs descent direction 
+// (to do) process for xi and eta kernels
 void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, int& i_inv) {
     if(subdom_main){
         if(id_sim == 0){
