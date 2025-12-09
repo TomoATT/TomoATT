@@ -298,19 +298,19 @@ inline       CUSTOMREAL DIST_SRC_DDT        = 2.5*DEG2RAD; // distance threshold
 inline const std::string OUTPUT_DIR_2D      = "/2D_TRAVEL_TIME_FIELD/"; // output directory for 2d solver
 
 // earthquake relocation
-inline CUSTOMREAL       step_length_src_reloc       = 2.0;  // step length for source relocation
+inline CUSTOMREAL       step_length_src_reloc       = 0.01;  // step length for source relocation
 inline CUSTOMREAL       step_length_decay_src_reloc = 0.9;
 inline int              N_ITER_MAX_SRC_RELOC        = 501;  // max iteration for source location
 inline CUSTOMREAL       TOL_SRC_RELOC               = 1e-3; // threshold of the norm of gradient for stopping single earthquake location
 inline const CUSTOMREAL TOL_step_length             = 1e-4; // threshold of the max step size for stopping single earthquake location
 inline CUSTOMREAL       rescaling_dep               = 10.0;
-inline CUSTOMREAL       rescaling_lat               = 1.0;
-inline CUSTOMREAL       rescaling_lon               = 1.0;
+inline CUSTOMREAL       rescaling_lat               = 5.0;
+inline CUSTOMREAL       rescaling_lon               = 5.0;
 inline CUSTOMREAL       rescaling_ortime            = 0.5;
-inline CUSTOMREAL       max_change_dep              = 10.0;
-inline CUSTOMREAL       max_change_lat              = 1.0;
-inline CUSTOMREAL       max_change_lon              = 1.0;
-inline CUSTOMREAL       max_change_ortime           = 0.5;
+inline CUSTOMREAL       max_change_dep              = 10.0; // default: max change is 10 km
+inline CUSTOMREAL       max_change_lat              = 5.0;  // default: max change is 5 km
+inline CUSTOMREAL       max_change_lon              = 5.0;  // default: max change is 5 km
+inline CUSTOMREAL       max_change_ortime           = 0.5;  // default: max change is 0.5 s
 inline bool             ortime_local_search         = true;
 inline int              min_Ndata_reloc             = 4;    // if an earthquake is recorded by less than <min_Ndata> times, relocation is not allowed.
 

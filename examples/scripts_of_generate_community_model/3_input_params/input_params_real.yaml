@@ -1,7 +1,7 @@
 version: 3
 
 #################################################
-#            computational domian               #
+#            computational domain               #
 #################################################
 domain:
   min_max_dep: [-50, 550] # depth in km
@@ -26,14 +26,14 @@ model:
 #            parallel computation settings      #
 #################################################
 parallel: # parameters for parallel computation
-  n_sims: 8 # number of simultanoues runs (parallel the sources)
+  n_sims: 8 # number of simultaneous runs (parallel the sources)
   ndiv_rtp: [1, 1, 1] # number of subdivision on each direction (parallel the computional domain)
 
 ############################################
 #            output file setting           #
 ############################################
 output_setting:
-  output_dir: OUTPUT_FILES/OUTPUT_FILES_real # path to output director (default is ./OUTPUT_FILES/)
+  output_dir: OUTPUT_FILES/OUTPUT_FILES_real # path to output directory (default is ./OUTPUT_FILES/)
   output_source_field:     false # True: output the traveltime field and adjoint field of all sources at each iteration. Default: false. File: 'out_data_sim_group_X'.                                         
   output_kernel:           false
   output_final_model:      true # True: output merged final model. This file can be used as the input model for TomoATT. Default: true. File: 'model_final.h5'.                                
@@ -93,7 +93,6 @@ output_setting:
 run_mode: 1
 
 have_tele_data: true # An error will be reported if false but source out of study region is used. Default: false.
-ignore_velocity_discontinuity: true # An error will be reported if false but there is velocity discontinuity (v[ix,iy,iz+1] > v[ix,iy,iz] * 1.2 or v[ix,iy,iz+1] < v[ix,iy,iz] * 0.8) in the input model. Default: false.
 
 ###################################################
 #          model update parameters setting        #

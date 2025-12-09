@@ -134,7 +134,7 @@ print("time_sec:", time_sec.shape, ", (lon, lat, distance, depth, time)")
 
 # plot
 fig = pygmt.Figure()
-fig.basemap(region=[0,2,0,40], frame=["xa1+lLongitude","ya20+lDepth (km)","+tVelocity perturbation"], projection="X10c/-2c")   # base map
+fig.basemap(region=[0,2,0,40], frame=["xa1+lLongitude","ya20+lDepth (km)","+tTraveltime"], projection="X10c/-2c")   # base map
 pygmt.makecpt(cmap="jet", series=[0, 30], background=True, reverse=True)    # colorbar
 
 x = time_sec[:,0];  # longitude
@@ -164,7 +164,7 @@ print("adjoint_sec:", time_sec.shape, ", (lon, lat, distance, depth, adjoint)")
 
 # plot
 fig = pygmt.Figure()
-fig.basemap(region=[0,2,0,40], frame=["xa1+lLongitude","ya20+lDepth (km)","+tVelocity perturbation"], projection="X10c/-2c")   # base map
+fig.basemap(region=[0,2,0,40], frame=["xa1+lLongitude","ya20+lDepth (km)","+tAdjoint field"], projection="X10c/-2c")   # base map
 pygmt.makecpt(cmap="jet", series=[-0.5, 0.5], background=True, reverse=False)    # colorbar
 
 x = adjoint_sec[:,0];  # longitude
