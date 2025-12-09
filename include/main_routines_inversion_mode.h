@@ -60,7 +60,6 @@ inline void calculate_or_read_traveltime_field(InputParams& IP, Grid& grid, IO_u
 }
 
 
-
 inline void pre_run_forward_only(InputParams& IP, Grid& grid, IO_utils& io, int i_inv){
     if(world_rank == 0)
         std::cout << "preparing traveltimes of common receiver data ..." << std::endl;
@@ -278,6 +277,57 @@ inline void calculate_sensitivity_kernel(Grid& grid, InputParams& IP, const std:
 }
 
 
+// check kernel density
+inline void check_kernel_density(InputParams& IP, Grid& grid) {
+    if(subdom_main){
+        // check local kernel density positivity
+        for (int i_loc = 0; i_loc < loc_I; i_loc++) {
+            for (int j_loc = 0; j_loc < loc_J; j_loc++) {
+                for (int k_loc = 0; k_loc < loc_K; k_loc++) {
+                    if (isNegative(grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)])){
+                        std::cout   << "Warning, id_sim: " << id_sim << ", grid.Ks_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " 
+                                    << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]   
+                                    << std::endl;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// sum up kernels from all simulateous group (level 1)
+inline void sumup_kernels(Grid& grid) {
+    if(subdom_main){
+        int n_grids = loc_I*loc_J*loc_K;
+
+        allreduce_cr_sim_inplace(grid.Ks_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Kxi_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Keta_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Ks_density_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Kxi_density_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Keta_density_loc, n_grids);
+
+        // share the values on boundary
+        grid.send_recev_boundary_data(grid.Ks_loc);
+        grid.send_recev_boundary_data(grid.Kxi_loc);
+        grid.send_recev_boundary_data(grid.Keta_loc);
+        grid.send_recev_boundary_data(grid.Ks_density_loc);
+        grid.send_recev_boundary_data(grid.Kxi_density_loc);
+        grid.send_recev_boundary_data(grid.Keta_density_loc);
+
+        grid.send_recev_boundary_data_kosumi(grid.Ks_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Kxi_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Keta_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Ks_density_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Kxi_density_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Keta_density_loc);
+    }
+
+    synchronize_all_world();
+}
+
+
 // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel if requested
 inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, bool line_search_mode, bool is_save_T){
     // line_search_mode: if true, time field and adjoint field will not be written into file
@@ -328,7 +378,7 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
 
         // set simu group id and source name for output files/dataset names
         io.reset_source_info(id_sim_src, name_sim_src);
-        
+
 
         /////////////////////////
         // run forward simulation
@@ -442,11 +492,15 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     // compute all residual and obj
     std::vector<CUSTOMREAL> obj_residual = recs.calculate_obj_and_residual(IP);
 
+    // check kernel density and sum up kernels from all simulateous group (level 1)
+    if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC){
+        check_kernel_density(IP, grid);     // check kernel density
+        sumup_kernels(grid); // allreduce kernels from all simulateous group (level 1)
+    }
 
     // return current objective function value
     return obj_residual;
 }
-
 
 
 

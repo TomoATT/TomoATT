@@ -33,12 +33,6 @@ protected:
     // ------------------ main function ------------------
     // ---------------------------------------------------
 
-    // check kernel density
-    void check_kernel_density(InputParams& IP, Grid& grid);
-
-    // sum up kernels from all simulateous group (level 1)
-    void sumup_kernels(Grid& grid);
-
     // write out kernels 
     void write_original_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
@@ -52,7 +46,7 @@ protected:
     void determine_step_length_controlled(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
 
     // determine step length (line search method)
-    void determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
+    void determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout);
 
     // set new model
     void set_new_model(Grid&, CUSTOMREAL);

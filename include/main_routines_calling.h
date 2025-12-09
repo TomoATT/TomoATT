@@ -34,7 +34,7 @@
 inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils &io) {
 
     // for check if the current source is the first source
-    bool first_src = true;
+    // bool first_src = true;
 
     if(myrank == 0)
         std::cout << "id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
@@ -98,7 +98,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
     }
     
 
-    bool line_search_mode = false; // if true, run_simulation_one_step skips adjoint simulation and only calculates objective function value
+    // bool line_search_mode = false; // if true, run_simulation_one_step skips adjoint simulation and only calculates objective function value
 
     // objective function for all src
     CUSTOMREAL v_obj = 0.0, old_v_obj = 0.0;
@@ -120,18 +120,18 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         ///////////////////////////////////////////////////////
 
         // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
-        line_search_mode = false;
+        // line_search_mode = false;
         // skip for the mode with sub-iteration
-        // if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
+        if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
             
-        // } else {
-        //     bool is_save_T = false;
-        //     v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, line_search_mode, is_save_T);
-        //     v_obj = v_obj_misfit[0];
-        // }
+        } else {
+            bool is_save_T = false;
+            v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, is_save_T);
+            v_obj = v_obj_misfit[0];
+        }
         // (to do) if line search is applied, run_simulation_one_step should be called inside model_update function of optimizer class
-        v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, false);
-        v_obj = v_obj_misfit[0];
+        // v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, false);
+        // v_obj = v_obj_misfit[0];
 
 
         // wait for all processes to finish
@@ -336,7 +336,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
     /////////////////////
 
     // for check if the current source is the first source
-    bool first_src = true;
+    // bool first_src = true;
 
     if(myrank == 0)
         std::cout << "id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
@@ -376,7 +376,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
 
     synchronize_all_world();
 
-    bool line_search_mode = false; // if true, run_simulation_one_step skips adjoint simulation and only calculates objective function value
+    // bool line_search_mode = false; // if true, run_simulation_one_step skips adjoint simulation and only calculates objective function value
 
     /////////////////////
     // preparation of relocation
@@ -445,12 +445,12 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 ///////////////////////////////////////////////////////
 
                 // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
-                line_search_mode = false;
+                // line_search_mode = false;
                 // skip for the mode with sub-iteration
                 if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
                 } else {
                     bool is_save_T = false;
-                    v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, line_search_mode, is_save_T);
+                    v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, is_save_T);
                     v_obj = v_obj_misfit[0];
                 }
 
@@ -657,12 +657,12 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 ///////////////////////////////////////////////////////
 
             // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
-            line_search_mode = false;
+            // line_search_mode = false;
             // skip for the mode with sub-iteration
             if (i_loop > 0 && optim_method != GRADIENT_DESCENT) {
             } else {
                 bool is_save_T = true;
-                v_obj_misfit = run_simulation_one_step(IP, grid, io, i_loop, line_search_mode, is_save_T);
+                v_obj_misfit = run_simulation_one_step(IP, grid, io, i_loop, false, is_save_T);
                 v_obj = v_obj_misfit[0];
             }
 
