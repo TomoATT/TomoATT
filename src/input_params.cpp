@@ -221,12 +221,17 @@ InputParams::InputParams(std::string& input_file){
             // optim_method
             if (config["model_update"]["optim_method"]) {
                 getNodeValue(config["model_update"], "optim_method", optim_method);
-                if (optim_method > 2) {
+                if (optim_method > 1) {
                     std::cout << "undefined optim_method. stop." << std::endl;
                     //MPI_Finalize();
                     exit(1);
                 }
             }
+            // line_search_mode
+            if (config["model_update"]["line_search_mode"]) {
+                getNodeValue(config["model_update"], "line_search_mode", line_search_mode);
+            }
+
             // step_length
             if (config["model_update"]["step_length"]) {
                 getNodeValue(config["model_update"], "step_length", step_length_init);
@@ -266,21 +271,21 @@ InputParams::InputParams(std::string& input_file){
                 }
             }
 
-            // parameters for optim_method == 1 or 2
-            if (optim_method == 1 || optim_method == 2) {
+            // parameters for optim_method == 1
+            if (optim_method == 1) {
                 // max_sub_iterations
-                if (config["model_update"]["optim_method_1_2"]["max_sub_iterations"]) {
-                    getNodeValue(config["model_update"]["optim_method_1_2"], "max_sub_iterations", max_sub_iterations);
+                if (config["model_update"]["optim_method_1"]["max_sub_iterations"]) {
+                    getNodeValue(config["model_update"]["optim_method_1"], "max_sub_iterations", max_sub_iterations);
                 }
                 // regularization weight
-                if (config["model_update"]["optim_method_1_2"]["regularization_weight"]) {
-                    getNodeValue(config["model_update"]["optim_method_1_2"], "regularization_weight", regularization_weight);
+                if (config["model_update"]["optim_method_1"]["regularization_weight"]) {
+                    getNodeValue(config["model_update"]["optim_method_1"], "regularization_weight", regularization_weight);
                 }
                 // regularization laplacian weights
-                if (config["model_update"]["optim_method_1_2"]["coefs_regulalization_rtp"]) {
-                    getNodeValue(config["model_update"]["optim_method_1_2"], "coefs_regulalization_rtp", regul_lr, 0);
-                    getNodeValue(config["model_update"]["optim_method_1_2"], "coefs_regulalization_rtp", regul_lt, 1);
-                    getNodeValue(config["model_update"]["optim_method_1_2"], "coefs_regulalization_rtp", regul_lp, 2);
+                if (config["model_update"]["optim_method_1"]["coefs_regulalization_rtp"]) {
+                    getNodeValue(config["model_update"]["optim_method_1"], "coefs_regulalization_rtp", regul_lr, 0);
+                    getNodeValue(config["model_update"]["optim_method_1"], "coefs_regulalization_rtp", regul_lt, 1);
+                    getNodeValue(config["model_update"]["optim_method_1"], "coefs_regulalization_rtp", regul_lp, 2);
 
                     // convert degree to radian
                     regul_lt = regul_lt * DEG2RAD;
@@ -784,6 +789,7 @@ InputParams::InputParams(std::string& input_file){
     
     broadcast_i_single(max_iter_inv, 0);
     broadcast_i_single(optim_method, 0);
+    broadcast_bool_single(line_search_mode, 0);
     broadcast_i_single(step_method, 0);
     broadcast_cr_single(step_length_init, 0);
     broadcast_cr_single(step_length_decay, 0);
@@ -1086,7 +1092,8 @@ void InputParams::write_params_to_file() {
     fout << "###################################################" << std::endl;
     fout << "model_update:" << std::endl;
     fout << "  max_iterations: " << max_iter_inv << " # maximum number of inversion iterations" << std::endl;
-    fout << "  optim_method: "   << optim_method << " # optimization method. 0 : grad_descent, 1 : halve-stepping, 2 : lbfgs (EXPERIMENTAL)" << std::endl;
+    fout << "  optim_method: "   << optim_method << " # optimization method. 0 : grad_descent, 1 : lbfgs; default: 0" << std::endl;
+    fout << "  line_search_mode: " << line_search_mode << " # if true, use line search to determine step length, otherwise, use controlled step size. default: false" << std::endl;
     fout << std::endl;
     fout << "  #common parameters for all optim methods" << std::endl;
     fout << "  step_length: "             << step_length_init << " # the initial step length of model perturbation. 0.01 means maximum 1% perturbation for each iteration." << std::endl;
@@ -1104,8 +1111,8 @@ void InputParams::write_params_to_file() {
     fout << "    #  e.g., if Kdensity_coe = 0, kernel remains upchanged; if Kdensity_coe = 1, kernel is fully normalized. 0.5 or less is recommended if really required." << std::endl;
     fout << "    Kdensity_coe: " <<  Kdensity_coe << " # default: 0.0,  limited range: 0.0 - 0.95 " << std::endl;
     fout << std::endl;
-    fout << "  # parameters for optim_method 1 (halve-stepping) or 2 (lbfgs)" << std::endl;
-    fout << "  optim_method_1_2:" << std::endl;
+    fout << "  # parameters for optim_method 1 (lbfgs)" << std::endl;
+    fout << "  optim_method_1:" << std::endl;
     fout << "    max_sub_iterations: "    << max_sub_iterations << " # maximum number of each sub-iteration" << std::endl;
     fout << "    regularization_weight: " << regularization_weight << " # weight value for regularization (lbfgs mode only)" << std::endl;
 

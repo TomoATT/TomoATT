@@ -43,13 +43,13 @@ protected:
     void write_modified_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
     // determine step length (original method step-size controlled)
-    void determine_step_length_controlled(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
+    void determine_step_length_controlled(InputParams& IP, Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
 
     // determine step length (line search method)
     void determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout);
 
     // set new model
-    void set_new_model(Grid&, CUSTOMREAL);
+    void set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_length);
 
     // write new model
     void write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);

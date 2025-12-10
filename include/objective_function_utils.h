@@ -12,7 +12,9 @@ inline void prepare_header_line(InputParams &IP, std::ofstream &out_main) {
     // prepare output for iteration status
     if(myrank == 0 && id_sim ==0){
         out_main.open(output_dir + "/objective_function.txt");
-        if (optim_method == GRADIENT_DESCENT || optim_method == HALVE_STEPPING_MODE){
+        // if (optim_method == GRADIENT_DESCENT || optim_method == HALVE_STEPPING_MODE){
+        if (optim_method == GRADIENT_DESCENT){
+        
 
             out_main << std::setw(8) << std::right << "# iter,";
             out_main << std::setw(13) << std::right << " type,";

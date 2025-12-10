@@ -548,67 +548,67 @@ void Grid::memory_allocation() {
             Tadj_density_loc = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 106);
         }
 
-        if (optim_method==HALVE_STEPPING_MODE) {
-            fac_b_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 107);
-            fac_c_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 108);
-            fac_f_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 109);
-            xi_loc_back  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 110);
-            eta_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 111);
-            fun_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 112);
-        }
+        // if (optim_method==HALVE_STEPPING_MODE) {
+        //     fac_b_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 107);
+        //     fac_c_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 108);
+        //     fac_f_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 109);
+        //     xi_loc_back  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 110);
+        //     eta_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 111);
+        //     fun_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 112);
+        // }
 
-        if (optim_method==LBFGS_MODE) {
-            fac_b_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 113);
-            fac_c_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 114);
-            fac_f_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 115);
-            xi_loc_back  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 116);
-            eta_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 117);
-            fun_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 118);
+        // if (optim_method==LBFGS_MODE) {
+        //     fac_b_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 113);
+        //     fac_c_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 114);
+        //     fac_f_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 115);
+        //     xi_loc_back  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 116);
+        //     eta_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 117);
+        //     fun_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 118);
 
-            int n_total_loc_lbfgs = n_total_loc_grid_points * Mbfgs;
-            Ks_descent_dir_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 119);
-            Kxi_descent_dir_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 120);
-            Keta_descent_dir_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 121);
-            // initialize
-            std::fill(Ks_descent_dir_loc,   Ks_descent_dir_loc   + n_total_loc_lbfgs, _0_CR);
-            std::fill(Kxi_descent_dir_loc,  Kxi_descent_dir_loc  + n_total_loc_lbfgs, _0_CR);
-            std::fill(Keta_descent_dir_loc, Keta_descent_dir_loc + n_total_loc_lbfgs, _0_CR);
+        //     int n_total_loc_lbfgs = n_total_loc_grid_points * Mbfgs;
+        //     Ks_descent_dir_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 119);
+        //     Kxi_descent_dir_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 120);
+        //     Keta_descent_dir_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 121);
+        //     // initialize
+        //     std::fill(Ks_descent_dir_loc,   Ks_descent_dir_loc   + n_total_loc_lbfgs, _0_CR);
+        //     std::fill(Kxi_descent_dir_loc,  Kxi_descent_dir_loc  + n_total_loc_lbfgs, _0_CR);
+        //     std::fill(Keta_descent_dir_loc, Keta_descent_dir_loc + n_total_loc_lbfgs, _0_CR);
 
-            if (id_sim==0){
-                Ks_grad_store_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 122);
-                Kxi_grad_store_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 123);
-                Keta_grad_store_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 124);
-                Ks_model_store_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 125);
-                Kxi_model_store_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 126);
-                Keta_model_store_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 127);
-                fun_gradient_regularization_penalty_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 128);
-                xi_gradient_regularization_penalty_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 129);
-                eta_gradient_regularization_penalty_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 130);
-                fun_regularization_penalty_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 131);
-                xi_regularization_penalty_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 132);
-                eta_regularization_penalty_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 133);
-                fun_prior_loc                           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 134);
-                xi_prior_loc                            = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 135);
-                eta_prior_loc                           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 136);
+        //     if (id_sim==0){
+        //         Ks_grad_store_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 122);
+        //         Kxi_grad_store_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 123);
+        //         Keta_grad_store_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 124);
+        //         Ks_model_store_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 125);
+        //         Kxi_model_store_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 126);
+        //         Keta_model_store_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 127);
+        //         fun_gradient_regularization_penalty_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 128);
+        //         xi_gradient_regularization_penalty_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 129);
+        //         eta_gradient_regularization_penalty_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 130);
+        //         fun_regularization_penalty_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 131);
+        //         xi_regularization_penalty_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 132);
+        //         eta_regularization_penalty_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 133);
+        //         fun_prior_loc                           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 134);
+        //         xi_prior_loc                            = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 135);
+        //         eta_prior_loc                           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 136);
 
-                // initialize
-                std::fill(Ks_grad_store_loc,                       Ks_grad_store_loc                       + n_total_loc_lbfgs, _0_CR);
-                std::fill(Kxi_grad_store_loc,                      Kxi_grad_store_loc                      + n_total_loc_lbfgs, _0_CR);
-                std::fill(Keta_grad_store_loc,                     Keta_grad_store_loc                     + n_total_loc_lbfgs, _0_CR);
-                std::fill(Ks_model_store_loc,                      Ks_model_store_loc                      + n_total_loc_lbfgs, _0_CR);
-                std::fill(Kxi_model_store_loc,                     Kxi_model_store_loc                     + n_total_loc_lbfgs, _0_CR);
-                std::fill(Keta_model_store_loc,                    Keta_model_store_loc                    + n_total_loc_lbfgs, _0_CR);
-                std::fill(fun_gradient_regularization_penalty_loc, fun_gradient_regularization_penalty_loc + n_total_loc_lbfgs, _0_CR);
-                std::fill(xi_gradient_regularization_penalty_loc,  xi_gradient_regularization_penalty_loc  + n_total_loc_lbfgs, _0_CR);
-                std::fill(eta_gradient_regularization_penalty_loc, eta_gradient_regularization_penalty_loc + n_total_loc_lbfgs, _0_CR);
-                std::fill(fun_regularization_penalty_loc,          fun_regularization_penalty_loc          + n_total_loc_lbfgs, _0_CR);
-                std::fill(xi_regularization_penalty_loc,           xi_regularization_penalty_loc           + n_total_loc_lbfgs, _0_CR);
-                std::fill(eta_regularization_penalty_loc,          eta_regularization_penalty_loc          + n_total_loc_lbfgs, _0_CR);
-                std::fill(fun_prior_loc,                           fun_prior_loc                           + n_total_loc_lbfgs, _0_CR);
-                std::fill(xi_prior_loc,                            xi_prior_loc                            + n_total_loc_lbfgs, _0_CR);
-                std::fill(eta_prior_loc,                           eta_prior_loc                           + n_total_loc_lbfgs, _0_CR);
-            }
-        }
+        //         // initialize
+        //         std::fill(Ks_grad_store_loc,                       Ks_grad_store_loc                       + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(Kxi_grad_store_loc,                      Kxi_grad_store_loc                      + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(Keta_grad_store_loc,                     Keta_grad_store_loc                     + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(Ks_model_store_loc,                      Ks_model_store_loc                      + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(Kxi_model_store_loc,                     Kxi_model_store_loc                     + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(Keta_model_store_loc,                    Keta_model_store_loc                    + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(fun_gradient_regularization_penalty_loc, fun_gradient_regularization_penalty_loc + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(xi_gradient_regularization_penalty_loc,  xi_gradient_regularization_penalty_loc  + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(eta_gradient_regularization_penalty_loc, eta_gradient_regularization_penalty_loc + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(fun_regularization_penalty_loc,          fun_regularization_penalty_loc          + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(xi_regularization_penalty_loc,           xi_regularization_penalty_loc           + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(eta_regularization_penalty_loc,          eta_regularization_penalty_loc          + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(fun_prior_loc,                           fun_prior_loc                           + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(xi_prior_loc,                            xi_prior_loc                            + n_total_loc_lbfgs, _0_CR);
+        //         std::fill(eta_prior_loc,                           eta_prior_loc                           + n_total_loc_lbfgs, _0_CR);
+        //     }
+        // }
     } // end of if inverse_flag
 
     stdout_by_main("Memory allocation done.");
@@ -863,41 +863,41 @@ void Grid::memory_deallocation() {
             delete[] Tadj_density_loc;
        }
 
-        if (optim_method==HALVE_STEPPING_MODE) {
-            delete[] fac_b_loc_back;
-            delete[] fac_c_loc_back;
-            delete[] fac_f_loc_back;
-            delete[] fun_loc_back;
-            delete[] xi_loc_back;
-            delete[] eta_loc_back;
-        }
+        // if (optim_method==HALVE_STEPPING_MODE) {
+        //     delete[] fac_b_loc_back;
+        //     delete[] fac_c_loc_back;
+        //     delete[] fac_f_loc_back;
+        //     delete[] fun_loc_back;
+        //     delete[] xi_loc_back;
+        //     delete[] eta_loc_back;
+        // }
 
-        if (optim_method==LBFGS_MODE) {
-            delete[] fac_b_loc_back;
-            delete[] fac_c_loc_back;
-            delete[] fac_f_loc_back;
-            delete[] fun_loc_back;
-            delete[] xi_loc_back;
-            delete[] eta_loc_back;
+        // if (optim_method==LBFGS_MODE) {
+        //     delete[] fac_b_loc_back;
+        //     delete[] fac_c_loc_back;
+        //     delete[] fac_f_loc_back;
+        //     delete[] fun_loc_back;
+        //     delete[] xi_loc_back;
+        //     delete[] eta_loc_back;
 
-            if (id_sim==0){
-                delete[] Ks_grad_store_loc;
-                delete[] Kxi_grad_store_loc;
-                delete[] Keta_grad_store_loc;
-                delete[] Ks_model_store_loc;
-                delete[] Kxi_model_store_loc;
-                delete[] Keta_model_store_loc;
-                delete[] fun_gradient_regularization_penalty_loc;
-                delete[] xi_gradient_regularization_penalty_loc;
-                delete[] eta_gradient_regularization_penalty_loc;
-                delete[] fun_regularization_penalty_loc;
-                delete[] xi_regularization_penalty_loc;
-                delete[] eta_regularization_penalty_loc;
-                delete[] fun_prior_loc;
-                delete[] xi_prior_loc;
-                delete[] eta_prior_loc;
-            }
-       }
+        //     if (id_sim==0){
+        //         delete[] Ks_grad_store_loc;
+        //         delete[] Kxi_grad_store_loc;
+        //         delete[] Keta_grad_store_loc;
+        //         delete[] Ks_model_store_loc;
+        //         delete[] Kxi_model_store_loc;
+        //         delete[] Keta_model_store_loc;
+        //         delete[] fun_gradient_regularization_penalty_loc;
+        //         delete[] xi_gradient_regularization_penalty_loc;
+        //         delete[] eta_gradient_regularization_penalty_loc;
+        //         delete[] fun_regularization_penalty_loc;
+        //         delete[] xi_regularization_penalty_loc;
+        //         delete[] eta_regularization_penalty_loc;
+        //         delete[] fun_prior_loc;
+        //         delete[] xi_prior_loc;
+        //         delete[] eta_prior_loc;
+        //     }
+        // }
     } // end if inverse_flag
 
     stdout_by_main("Memory deallocation done.");
@@ -986,11 +986,11 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         std::fill(zeta_loc, zeta_loc + loc_I*loc_J*loc_K, _0_CR);
 
         // copy initial model to prior model arrays
-        if (optim_method==LBFGS_MODE){
-            std::copy(xi_loc,  xi_loc + loc_I*loc_J*loc_K,  xi_prior_loc);
-            std::copy(eta_loc, eta_loc + loc_I*loc_J*loc_K, eta_prior_loc);
-            std::copy(fun_loc, fun_loc + loc_I*loc_J*loc_K, fun_prior_loc);
-        }
+        // if (optim_method==LBFGS_MODE){
+        //     std::copy(xi_loc,  xi_loc + loc_I*loc_J*loc_K,  xi_prior_loc);
+        //     std::copy(eta_loc, eta_loc + loc_I*loc_J*loc_K, eta_prior_loc);
+        //     std::copy(fun_loc, fun_loc + loc_I*loc_J*loc_K, fun_prior_loc);
+        // }
 
     }
 

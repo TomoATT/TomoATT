@@ -85,9 +85,6 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
     std::unique_ptr<Optimizer> optimizer;  // optimizer pointer
     if (optim_method == GRADIENT_DESCENT){
         optimizer = std::make_unique<Optimizer_gd>(IP);
-    } else if (optim_method == HALVE_STEPPING_MODE){
-        std::cout << "Halve stepping mode not implemented yet." << std::endl;
-        exit(1);
     } else if (optim_method == LBFGS_MODE){
         // std::cout << "LBFGS mode not implemented yet." << std::endl;
         // must make output_kernel: true and output_in_process: true in InputParams, because the previous kernels are needed to calculate the gradient difference
@@ -122,7 +119,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
         // line_search_mode = false;
         // skip for the mode with sub-iteration
-        if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
+        if (i_inv > 0 && line_search_mode) {
             
         } else {
             bool is_save_T = false;
@@ -157,7 +154,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
             std::cout << "model update starting ... " << std::endl;
 
         if (IP.get_run_mode() == DO_INVERSION) {
-            optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, false);
+            optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, line_search_mode);
             // if (optim_method == GRADIENT_DESCENT)
             //     optimizer_gd.model_update(IP, grid, io, i_inv, v_obj, old_v_obj);
             //     // model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
@@ -176,14 +173,14 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         // output objective function
         write_objective_function(IP, i_inv, v_obj_misfit, out_main, "model update");
 
-        // since model is update. The written traveltime field should be discraded.
-        // initialize is_T_written_into_file
-        for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-            const std::string name_sim_src = IP.get_src_name(i_src);
+        // since model is update. The written traveltime field should be discraded (done in optimizer->model_update).
+        // // initialize is_T_written_into_file
+        // for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+        //     const std::string name_sim_src = IP.get_src_name(i_src);
 
-            if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
-                IP.src_map[name_sim_src].is_T_written_into_file = false;
-        }
+        //     if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
+        //         IP.src_map[name_sim_src].is_T_written_into_file = false;
+        // }
 
         // output updated model (done in optimizer->model_update)
 
@@ -397,9 +394,6 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
     std::unique_ptr<Optimizer> optimizer;  // optimizer pointer
     if (optim_method == GRADIENT_DESCENT){
         optimizer = std::make_unique<Optimizer_gd>(IP);
-    } else if (optim_method == HALVE_STEPPING_MODE){
-        std::cout << "Halve stepping mode not implemented yet." << std::endl;
-        exit(1);
     } else if (optim_method == LBFGS_MODE){
         // std::cout << "LBFGS mode not implemented yet." << std::endl;
         // must make output_kernel: true and output_in_process: true in InputParams, because the previous kernels are needed to calculate the gradient difference
@@ -447,7 +441,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
                 // line_search_mode = false;
                 // skip for the mode with sub-iteration
-                if (i_inv > 0 && optim_method != GRADIENT_DESCENT) {
+                if (i_inv > 0 && line_search_mode) {
                 } else {
                     bool is_save_T = false;
                     v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, is_save_T);
@@ -469,7 +463,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 // model update
                 ///////////////
 
-                optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, false);
+                optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, line_search_mode);
 
                 // if (optim_method == GRADIENT_DESCENT)
                 //     model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
@@ -659,7 +653,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
             // line_search_mode = false;
             // skip for the mode with sub-iteration
-            if (i_loop > 0 && optim_method != GRADIENT_DESCENT) {
+            if (i_loop > 0 && line_search_mode) {
             } else {
                 bool is_save_T = true;
                 v_obj_misfit = run_simulation_one_step(IP, grid, io, i_loop, false, is_save_T);
@@ -682,7 +676,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             // model update
             ///////////////
 
-            optimizer->model_update(IP, grid, io, i_loop, v_obj, old_v_obj, false);
+            optimizer->model_update(IP, grid, io, i_loop, v_obj, old_v_obj, line_search_mode);
 
             // if (optim_method == GRADIENT_DESCENT)
             //     model_optimize(IP, grid, io, i_loop, v_obj, old_v_obj, first_src, out_main);

@@ -30,17 +30,16 @@ void Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_i
     // write out modified kernels (descent direction)
     // Ks_update, Kxi_update, Keta_update, Ks_density_update, Kxi_density_update, Keta_density_update
     write_modified_kernels(IP, grid, io, i_inv);
-    // determine step length (specialized in derived classes) (have been broadcasted to all simultaneous groups)
+
+
+    // determine step length, and set new model
     if (!is_line_search){
-        determine_step_length_controlled(grid, i_inv, v_obj_inout, old_v_obj);
+        // step-size controlled implementation
+        determine_step_length_controlled(IP, grid, i_inv, v_obj_inout, old_v_obj);
     } else {
-        // (to do) line search implementation
+        // line search implementation
         determine_step_length_line_search(IP, grid, io, i_inv, v_obj_inout);
     }
-
-
-    // set new model
-    set_new_model(grid, step_length_init);
 
     // write new model
     write_new_model(IP, grid, io, i_inv);
@@ -104,7 +103,7 @@ void Optimizer::write_modified_kernels(InputParams& IP, Grid& grid, IO_utils& io
 
 
 // determine step length
-void Optimizer::determine_step_length_controlled(Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
+void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
 
     if(subdom_main && id_sim == 0){     // main of level 1 and level 3 determine steo
         // change stepsize
@@ -179,12 +178,18 @@ void Optimizer::determine_step_length_controlled(Grid& grid, int i_inv, CUSTOMRE
 
     // broadcast the step_length
     broadcast_cr_single(step_length_init,0);
+
+    // set new model
+    set_new_model(IP, grid, step_length_init);
 }
 
 
 // determine step length (line search method)
 void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout) {
     
+    if (subdom_main && id_sim == 0){
+        std::cout << "Line search to determine step length starting ... " << std::endl;
+    }
 
     // ----------------------- step 1, backup current model -----------------------
     if (subdom_main){   // main of level 3 can backup model
@@ -195,7 +200,7 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
 
     // ----------------------- step 2, do line search -----------------------
     CUSTOMREAL alpha = step_length_init;        // initial step length
-    int quit_sub_iter = 20;                      // maximum sub-iteration number to quit (avoid too many sub-iterations)
+    int quit_sub_iter = 2;                      // maximum sub-iteration number to quit (avoid too many sub-iterations)
     CUSTOMREAL alpha_R = _0_CR;                 // upper bound of step length
     CUSTOMREAL alpha_L = _0_CR;                 // lower bound of step length
 
@@ -214,9 +219,10 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
 
         // substep 2, --------- set new model with current alpha ---------
         if (subdom_main){
-            set_new_model(grid, alpha);
+            set_new_model(IP, grid, alpha);
         }
-        
+        synchronize_all_world();
+
         // substep 3, --------- forward modeling + adjoint field + kernel  ---------
         std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
         v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, true, false);
@@ -324,7 +330,7 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
 
 
 // set new model
-void Optimizer::set_new_model(Grid& grid, CUSTOMREAL step_length){
+void Optimizer::set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_length){
 
     if (subdom_main) {
         for (int k = 0; k < loc_K; k++) {
@@ -350,6 +356,15 @@ void Optimizer::set_new_model(Grid& grid, CUSTOMREAL step_length){
         grid.send_recev_boundary_data(grid.fac_f_loc);
 
     } // end if subdom_main
+
+    // since model is update. The written traveltime field should be discraded
+    // initialize is_T_written_into_file
+    for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+        const std::string name_sim_src = IP.get_src_name(i_src);
+
+        if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
+            IP.src_map[name_sim_src].is_T_written_into_file = false;
+    }
 }
 
 
@@ -459,6 +474,11 @@ void Optimizer::check_kernel_value_range(Grid& grid) {
                     }
                 }
             }
+
+            // gather max_kernel from all processes
+            CUSTOMREAL tmp;
+            allreduce_cr_single_max(max_kernel, tmp);
+            max_kernel = tmp;
 
             if (max_kernel <= eps) {    
                 std::cout << "Error: max_kernel is near zero (less than 10^-12), check data residual and whether no data is used" << std::endl;

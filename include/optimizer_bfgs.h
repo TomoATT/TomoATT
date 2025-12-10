@@ -51,6 +51,8 @@ private:
     void get_model_dif(Grid& grid, IO_utils& io, int& i_inv);
     void get_gradient_dif(Grid& grid, IO_utils& io, int& i_inv);
     
+    // vector dot product
+    CUSTOMREAL vector_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n);
 
 };
 
