@@ -260,7 +260,7 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
 
         // check conditions
         if(myrank == 0 && id_sim == 0){
-            std::cout << std::endl 
+            std::cout << std::endl; 
             std::cout << "Evaluate conditions at sub-iteration " << sub_iter << ": " << std::endl;
             std::cout << "    Tried step length alpha = " << alpha << std::endl;
             std::cout << "    Objective function value at current model: " << v_obj_inout << std::endl;
