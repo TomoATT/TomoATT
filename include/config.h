@@ -193,7 +193,14 @@ inline int      ndiv_k           = 1; // number of divisions in z direction
 inline int      id_sim           = 0; // simultaneous run id  (not equal to src id)                 (parallel level 1)
 inline int      id_subdomain     = 0; // subdomain id                                               (parallel level 2)
 inline bool     subdom_main      = false; // true if this process is main process in subdomain      (parallel level 3)
-// Note:
+// Note 1:
+// sim_comm: within one simultaneous group: n_l2*n_l3 processes
+// inter_sim_comm: between simultaneous groups, rank 0 of each simultaneous group: n_l1 processes
+// sub_comm: within one subdomain: n_l3 processes
+// inter_sub_comm: between subdomain main processes, main of each subdomain: n_l2 processes
+// see "broadcast_bool_inter_and_intra_sim" in mpi_funcs.h for example of usage
+
+// Note 2:
 // id of simultaneous group (level 1) (0 to n_l1 -1) -> id_sim
 // id of subdomain (level 2)          (0 to n_l2 -1) -> id_subdomain, or inter_sub_rank (only for subdom_main == true)
 // id within a subdomain (level 3)    (0 to n_l3 -1) -> sub_rank

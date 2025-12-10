@@ -187,7 +187,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
 // determine step length (line search method)
 void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout) {
     
-    if (subdom_main && id_sim == 0){
+    if (myrank == 0 && id_sim == 0){
         std::cout << "Line search to determine step length starting ... " << std::endl;
     }
 
@@ -205,10 +205,14 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
     CUSTOMREAL alpha_L = _0_CR;                 // lower bound of step length
 
     // constant value for curvature condition
-    CUSTOMREAL c2_inner_product_old = 0.9 * dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
+    CUSTOMREAL c2_inner_product_old = 0.9 * grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
 
     // main line search iteration
     for(int sub_iter = 0; sub_iter < 100; sub_iter++){
+
+        if (myrank == 0 && id_sim == 0){
+            std::cout << "Line search sub-iteration " << sub_iter << ", try step length alpha = " << alpha << std::endl << std::endl;
+        }
 
         // substep 1, --------- back to the original model ---------
         if (subdom_main){
@@ -236,27 +240,42 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
         // So, we only check if f(x + alpha*p) < f(x)
         // This considtion ensures the step length is not too large.
         bool cond_armijo = false;
-        if (v_obj_try < v_obj_inout){
-            cond_armijo = true;
-        }
-
-        // condition 2, curvature condition
-        // grad_f(x + alpha*p)^T*p >= c2*grad_f(x)^T*p
-        // This condition ensures the step length is not too small.
         bool cond_curvature = false;
-        CUSTOMREAL inner_product_new = dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
-        if (inner_product_new >= c2_inner_product_old){
-            cond_curvature = true;
+        if(subdom_main){    // check conditions only for main of level 3
+            if (v_obj_try < v_obj_inout){
+                cond_armijo = true;
+            }
+            // condition 2, curvature condition
+            // grad_f(x + alpha*p)^T*p >= c2*grad_f(x)^T*p
+            // This condition ensures the step length is not too small.
+            CUSTOMREAL inner_product_new = grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
+            if (inner_product_new >= c2_inner_product_old){
+                cond_curvature = true;
+            }
         }
-        
+        // tell other non-subdom_main processes the condition results
+        broadcast_bool_single_sub(cond_armijo, 0);      // '_sub' means within one subdomain, subdom_main tell others
+        broadcast_bool_single_sub(cond_curvature, 0);
+
 
         // check conditions
+        if(myrank == 0 && id_sim == 0){
+            std::cout << std::endl 
+            std::cout << "Evaluate conditions at sub-iteration " << sub_iter << ": " << std::endl;
+            std::cout << "    Tried step length alpha = " << alpha << std::endl;
+            std::cout << "    Objective function value at current model: " << v_obj_inout << std::endl;
+            std::cout << "    Objective function value at tried model: " << v_obj_try << std::endl;
+            std::cout << "    Armijo condition satisfied: " << std::boolalpha << cond_armijo << std::endl;
+            std::cout << "    Curvature condition satisfied: " << std::boolalpha << cond_curvature << std::endl << std::endl;
+        }
+
+
         if (cond_armijo && cond_curvature){
             // satisfy Wolfe conditions
-            if(subdom_main && id_sim == 0){
+            if(myrank == 0 && id_sim == 0){
                 std::cout << "Satisfy Wolfe conditions at sub-iteration " << sub_iter 
-                          << ", step length alpha = " << alpha 
-                          << ", obj = " << v_obj_try << std::endl;
+                        << ", step length alpha = " << alpha 
+                        << ", obj = " << v_obj_try << std::endl;
             }
             break;
         } else if (!cond_armijo && cond_curvature){
@@ -264,16 +283,15 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
             alpha_R = alpha;
             alpha = (alpha_L + alpha_R) / 2.0;
             if (sub_iter == quit_sub_iter) {
-                if (subdom_main && id_sim == 0){
-                    std::cout   << "Armijo condition is still not satisfied at sub-iteration " << sub_iter << ", indicating that the step length " << alpha_R 
-                                << " is still too large. Even though, the code will quit line search due to too many tries. "
-                                << "The code will reduce the initial length to " << alpha << " at the next iteration." << std::endl;
+                if (myrank == 0 && id_sim == 0){
+                    std::cout   << "Quit line search due to too many tries. Armijo condition not satisfied. "
+                                << "Reduce the initial step length to " << alpha << " at the next iteration." << std::endl;
                 }
                 break;
             } else {
-                if (subdom_main && id_sim == 0){
-                    std::cout << "Does not satisfy Armijo condition at sub-iteration " << sub_iter 
-                            << ", step length is too large, decrease step length alpha from " << alpha_R 
+                if (myrank == 0 && id_sim == 0){
+                    std::cout << "Armijo condition not satisfied " << sub_iter 
+                            << ", step length may be too large, Reduce the searching step length from " << alpha_R 
                             << " to " << alpha << std::endl;
                 }
             }
@@ -287,34 +305,33 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
                 alpha = 2.0 * alpha;
             }
             if (sub_iter == quit_sub_iter) {
-                if (subdom_main && id_sim == 0){
-                    std::cout << "Curvature condition is still not satisfied at sub-iteration " << sub_iter << ", indicating that the step length " << alpha_L 
-                              << " is still too small. Even though, the code will quit line search due to too many tries. "
-                              << "The code will increase the initial length to " << alpha << " at the next iteration." << std::endl;
+                if (myrank == 0 && id_sim == 0){
+                    std::cout << "Quit line search due to too many tries. Curvature condition not satisfied. "
+                                << "Increase the initial step length to " << alpha << " at the next iteration." << std::endl;
                 }
                 break;
             } else {
-                if (subdom_main && id_sim == 0){
-                    std::cout << "Does not satisfy curvature condition at sub-iteration " << sub_iter 
-                            << ", step length is too small, increase step length alpha to " << alpha << std::endl;
+                if (myrank == 0 && id_sim == 0){
+                    mpi_debug_print_ranks();
+                    std::cout << "Curvature condition not satisfied" << sub_iter 
+                            << ", step length may be too small, Increase the searching step length from " << alpha_L 
+                            << " to " << alpha << std::endl;
                 }
             }
-
-            
         } else {
             // neither condition is satisfied
             alpha_R = alpha;
             alpha = (alpha_L + alpha_R) / 2.0;
             if (sub_iter == quit_sub_iter) {
-                if (subdom_main && id_sim == 0){
-                    std::cout   << "Curvature and Armijo conditions are still not satisfied at sub-iteration " << sub_iter << ". Even though, the code will quit line search due to too many tries. "
-                                << "The code will reduce the initial length to " << alpha << " at the next iteration." << std::endl;
+                if (myrank == 0 && id_sim == 0){
+                    std::cout   << "Quit line search due to too many tries. Curvature and Armijo conditions not satisfied. "
+                                << "Reduce the initial step length to " << alpha << " at the next iteration." << std::endl;
                 }
                 break;
             } else {
-                if (subdom_main && id_sim == 0){
-                    std::cout << "Does not satisfy both conditions at sub-iteration " << sub_iter 
-                            << ", decrease step length alpha from " << alpha_R 
+                if (myrank == 0 && id_sim == 0){
+                    std::cout << "Curvature and Armijo conditions not satisfied " << sub_iter 
+                            << ", step length may be too large, Reduce the searching step length from " << alpha_R 
                             << " to " << alpha << std::endl;
                 }
             }
@@ -351,6 +368,7 @@ void Optimizer::set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_lengt
         grid.send_recev_boundary_data(grid.fun_loc);
         grid.send_recev_boundary_data(grid.xi_loc);
         grid.send_recev_boundary_data(grid.eta_loc);
+        // grid.send_recev_boundary_data(grid.fac_a_loc);
         grid.send_recev_boundary_data(grid.fac_b_loc);
         grid.send_recev_boundary_data(grid.fac_c_loc);
         grid.send_recev_boundary_data(grid.fac_f_loc);
@@ -403,19 +421,22 @@ CUSTOMREAL Optimizer::direction_change_of_model_update(Grid& grid){
     CUSTOMREAL angle = _0_CR;
     if (subdom_main) {
         // initiaize update params
-        inner_product      = dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc, loc_I*loc_J*loc_K);
-        norm_grad          = dot_product(grid.Ks_update_loc, grid.Ks_update_loc, loc_I*loc_J*loc_K);
-        norm_grad_previous = dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc_previous, loc_I*loc_J*loc_K);
+        inner_product      = grid_value_dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc, loc_I*loc_J*loc_K);
+        norm_grad          = grid_value_dot_product(grid.Ks_update_loc, grid.Ks_update_loc, loc_I*loc_J*loc_K);
+        norm_grad_previous = grid_value_dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc_previous, loc_I*loc_J*loc_K);
+        // inner_product      = dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc, loc_I*loc_J*loc_K);
+        // norm_grad          = dot_product(grid.Ks_update_loc, grid.Ks_update_loc, loc_I*loc_J*loc_K);
+        // norm_grad_previous = dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc_previous, loc_I*loc_J*loc_K);
 
-        CUSTOMREAL tmp;
-        allreduce_cr_single(inner_product,tmp);
-        inner_product = tmp;
+        // CUSTOMREAL tmp;
+        // allreduce_cr_single(inner_product,tmp);
+        // inner_product = tmp;
 
-        allreduce_cr_single(norm_grad,tmp);
-        norm_grad = tmp;
+        // allreduce_cr_single(norm_grad,tmp);
+        // norm_grad = tmp;
 
-        allreduce_cr_single(norm_grad_previous,tmp);
-        norm_grad_previous = tmp;
+        // allreduce_cr_single(norm_grad_previous,tmp);
+        // norm_grad_previous = tmp;
 
         cos_angle = inner_product / (std::sqrt(norm_grad) * std::sqrt(norm_grad_previous));
         angle     = acos(cos_angle) * RAD2DEG;
@@ -524,3 +545,12 @@ bool Optimizer::is_write_original_kernel(InputParams& IP, int& i_inv){
     return is_write;
 }
 
+
+// vector dot product
+// (to do) remove boundary ghost points
+CUSTOMREAL Optimizer::grid_value_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n){
+    CUSTOMREAL local_sum = dot_product(vec1, vec2, n);
+    CUSTOMREAL global_sum;
+    allreduce_cr_single(local_sum, global_sum);
+    return global_sum;
+}

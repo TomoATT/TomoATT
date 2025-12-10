@@ -72,6 +72,9 @@ protected:
     bool is_write_original_kernel(InputParams& IP, int& i_inv);
     bool is_write_modified_kernel(InputParams& IP, int& i_inv);
 
+    // vector dot product
+    CUSTOMREAL grid_value_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n);
+
 };
 
 #endif // OPTIMIZER_H

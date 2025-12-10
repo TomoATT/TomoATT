@@ -82,10 +82,10 @@ void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, 
                     // --------------- substep 1, calculate rho_i = 1 / (y_i^T * s_i)
                     get_model_dif(grid, io, i_bfgs);        // obtain s_i (model difference)
                     get_gradient_dif(grid, io, i_bfgs);     // obtain y_i (gradient difference)
-                    rho[i_bfgs] = 1.0 / vector_dot_product(yk_s.data(), sk_s.data(), n_total_loc_grid_points);
+                    rho[i_bfgs] = 1.0 / grid_value_dot_product(yk_s.data(), sk_s.data(), n_total_loc_grid_points);
 
                     // --------------- substep 2, calculate alpha_i = rho_i * s_i^T * q
-                    alpha[i_bfgs] = rho[i_bfgs] * vector_dot_product(sk_s.data(), descent_dir_s.data(), n_total_loc_grid_points);
+                    alpha[i_bfgs] = rho[i_bfgs] * grid_value_dot_product(sk_s.data(), descent_dir_s.data(), n_total_loc_grid_points);
 
                     // --------------- substep 3, q = q - alpha_i * y_i
                     for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
@@ -99,8 +99,8 @@ void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, 
                 int i_bfgs = i_inv - 1;
                 get_model_dif(grid, io, i_bfgs);     // obtain s_{k-1} (model difference)
                 get_gradient_dif(grid, io, i_bfgs);  // obtain y_{k-1} (gradient difference)
-                CUSTOMREAL sT_y = vector_dot_product(sk_s.data(), yk_s.data(), n_total_loc_grid_points);
-                CUSTOMREAL yT_y = vector_dot_product(yk_s.data(), yk_s.data(), n_total_loc_grid_points);
+                CUSTOMREAL sT_y = grid_value_dot_product(sk_s.data(), yk_s.data(), n_total_loc_grid_points);
+                CUSTOMREAL yT_y = grid_value_dot_product(yk_s.data(), yk_s.data(), n_total_loc_grid_points);
                 CUSTOMREAL gamma_k = sT_y / yT_y;
 
                 // substep 2, z = gamma_k * q (because H0_k = gamma_k * I)
@@ -112,7 +112,7 @@ void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, 
                 for (int i_bfgs = i_inv-n_stored; i_bfgs <= i_inv-1; i_bfgs++) {
                     // --------------- substep 1, beta = rho_i * y_i^T * z
                     get_gradient_dif(grid, io, i_bfgs); // obtain y_i (gradient difference)
-                    CUSTOMREAL beta = rho[i_bfgs] * vector_dot_product(yk_s.data(), descent_dir_s.data(), n_total_loc_grid_points);
+                    CUSTOMREAL beta = rho[i_bfgs] * grid_value_dot_product(yk_s.data(), descent_dir_s.data(), n_total_loc_grid_points);
 
                     // --------------- substep 2, z = z + s_i * (alpha_i - beta)
                     get_model_dif(grid, io, i_bfgs);     // obtain s_i (model difference)
@@ -200,12 +200,5 @@ void Optimizer_bfgs::get_gradient_dif(Grid& grid, IO_utils& io, int& i_inv){
         yk_eta[i] = array_3d_forward[i] - array_3d_backward[i];
 }
 
-// vector dot product
-// (to do) remove boundary ghost points
-CUSTOMREAL Optimizer_bfgs::vector_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n){
-    CUSTOMREAL local_sum = dot_product(vec1, vec2, n);
-    CUSTOMREAL global_sum;
-    allreduce_cr_single(local_sum, global_sum);
-    return global_sum;
-}
+
     
