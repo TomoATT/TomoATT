@@ -99,7 +99,11 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
 
     // objective function for all src
     CUSTOMREAL v_obj = 0.0, old_v_obj = 0.0;
-    std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
+    // std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
+    // std::vector<CUSTOMREAL> v_obj_misfit_line_search(20, 0.0);
+    std::vector<CUSTOMREAL> v_obj_misfit;
+    std::vector<CUSTOMREAL> v_obj_misfit_line_search;
+
 
     for (int i_inv = 0; i_inv < IP.get_max_iter_inv(); i_inv++) {
 
@@ -120,7 +124,8 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         // line_search_mode = false;
         // skip for the mode with sub-iteration
         if (i_inv > 0 && line_search_mode) {
-            
+            v_obj_misfit = v_obj_misfit_line_search;
+            v_obj = v_obj_misfit[0];
         } else {
             bool is_save_T = false;
             v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, is_save_T);
@@ -154,7 +159,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
             std::cout << "model update starting ... " << std::endl;
 
         if (IP.get_run_mode() == DO_INVERSION) {
-            optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, line_search_mode);
+            v_obj_misfit_line_search = optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, line_search_mode);
             // if (optim_method == GRADIENT_DESCENT)
             //     optimizer_gd.model_update(IP, grid, io, i_inv, v_obj, old_v_obj);
             //     // model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
@@ -386,7 +391,8 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
     /////////////////////
 
     CUSTOMREAL v_obj = 0.0,         old_v_obj = 10000000000.0;
-    std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
+    std::vector<CUSTOMREAL> v_obj_misfit;
+    std::vector<CUSTOMREAL> v_obj_misfit_line_search;
 
     /////////////////////
     // select an optimizer for model update
@@ -442,6 +448,8 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 // line_search_mode = false;
                 // skip for the mode with sub-iteration
                 if (i_inv > 0 && line_search_mode) {
+                    v_obj_misfit = v_obj_misfit_line_search;
+                    v_obj = v_obj_misfit[0];
                 } else {
                     bool is_save_T = false;
                     v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, is_save_T);
@@ -463,7 +471,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 // model update
                 ///////////////
 
-                optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, line_search_mode);
+                v_obj_misfit_line_search = optimizer->model_update(IP, grid, io, i_inv, v_obj, old_v_obj, line_search_mode);
 
                 // if (optim_method == GRADIENT_DESCENT)
                 //     model_optimize(IP, grid, io, i_inv, v_obj, old_v_obj, first_src, out_main);
@@ -482,42 +490,42 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 // output objective function
                 write_objective_function(IP, i_inv, v_obj_misfit, out_main, "model update");
 
-                // since model is update. The written traveltime field should be discraded.
+                // since model is update. The written traveltime field should be discraded. (done in optimizer->model_update).
                 // initialize is_T_written_into_file
-                for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-                    const std::string name_sim_src = IP.get_src_name(i_src);
+                // for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+                //     const std::string name_sim_src = IP.get_src_name(i_src);
 
-                    if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
-                        IP.src_map[name_sim_src].is_T_written_into_file = false;
-                }
+                //     if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
+                //         IP.src_map[name_sim_src].is_T_written_into_file = false;
+                // }
 
-                // output updated model
-                if (id_sim==0) {
-                    //io.change_xdmf_obj(0); // change xmf file for next src
-                    io.change_group_name_for_model();
+                // output updated model (done in optimizer->model_update).
+                // if (id_sim==0) {
+                //     //io.change_xdmf_obj(0); // change xmf file for next src
+                //     io.change_group_name_for_model();
 
-                    // write out model info
-                    if (IP.get_if_output_in_process() || i_inv >= IP.get_max_loop_mode0()*IP.get_model_update_N_iter() - 2){
-                        io.write_vel(grid, i_inv+1);
-                        io.write_xi( grid, i_inv+1);
-                        io.write_eta(grid, i_inv+1);
-                    }
-                    //io.write_zeta(grid, i_inv); // TODO
+                //     // write out model info
+                //     if (IP.get_if_output_in_process() || i_inv >= IP.get_max_loop_mode0()*IP.get_model_update_N_iter() - 2){
+                //         io.write_vel(grid, i_inv+1);
+                //         io.write_xi( grid, i_inv+1);
+                //         io.write_eta(grid, i_inv+1);
+                //     }
+                //     //io.write_zeta(grid, i_inv); // TODO
 
-                    if (IP.get_verbose_output_level()){
-                        io.write_a(grid,   i_inv+1);
-                        io.write_b(grid,   i_inv+1);
-                        io.write_c(grid,   i_inv+1);
-                        io.write_f(grid,   i_inv+1);
-                        io.write_fun(grid, i_inv+1);
-                    }
+                //     if (IP.get_verbose_output_level()){
+                //         io.write_a(grid,   i_inv+1);
+                //         io.write_b(grid,   i_inv+1);
+                //         io.write_c(grid,   i_inv+1);
+                //         io.write_f(grid,   i_inv+1);
+                //         io.write_fun(grid, i_inv+1);
+                //     }
 
-                    // // output model_parameters_inv_0000.dat
-                    // if (IP.get_if_output_model_dat()
-                    // && (IP.get_if_output_in_process() || i_inv >= IP.get_max_loop_mode0()*IP.get_model_update_N_iter() - 2))
-                    //     io.write_concerning_parameters(grid, i_inv + 1, IP);
+                //     // // output model_parameters_inv_0000.dat
+                //     // if (IP.get_if_output_model_dat()
+                //     // && (IP.get_if_output_in_process() || i_inv >= IP.get_max_loop_mode0()*IP.get_model_update_N_iter() - 2))
+                //     //     io.write_concerning_parameters(grid, i_inv + 1, IP);
 
-                } // end output updated model
+                // } // end output updated model
 
                 // writeout temporary xdmf file
                 io.update_xdmf_file();
@@ -611,7 +619,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                 relocation_step += 1;
             } // end relocation loop
 
-            grid.rejuvenate_abcf();     // (a,b/r^2,c/(r^2*cos^2),f/(r^2*cos)) -> (a,b,c,f)
+            // grid.rejuvenate_abcf();     // (a,b/r^2,c/(r^2*cos^2),f/(r^2*cos)) -> (a,b,c,f)
 
             // estimate running time
             CUSTOMREAL time_elapsed = timer.get_t();
@@ -654,6 +662,8 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             // line_search_mode = false;
             // skip for the mode with sub-iteration
             if (i_loop > 0 && line_search_mode) {
+                v_obj_misfit = v_obj_misfit_line_search;
+                v_obj = v_obj_misfit[0];
             } else {
                 bool is_save_T = true;
                 v_obj_misfit = run_simulation_one_step(IP, grid, io, i_loop, false, is_save_T);
@@ -676,7 +686,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             // model update
             ///////////////
 
-            optimizer->model_update(IP, grid, io, i_loop, v_obj, old_v_obj, line_search_mode);
+            v_obj_misfit_line_search = optimizer->model_update(IP, grid, io, i_loop, v_obj, old_v_obj, line_search_mode);
 
             // if (optim_method == GRADIENT_DESCENT)
             //     model_optimize(IP, grid, io, i_loop, v_obj, old_v_obj, first_src, out_main);
@@ -721,42 +731,42 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             old_v_obj   = v_obj;
 
 
-            // since model is update. The written traveltime field should be discraded.
+            // since model is update. The written traveltime field should be discraded. (done in optimizer->model_update).
             // initialize is_T_written_into_file
-            for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-                const std::string name_sim_src = IP.get_src_name(i_src);
+            // for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+            //     const std::string name_sim_src = IP.get_src_name(i_src);
 
-                if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
-                    IP.src_map[name_sim_src].is_T_written_into_file = false;
-            }
+            //     if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
+            //         IP.src_map[name_sim_src].is_T_written_into_file = false;
+            // }
 
-            // output updated model
-            if (id_sim==0) {
-                //io.change_xdmf_obj(0); // change xmf file for next src
-                io.change_group_name_for_model();
+            // output updated model (done in optimizer->model_update).
+            // if (id_sim==0) {
+            //     //io.change_xdmf_obj(0); // change xmf file for next src
+            //     io.change_group_name_for_model();
 
-                // write out model info
-                if (IP.get_if_output_in_process() || i_loop >= IP.get_max_loop_mode1() - 2){
-                    io.write_vel(grid, i_loop+1);
-                    io.write_xi( grid, i_loop+1);
-                    io.write_eta(grid, i_loop+1);
-                }
-                //io.write_zeta(grid, i_inv); // TODO
+            //     // write out model info
+            //     if (IP.get_if_output_in_process() || i_loop >= IP.get_max_loop_mode1() - 2){
+            //         io.write_vel(grid, i_loop+1);
+            //         io.write_xi( grid, i_loop+1);
+            //         io.write_eta(grid, i_loop+1);
+            //     }
+            //     //io.write_zeta(grid, i_inv); // TODO
 
-                if (IP.get_verbose_output_level()){
-                    io.write_a(grid,   i_loop+1);
-                    io.write_b(grid,   i_loop+1);
-                    io.write_c(grid,   i_loop+1);
-                    io.write_f(grid,   i_loop+1);
-                    io.write_fun(grid, i_loop+1);
-                }
+            //     if (IP.get_verbose_output_level()){
+            //         io.write_a(grid,   i_loop+1);
+            //         io.write_b(grid,   i_loop+1);
+            //         io.write_c(grid,   i_loop+1);
+            //         io.write_f(grid,   i_loop+1);
+            //         io.write_fun(grid, i_loop+1);
+            //     }
 
-                // // output model_parameters_inv_0000.dat
-                // if (IP.get_if_output_model_dat()
-                // && (IP.get_if_output_in_process() || i_loop >= IP.get_max_loop_mode1() - 2))
-                //     io.write_concerning_parameters(grid, i_loop + 1, IP);
+            //     // // output model_parameters_inv_0000.dat
+            //     // if (IP.get_if_output_model_dat()
+            //     // && (IP.get_if_output_in_process() || i_loop >= IP.get_max_loop_mode1() - 2))
+            //     //     io.write_concerning_parameters(grid, i_loop + 1, IP);
 
-            } // end output updated model
+            // } // end output updated model
 
             // writeout temporary xdmf file
             io.update_xdmf_file();
@@ -774,7 +784,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             // wait for all processes to finish
             synchronize_all_world();
 
-            grid.rejuvenate_abcf();     // (a,b/r^2,c/(r^2*cos^2),f/(r^2*cos)) -> (a,b,c,f)
+            // grid.rejuvenate_abcf();     // (a,b/r^2,c/(r^2*cos^2),f/(r^2*cos)) -> (a,b,c,f)
 
             // estimate running time
             CUSTOMREAL time_elapsed = timer.get_t();

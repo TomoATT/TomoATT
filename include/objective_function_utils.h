@@ -13,65 +13,65 @@ inline void prepare_header_line(InputParams &IP, std::ofstream &out_main) {
     if(myrank == 0 && id_sim ==0){
         out_main.open(output_dir + "/objective_function.txt");
         // if (optim_method == GRADIENT_DESCENT || optim_method == HALVE_STEPPING_MODE){
-        if (optim_method == GRADIENT_DESCENT){
+        // if (optim_method == GRADIENT_DESCENT){
         
 
-            out_main << std::setw(8) << std::right << "# iter,";
-            out_main << std::setw(13) << std::right << " type,";
+        out_main << std::setw(8) << std::right << "# iter,";
+        out_main << std::setw(13) << std::right << " type,";
 
-            // if (optim_method == HALVE_STEPPING_MODE)
-            //     out_main << std::setw(8) << std::right << "subiter,";        (TODO in the future)
-            std::string tmp = "obj(";
-            if(IP.get_run_mode() == ONED_INVERSION){
-                tmp.append(std::to_string(IP.N_abs_local_data));  // for 1d inversion, only absolute time residual is considered in obj
-            } else {
-                tmp.append(std::to_string(IP.N_data));
-            }
-            tmp.append("),");
-            out_main << std::setw(20) << tmp;
+        // if (optim_method == HALVE_STEPPING_MODE)
+        //     out_main << std::setw(8) << std::right << "subiter,";        (TODO in the future)
+        std::string tmp = "obj(";
+        if(IP.get_run_mode() == ONED_INVERSION){
+            tmp.append(std::to_string(IP.N_abs_local_data));  // for 1d inversion, only absolute time residual is considered in obj
+        } else {
+            tmp.append(std::to_string(IP.N_data));
+        }
+        tmp.append("),");
+        out_main << std::setw(20) << tmp;
 
-            tmp = "obj_abs(";
-            tmp.append(std::to_string(IP.N_abs_local_data));
-            tmp.append("),");
-            out_main << std::setw(20) << tmp;
+        tmp = "obj_abs(";
+        tmp.append(std::to_string(IP.N_abs_local_data));
+        tmp.append("),");
+        out_main << std::setw(20) << tmp;
 
-            tmp = "obj_cs_dif(";
-            if (IP.get_is_srcrec_swap())
-                tmp.append(std::to_string(IP.N_cr_dif_local_data));
-            else
-                tmp.append(std::to_string(IP.N_cs_dif_local_data));
-            tmp.append("),");
-            out_main << std::setw(20) << tmp;
+        tmp = "obj_cs_dif(";
+        if (IP.get_is_srcrec_swap())
+            tmp.append(std::to_string(IP.N_cr_dif_local_data));
+        else
+            tmp.append(std::to_string(IP.N_cs_dif_local_data));
+        tmp.append("),");
+        out_main << std::setw(20) << tmp;
 
-            tmp = "obj_cr_dif(";
-            if (IP.get_is_srcrec_swap())
-                tmp.append(std::to_string(IP.N_cs_dif_local_data));
-            else
-                tmp.append(std::to_string(IP.N_cr_dif_local_data));
-            tmp.append("),");
-            out_main << std::setw(20) << tmp;
+        tmp = "obj_cr_dif(";
+        if (IP.get_is_srcrec_swap())
+            tmp.append(std::to_string(IP.N_cs_dif_local_data));
+        else
+            tmp.append(std::to_string(IP.N_cr_dif_local_data));
+        tmp.append("),");
+        out_main << std::setw(20) << tmp;
 
-            tmp = "obj_tele(";
-            tmp.append(std::to_string(IP.N_teleseismic_data));
-            tmp.append("),");
-            out_main << std::setw(20) << tmp;
+        tmp = "obj_tele(";
+        tmp.append(std::to_string(IP.N_teleseismic_data));
+        tmp.append("),");
+        out_main << std::setw(20) << tmp;
 
-            out_main << std::setw(25) << "res(mean/std),";
+        out_main << std::setw(25) << "res(mean/std),";
 
-            out_main << std::setw(25) << "res_abs(mean/std),";
+        out_main << std::setw(25) << "res_abs(mean/std),";
 
-            out_main << std::setw(25) << "res_cs_dif(mean/std),";
+        out_main << std::setw(25) << "res_cs_dif(mean/std),";
 
-            out_main << std::setw(25) << "res_cr_dif(mean/std),";
+        out_main << std::setw(25) << "res_cr_dif(mean/std),";
 
-            out_main << std::setw(25) << "res_tele(mean/std),";
+        out_main << std::setw(25) << "res_tele(mean/std),";
 
-            out_main << std::setw(20) << "step_length," << std::endl;
+        out_main << std::setw(20) << "step_length," << std::endl;
 
-        } else if (optim_method == LBFGS_MODE)
-            out_main << std::setw(6)  << "it,"        << std::setw(6)  << "subit,"  << std::setw(16) << "step_length," << std::setw(16) << "q_0," << std::setw(16) << "q_t," \
-                     << std::setw(16) << "v_obj_reg," << std::setw(16) << "qp_0,"  << std::setw(16) << "qp_t,"       << std::setw(16) << "td,"  << std::setw(16) << "tg," \
-                     << std::setw(16) << "c1*qp_0,"    << std::setw(16) << "c2*qp_0," << std::setw(6)  << "step ok,"    << std::endl;
+        // } else if (optim_method == LBFGS_MODE)
+        //     out_main << std::setw(6)  << "it,"        << std::setw(6)  << "subit,"  << std::setw(16) << "step_length," << std::setw(16) << "q_0," << std::setw(16) << "q_t," 
+        //              << std::setw(16) << "v_obj_reg," << std::setw(16) << "qp_0,"  << std::setw(16) << "qp_t,"       << std::setw(16) << "td,"  << std::setw(16) << "tg," 
+        //              << std::setw(16) << "c1*qp_0,"    << std::setw(16) << "c2*qp_0," << std::setw(6)  << "step ok,"    << std::endl;
 
     }
 }

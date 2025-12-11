@@ -339,7 +339,8 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         grid.initialize_kernels();
 
     // reinitialize factors
-    grid.reinitialize_abcf();
+    grid.rejuvenate_abcf();     // vel, xi, eta -> a, b, c, f
+    grid.reinitialize_abcf();   // a, b, c, f -> a, b/r^2, c/(r^2*cos^2), f/(r^2*cos)
 
     ///////////////////////////////////////////////////////////////////////
     //  compute the synthetic common receiver differential traveltime first

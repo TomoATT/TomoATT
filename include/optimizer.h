@@ -17,7 +17,7 @@ public:
 
 
     // model update function
-    void model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool is_line_search); // virtual function, can be override in derived classes.
+    std::vector<CUSTOMREAL> model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool is_line_search); // virtual function, can be override in derived classes.
 
 protected:
 
@@ -46,7 +46,7 @@ protected:
     void determine_step_length_controlled(InputParams& IP, Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
 
     // determine step length (line search method)
-    void determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout);
+    std::vector<CUSTOMREAL> determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout);
 
     // set new model
     void set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_length);
@@ -65,7 +65,7 @@ protected:
     void check_kernel_value_range(Grid& grid);
 
     // calculate the angle between previous and current model update directions
-    CUSTOMREAL direction_change_of_model_update(Grid& grid);
+    CUSTOMREAL calculate_angle_between_grid_values(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n);
 
     // check write model and kernel condition
     bool is_write_model(InputParams& IP, int& i_inv);
@@ -75,6 +75,9 @@ protected:
     // vector dot product
     CUSTOMREAL grid_value_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n);
 
+    // evaluate line search performance
+    bool check_armijo_condition(CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try);
+    bool check_curvature_condition(Grid& grid, CUSTOMREAL c2_inner_product_old);
 };
 
 #endif // OPTIMIZER_H

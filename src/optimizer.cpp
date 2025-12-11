@@ -15,7 +15,9 @@ Optimizer::Optimizer(InputParams& IP){
 Optimizer::~Optimizer(){}
 
 
-void Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool is_line_search) {
+std::vector<CUSTOMREAL> Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj, bool is_line_search) {
+
+    std::vector<CUSTOMREAL> v_obj_misfit_line_search;
 
     // write out original kernels
     // Ks, Kxi, Keta, Ks_den, Kxi_den, Keta_den
@@ -38,7 +40,7 @@ void Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_i
         determine_step_length_controlled(IP, grid, i_inv, v_obj_inout, old_v_obj);
     } else {
         // line search implementation
-        determine_step_length_line_search(IP, grid, io, i_inv, v_obj_inout);
+        v_obj_misfit_line_search = determine_step_length_line_search(IP, grid, io, i_inv, v_obj_inout);
     }
 
     // write new model
@@ -52,6 +54,8 @@ void Optimizer::model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_i
         io.update_xdmf_file();
 
     synchronize_all_world();
+
+    return v_obj_misfit_line_search;
 }
 
 // ---------------------------------------------------
@@ -139,7 +143,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
             // Option 2: we modulate the step length according to the angle between the previous and current gradient directions.
             // If the angle is less than XX degree, which means the model update direction is successive, we should enlarge the step size
             // Otherwise, the step length should decrease
-            CUSTOMREAL angle = direction_change_of_model_update(grid);
+            CUSTOMREAL angle = calculate_angle_between_grid_values(grid.Ks_update_loc_previous, grid.Ks_update_loc, n_total_loc_grid_points);
             if(i_inv != 0){
                 if (angle > step_length_gradient_angle){
                     CUSTOMREAL old_step_length = step_length_init;
@@ -185,8 +189,12 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
 
 
 // determine step length (line search method)
-void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout) {
+// 用二次函数近似的方式，最多给1次试探步。
+// 设置最大步长
+std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout) {
     
+    std::vector<CUSTOMREAL> v_obj_misfit_line_search;
+
     if (myrank == 0 && id_sim == 0){
         std::cout << "Line search to determine step length starting ... " << std::endl;
     }
@@ -203,9 +211,13 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
     int quit_sub_iter = 2;                      // maximum sub-iteration number to quit (avoid too many sub-iterations)
     CUSTOMREAL alpha_R = _0_CR;                 // upper bound of step length
     CUSTOMREAL alpha_L = _0_CR;                 // lower bound of step length
+    std::vector<CUSTOMREAL> alpha_sub_iter(quit_sub_iter+1);     // store tried step lengths
+    std::vector<CUSTOMREAL> v_obj_sub_iter(quit_sub_iter+1);     // store objective function values at tried step lengths
 
-    // constant value for curvature condition
-    CUSTOMREAL c2_inner_product_old = 0.9 * grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
+
+    // constant value for curvature condition (p_k is descent direction, Ks_update_loc is ascent direction, so use negative value)
+    CUSTOMREAL c2_inner_product_old = - 0.9 * grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
+    CUSTOMREAL angle_old = calculate_angle_between_grid_values(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
 
     // main line search iteration
     for(int sub_iter = 0; sub_iter < 100; sub_iter++){
@@ -228,35 +240,18 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
         synchronize_all_world();
 
         // substep 3, --------- forward modeling + adjoint field + kernel  ---------
-        std::vector<CUSTOMREAL> v_obj_misfit(20, 0.0);
-        v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, true, false);
-        CUSTOMREAL v_obj_try = v_obj_misfit[0];
+        v_obj_misfit_line_search = run_simulation_one_step(IP, grid, io, i_inv, true, false);
+        CUSTOMREAL v_obj_try = v_obj_misfit_line_search[0];
 
-        // substep 4, --------- evaluate the update performance ---------
-
-        // condition 1, Armijo condition, sufficient decrease condition (modified)
-        // f(x + alpha*p) <= f(x) + c1*alpha*grad_f(x)^T*p
-        // However, the magnitude of kernel is perhaps not accurate. The direction of kernel is accurate.
-        // So, we only check if f(x + alpha*p) < f(x)
-        // This considtion ensures the step length is not too large.
-        bool cond_armijo = false;
-        bool cond_curvature = false;
-        if(subdom_main){    // check conditions only for main of level 3
-            if (v_obj_try < v_obj_inout){
-                cond_armijo = true;
-            }
-            // condition 2, curvature condition
-            // grad_f(x + alpha*p)^T*p >= c2*grad_f(x)^T*p
-            // This condition ensures the step length is not too small.
-            CUSTOMREAL inner_product_new = grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
-            if (inner_product_new >= c2_inner_product_old){
-                cond_curvature = true;
-            }
+        // substep 4, --------- evaluate the update performance ---------     
+          
+        bool cond_armijo    = check_armijo_condition(v_obj_inout, v_obj_try);      // condition 1, Armijo condition
+        // bool cond_curvature = check_curvature_condition(grid, c2_inner_product_old); // condition 2, curvature condition
+        bool cond_angle     = false;
+        CUSTOMREAL angle_new    = calculate_angle_between_grid_values(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);    // have broadcasted within one subdomain
+        if (std::abs(angle_new - angle_old) > 20.0 &&  std::abs(angle_new - angle_old) < 160.0){
+            cond_angle = true;
         }
-        // tell other non-subdom_main processes the condition results
-        broadcast_bool_single_sub(cond_armijo, 0);      // '_sub' means within one subdomain, subdom_main tell others
-        broadcast_bool_single_sub(cond_curvature, 0);
-
 
         // check conditions
         if(myrank == 0 && id_sim == 0){
@@ -266,7 +261,19 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
             std::cout << "    Objective function value at current model: " << v_obj_inout << std::endl;
             std::cout << "    Objective function value at tried model: " << v_obj_try << std::endl;
             std::cout << "    Armijo condition satisfied: " << std::boolalpha << cond_armijo << std::endl;
-            std::cout << "    Curvature condition satisfied: " << std::boolalpha << cond_curvature << std::endl << std::endl;
+            std::cout << "    Angle between descent direction and gradient at current model: " << angle_old << " degree" << std::endl;
+            std::cout << "    Angle between descent direction and gradient at tried model: " << angle_new << " degree" << std::endl;
+            std::cout << "    Angle condition satisfied (dif > 20 degree): " << std::boolalpha << cond_angle << std::endl;
+        }
+
+        alpha_sub_iter[sub_iter] = alpha;
+        v_obj_sub_iter[sub_iter] = v_obj_try;
+
+        // adjust step length
+        if(sub_iter == quit_sub_iter-1){
+            // must 
+        } else {
+
         }
 
 
@@ -290,7 +297,7 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
                 break;
             } else {
                 if (myrank == 0 && id_sim == 0){
-                    std::cout << "Armijo condition not satisfied " << sub_iter 
+                    std::cout << "Armijo condition not satisfied" 
                             << ", step length may be too large, Reduce the searching step length from " << alpha_R 
                             << " to " << alpha << std::endl;
                 }
@@ -313,7 +320,7 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
             } else {
                 if (myrank == 0 && id_sim == 0){
                     mpi_debug_print_ranks();
-                    std::cout << "Curvature condition not satisfied" << sub_iter 
+                    std::cout << "Curvature condition not satisfied" 
                             << ", step length may be too small, Increase the searching step length from " << alpha_L 
                             << " to " << alpha << std::endl;
                 }
@@ -330,7 +337,7 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
                 break;
             } else {
                 if (myrank == 0 && id_sim == 0){
-                    std::cout << "Curvature and Armijo conditions not satisfied " << sub_iter 
+                    std::cout << "Curvature and Armijo conditions not satisfied" 
                             << ", step length may be too large, Reduce the searching step length from " << alpha_R 
                             << " to " << alpha << std::endl;
                 }
@@ -343,6 +350,7 @@ void Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, I
     step_length_init = alpha;
     broadcast_cr_single(step_length_init,0);
 
+    return v_obj_misfit_line_search;
 }
 
 
@@ -362,16 +370,16 @@ void Optimizer::set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_lengt
             }
         }
 
-        grid.rejuvenate_abcf();
+        // grid.rejuvenate_abcf();
 
         // shared values on the boundary
         grid.send_recev_boundary_data(grid.fun_loc);
         grid.send_recev_boundary_data(grid.xi_loc);
         grid.send_recev_boundary_data(grid.eta_loc);
         // grid.send_recev_boundary_data(grid.fac_a_loc);
-        grid.send_recev_boundary_data(grid.fac_b_loc);
-        grid.send_recev_boundary_data(grid.fac_c_loc);
-        grid.send_recev_boundary_data(grid.fac_f_loc);
+        // grid.send_recev_boundary_data(grid.fac_b_loc);
+        // grid.send_recev_boundary_data(grid.fac_c_loc);
+        // grid.send_recev_boundary_data(grid.fac_f_loc);
 
     } // end if subdom_main
 
@@ -413,17 +421,21 @@ void Optimizer::write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& 
 // ---------------------------------------------------
 
 // calculate the angle between previous and current model update directions
-CUSTOMREAL Optimizer::direction_change_of_model_update(Grid& grid){
+CUSTOMREAL Optimizer::calculate_angle_between_grid_values(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n){
     CUSTOMREAL norm_grad = _0_CR;
     CUSTOMREAL norm_grad_previous = _0_CR;
     CUSTOMREAL inner_product = _0_CR;
     CUSTOMREAL cos_angle = _0_CR;
     CUSTOMREAL angle = _0_CR;
     if (subdom_main) {
+        inner_product      = grid_value_dot_product(vec1, vec2, n);
+        norm_grad          = grid_value_dot_product(vec2, vec2, n);
+        norm_grad_previous = grid_value_dot_product(vec1, vec1, n);
+
         // initiaize update params
-        inner_product      = grid_value_dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc, loc_I*loc_J*loc_K);
-        norm_grad          = grid_value_dot_product(grid.Ks_update_loc, grid.Ks_update_loc, loc_I*loc_J*loc_K);
-        norm_grad_previous = grid_value_dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc_previous, loc_I*loc_J*loc_K);
+        // inner_product      = grid_value_dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc, loc_I*loc_J*loc_K);
+        // norm_grad          = grid_value_dot_product(grid.Ks_update_loc, grid.Ks_update_loc, loc_I*loc_J*loc_K);
+        // norm_grad_previous = grid_value_dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc_previous, loc_I*loc_J*loc_K);
         // inner_product      = dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc, loc_I*loc_J*loc_K);
         // norm_grad          = dot_product(grid.Ks_update_loc, grid.Ks_update_loc, loc_I*loc_J*loc_K);
         // norm_grad_previous = dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc_previous, loc_I*loc_J*loc_K);
@@ -441,6 +453,7 @@ CUSTOMREAL Optimizer::direction_change_of_model_update(Grid& grid){
         cos_angle = inner_product / (std::sqrt(norm_grad) * std::sqrt(norm_grad_previous));
         angle     = acos(cos_angle) * RAD2DEG;
     }
+    broadcast_cr_single_sub(angle, 0);  // broadcast within one subdomain
     return angle;
 }
 
@@ -553,4 +566,42 @@ CUSTOMREAL Optimizer::grid_value_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2,
     CUSTOMREAL global_sum;
     allreduce_cr_single(local_sum, global_sum);
     return global_sum;
+}
+
+
+// Armijo condition (c1 = 0)
+bool Optimizer::check_armijo_condition(CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
+    // Armijo condition, sufficient decrease condition (modified)
+    // f(x + alpha*p) <= f(x) + c1*alpha*grad_f(x)^T*p
+    // However, the magnitude of kernel is perhaps not accurate. The direction of kernel is accurate.
+    // So, we only check if f(x + alpha*p) < f(x)
+    // This considtion ensures the step length is not too large.
+    
+    bool cond_armijo = false;
+    if(subdom_main){    // check condition only for main of level 3
+        if (v_obj_try < v_obj_inout){
+            cond_armijo = true;
+        }
+    }
+    //  broadcast the condition result to all processes within one subdomain
+    broadcast_bool_single_sub(cond_armijo, 0);      // '_sub' means within one subdomain, subdom_main tell others
+    return cond_armijo;
+}
+
+// curvature condition
+bool Optimizer::check_curvature_condition(Grid& grid, CUSTOMREAL c2_inner_product_old){
+    // curvature condition
+    // grad_f(x + alpha*p)^T*p >= c2*grad_f(x)^T*p
+    // This condition ensures the step length is not too small.
+    
+    bool cond_curvature = false;
+    if(subdom_main){    // check condition only for main of level 3
+        CUSTOMREAL inner_product_new = - grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
+        if (inner_product_new >= c2_inner_product_old){
+            cond_curvature = true;
+        }
+    }
+    //  broadcast the condition result to all processes within one subdomain
+    broadcast_bool_single_sub(cond_curvature, 0);      // '_sub' means within one subdomain, subdom_main tell others
+    return cond_curvature;
 }
