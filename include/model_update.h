@@ -44,6 +44,10 @@ void smooth_kernels(Grid& grid, InputParams& IP) {
                     }
                 }
             }
+            CUSTOMREAL tmp = 0;
+            allreduce_cr_single_max(max_kernel, tmp);
+            max_kernel = tmp;
+
             if (max_kernel <= eps) {    
                 std::cout << "Error: max_kernel is near zero (less than 10^-12), check data residual and whether no data is used" << std::endl;
                 exit(1);
