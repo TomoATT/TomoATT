@@ -131,10 +131,6 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
             v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, is_save_T);
             v_obj = v_obj_misfit[0];
         }
-        // (to do) if line search is applied, run_simulation_one_step should be called inside model_update function of optimizer class
-        // v_obj_misfit = run_simulation_one_step(IP, grid, io, i_inv, false, false);
-        // v_obj = v_obj_misfit[0];
-
 
         // wait for all processes to finish
         synchronize_all_world();

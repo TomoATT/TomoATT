@@ -237,6 +237,12 @@ InputParams::InputParams(std::string& input_file){
                 getNodeValue(config["model_update"], "step_length", step_length_init);
             }
 
+            // step length bound
+            if (config["model_update"]["step_length_bound"]) {
+                getNodeValue(config["model_update"], "step_length_bound", step_length_min, 0);
+                getNodeValue(config["model_update"], "step_length_bound", step_length_max, 1);
+            }
+
             // parameters for optim_method == 0
             if (optim_method == 0) {
                 // step method
@@ -792,6 +798,8 @@ InputParams::InputParams(std::string& input_file){
     broadcast_bool_single(line_search_mode, 0);
     broadcast_i_single(step_method, 0);
     broadcast_cr_single(step_length_init, 0);
+    broadcast_cr_single(step_length_min, 0);
+    broadcast_cr_single(step_length_max, 0);
     broadcast_cr_single(step_length_decay, 0);
     broadcast_cr_single(step_length_gradient_angle, 0);
     broadcast_cr_single(step_length_down, 0);
@@ -1097,6 +1105,7 @@ void InputParams::write_params_to_file() {
     fout << std::endl;
     fout << "  #common parameters for all optim methods" << std::endl;
     fout << "  step_length: "             << step_length_init << " # the initial step length of model perturbation. 0.01 means maximum 1% perturbation for each iteration." << std::endl;
+    fout << "  step_length_bound: [" << step_length_min << ", " << step_length_max << "] # [min_step_length, max_step_length], the bound of step length during inversion, default: [0.001, 0.02]" << std::endl;
     fout << std::endl;
     fout << "  # parameters for optim_method 0 (gradient_descent)" << std::endl;
     fout << "  optim_method_0:" << std::endl;

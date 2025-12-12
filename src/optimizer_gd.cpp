@@ -22,7 +22,7 @@ Optimizer_gd::~Optimizer_gd() {
 // ---------------------------------------------------------
 
 
-// smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
+// smooth kernels (multigrid) + kernel normalization (kernel density normalization)
 void Optimizer_gd::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) {
     
     // initialize and backup modified kernels
@@ -174,6 +174,7 @@ bool Optimizer_gd::check_conditions_for_line_search(InputParams& IP, Grid& grid,
         }
     }
 
+    // --------------- evaluate exit flag ---------------
     if(exit_flag){
         if(myrank == 0 && id_sim == 0){
             std::cout << std::endl; 
@@ -188,8 +189,12 @@ bool Optimizer_gd::check_conditions_for_line_search(InputParams& IP, Grid& grid,
                 std::cout   << std::setw(25) << ", obj value = " << v_obj_sub_iter[tmp_i] << std::endl;
             }
             std::cout << std::endl;
+            std::cout << "The step length is " << alpha << ". This step length may exceed the range [" << step_length_min << ", " << step_length_max << "], due to line search." << std::endl;
+            alpha = std::max(step_length_min, std::min(step_length_max,  alpha));
+            std::cout << "The initial step of next iteration is set to: " << alpha << std::endl;
+            std::cout << std::endl;
         }
-        exit_flag = true;
+        
     }
 
     return exit_flag;

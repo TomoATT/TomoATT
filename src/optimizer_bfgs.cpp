@@ -45,7 +45,7 @@ Optimizer_bfgs::~Optimizer_bfgs() {
 // ------------------ specified functions ------------------
 // ---------------------------------------------------------
 
-// smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
+// smooth kernels (multigrid) + kernel normalization (kernel density normalization)
 void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) {
     
     // initialize and backup modified kernels
@@ -81,6 +81,7 @@ void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& i
 
 
 // evaluate line search performance
+// (to do) allow users to adjust the step length change
 bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
     bool exit_flag = false;
 
@@ -155,7 +156,9 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             std::cout << "Satisfy Wolfe conditions at sub-iteration " << sub_iter 
                     << ", step length alpha = " << alpha 
                     << ", obj = " << v_obj_try << std::endl;
+            std::cout << "In the next iteration, the initial step length increases set to " << std::min(1.2*alpha, step_length_max) << std::endl << std::endl;
         }
+        alpha = std::min(1.2*alpha, step_length_max);
         exit_flag = true;
     } else if (!cond_armijo && cond_curvature){
         // only satisfy curvature condition, step length is too large
@@ -248,7 +251,6 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
 // ---------------------------------------------------
 
 // calculate bfgs descent direction 
-// (to do) be careful for small kernel (zero division)
 // y_i = g_{i+1} - g_i, gradient difference
 // s_i = m_{i+1} - m_i, model difference
 void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, int& i_inv) {

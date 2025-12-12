@@ -4,7 +4,7 @@ Optimizer::Optimizer(InputParams& IP){
 
     n_total_loc_grid_points = loc_I * loc_J * loc_K;
 
-    // (to do) only true if line search is applied
+    // only true if line search is applied
     if(line_search_mode){    
         fun_loc_backup.resize(n_total_loc_grid_points);
         xi_loc_backup.resize(n_total_loc_grid_points);
@@ -120,7 +120,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
         if (step_method == OBJ_DEFINED){
             if(i_inv != 0){
                 if (v_obj_inout < old_v_obj) {
-                    step_length_init    = std::min((CUSTOMREAL)0.02, step_length_init);
+                    step_length_init    = std::min(step_length_max, step_length_init);
                     if(myrank == 0 && id_sim == 0){
                         std::cout << std::endl;
                         std::cout << "The obj keeps decreasing, from " << old_v_obj << " to " << v_obj_inout
@@ -128,7 +128,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
                         std::cout << std::endl;
                     }
                 } else if (v_obj_inout >= old_v_obj) {
-                    step_length_init    = std::max((CUSTOMREAL)0.0001, step_length_init*step_length_decay);
+                    step_length_init    = std::max(step_length_min, step_length_init*step_length_decay);
                     if(myrank == 0 && id_sim == 0){
                         std::cout << std::endl;
                         std::cout << "The obj keep increases, from " << old_v_obj << " to " << v_obj_inout
@@ -170,7 +170,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
             if(i_inv != 0){
                 if (angle > step_length_gradient_angle){
                     CUSTOMREAL old_step_length = step_length_init;
-                    step_length_init    = std::max((CUSTOMREAL)0.0001, step_length_init * step_length_down);
+                    step_length_init    = std::max(step_length_min, step_length_init * step_length_down);
                     if(myrank == 0 && id_sim == 0){
                         std::cout << std::endl;
                         std::cout << "The angle between two update darections is " << angle
@@ -180,7 +180,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
                     }
                 } else if (angle <= step_length_gradient_angle) {
                     CUSTOMREAL old_step_length = step_length_init;
-                    step_length_init    = std::min((CUSTOMREAL)0.02, step_length_init * step_length_up);
+                    step_length_init    = std::min(step_length_max, step_length_init * step_length_up);
                     if(myrank == 0 && id_sim == 0){
                         std::cout << std::endl;
                         std::cout << "The angle between two update darections is " << angle
@@ -212,6 +212,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
 
 
 // determine step length (line search method)
+// (to do) output obj info of sub iters
 std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, CUSTOMREAL& v_obj_inout) {
     
     std::vector<CUSTOMREAL> v_obj_misfit_line_search;

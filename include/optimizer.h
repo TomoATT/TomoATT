@@ -43,7 +43,7 @@ protected:
     // write out kernels 
     void write_original_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
-    // smooth kernels (multigrid or XXX (to do)) + kernel normalization (kernel density normalization, or XXX (to do))
+    // smooth kernels (multigrid) + kernel normalization (kernel density normalization)
     virtual void processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
     // write out modified kernels (descent direction)
