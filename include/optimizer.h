@@ -29,6 +29,10 @@ protected:
     std::vector<CUSTOMREAL> xi_loc_backup;
     std::vector<CUSTOMREAL> eta_loc_backup;
 
+    CUSTOMREAL alpha;            // step length tried in line search
+    CUSTOMREAL pk_gradfk_inner_product_old; // p_k^T * grad_f(x_k)
+
+
     // ---------------------------------------------------
     // ------------------ main function ------------------
     // ---------------------------------------------------
@@ -76,8 +80,9 @@ protected:
     CUSTOMREAL grid_value_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n);
 
     // evaluate line search performance
-    bool check_armijo_condition(CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try);
-    bool check_curvature_condition(Grid& grid, CUSTOMREAL c2_inner_product_old);
+    virtual bool check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){return false;};
+
+  
 };
 
 #endif // OPTIMIZER_H

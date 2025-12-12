@@ -24,8 +24,21 @@ Optimizer_bfgs::Optimizer_bfgs(InputParams& IP) : Optimizer(IP) {
     descent_dir_eta.resize(n_total_loc_grid_points);
 
     // scalars in bfgs
-    alpha.resize(10000);
+    alpha_bfgs.resize(10000);
     rho.resize(10000);
+
+    // alpha bounds for line search
+    alpha_R = _0_CR;                 // upper bound of step length
+    alpha_L = _0_CR;                 // lower bound of step length
+
+
+    if(line_search_mode){
+        alpha_sub_iter.resize(100);
+        v_obj_sub_iter.resize(100);
+        proj_sub_iter.resize(100);
+        armijo_sub_iter.resize(100);
+        curvature_sub_iter.resize(100);
+    }
 }
 
 Optimizer_bfgs::~Optimizer_bfgs() {
@@ -85,11 +98,11 @@ void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, 
                     rho[i_bfgs] = 1.0 / grid_value_dot_product(yk_s.data(), sk_s.data(), n_total_loc_grid_points);
 
                     // --------------- substep 2, calculate alpha_i = rho_i * s_i^T * q
-                    alpha[i_bfgs] = rho[i_bfgs] * grid_value_dot_product(sk_s.data(), descent_dir_s.data(), n_total_loc_grid_points);
+                    alpha_bfgs[i_bfgs] = rho[i_bfgs] * grid_value_dot_product(sk_s.data(), descent_dir_s.data(), n_total_loc_grid_points);
 
                     // --------------- substep 3, q = q - alpha_i * y_i
                     for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
-                        descent_dir_s[idx]   -= alpha[i_bfgs] * yk_s[idx];
+                        descent_dir_s[idx]   -= alpha_bfgs[i_bfgs] * yk_s[idx];
                     }
                     
                 }
@@ -117,7 +130,7 @@ void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, 
                     // --------------- substep 2, z = z + s_i * (alpha_i - beta)
                     get_model_dif(grid, io, i_bfgs);     // obtain s_i (model difference)
                     for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
-                        descent_dir_s[idx]   += sk_s[idx] * (alpha[i_bfgs] - beta);
+                        descent_dir_s[idx]   += sk_s[idx] * (alpha_bfgs[i_bfgs] - beta);
                     }
                 }
 
@@ -201,4 +214,149 @@ void Optimizer_bfgs::get_gradient_dif(Grid& grid, IO_utils& io, int& i_inv){
 }
 
 
-    
+// evaluate line search performance
+bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
+    bool exit_flag = false;
+
+    // --------------- Armijo condition, sufficient decrease condition (modified) ---------------
+    // f(x + alpha*p) <= f(x) + c1*alpha*grad_f(x)^T*p
+    // However, the magnitude of kernel is perhaps not accurate. The direction of kernel is accurate.
+    // So, we only check if f(x + alpha*p) < f(x)
+    // This considtion ensures the decrease of objective function
+    bool cond_armijo = false;
+    if(subdom_main){    // check condition only for main of level 3
+        if (v_obj_try < v_obj_inout){
+            cond_armijo = true;
+        }
+    }
+    //  broadcast the condition result to all processes within one subdomain
+    broadcast_bool_single_sub(cond_armijo, 0);      // '_sub' means within one subdomain, subdom_main tell others
+
+
+    // --------------- curvature condition ---------------
+    // sk^T yk >= 0, to ensure positive definiteness of Hessian approximation
+    // grad_f(x + alpha*p)^T*p >= grad_f(x)^T*p
+    bool cond_curvature = false;
+    CUSTOMREAL inner_product_new = _0_CR;
+    if(subdom_main){    // check condition only for main of level 3
+        inner_product_new = - grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
+        if (inner_product_new >= pk_gradfk_inner_product_old){
+            cond_curvature = true;
+        }
+    }
+    //  broadcast the condition result to all processes within one subdomain
+    broadcast_bool_single_sub(cond_curvature, 0);      // '_sub' means within one subdomain, subdom_main tell others
+
+    alpha_sub_iter[sub_iter] = alpha;
+    v_obj_sub_iter[sub_iter] = v_obj_try;
+    proj_sub_iter[sub_iter] = inner_product_new;
+    armijo_sub_iter[sub_iter] = cond_armijo;
+    curvature_sub_iter[sub_iter] = cond_curvature;
+
+
+    // --------------- evaluate exit flag ---------------
+    if(myrank == 0 && id_sim == 0){
+        std::cout << std::endl;
+        std::cout << "Evaluate conditions at sub-iteration " << sub_iter << ": " << std::endl;
+        std::cout << "    Tried step length alpha = " << alpha << std::endl;
+        std::cout << "    Objective function value at current model: " << v_obj_inout << std::endl;
+        std::cout << "    Objective function value at tried model: " << v_obj_try << std::endl;
+        std::cout << "    Armijo condition satisfied: " << std::boolalpha << cond_armijo << std::endl;
+        std::cout << "    projection of gradient on descent direcction at current model: "  << pk_gradfk_inner_product_old << std::endl;
+        std::cout << "    projection of gradient on descent direcction at tried model: "    << inner_product_new << std::endl;
+        std::cout << "    Curvature condition satisfied: " << std::boolalpha << cond_curvature << std::endl << std::endl;
+    }
+
+    if (cond_armijo && cond_curvature){
+        // satisfy Wolfe conditions
+        if(myrank == 0 && id_sim == 0){
+            std::cout << "Satisfy Wolfe conditions at sub-iteration " << sub_iter 
+                    << ", step length alpha = " << alpha 
+                    << ", obj = " << v_obj_try << std::endl;
+        }
+        exit_flag = true;
+    } else if (!cond_armijo && cond_curvature){
+        // only satisfy curvature condition, step length is too large
+        alpha_R = alpha;
+        alpha = (alpha_L + alpha_R) / 2.0;
+        if (sub_iter == quit_sub_iter) {
+            if (myrank == 0 && id_sim == 0){
+                std::cout   << "Quit line search due to too many tries. Armijo condition not satisfied. "
+                            << "Reduce the initial step length to " << alpha << " at the next iteration." << std::endl;
+            }
+            exit_flag = true;
+        } else {
+            if (myrank == 0 && id_sim == 0){
+                std::cout << "Armijo condition not satisfied " << sub_iter 
+                        << ", step length may be too large, Reduce the searching step length from " << alpha_R 
+                        << " to " << alpha << std::endl;
+            }
+        }
+        
+    } else if (cond_armijo && !cond_curvature){
+        // only satisfy Armijo condition, step length is too small
+        alpha_L =  alpha;
+        if(alpha_R != _0_CR){
+            alpha = (alpha_L + alpha_R) / 2.0;
+        } else {
+            alpha = 2.0 * alpha;
+        }
+        if (sub_iter == quit_sub_iter) {
+            if (myrank == 0 && id_sim == 0){
+                std::cout << "Quit line search due to too many tries. Curvature condition not satisfied. "
+                            << "Increase the initial step length to " << alpha << " at the next iteration." << std::endl;
+            }
+            exit_flag = true;
+        } else {
+            if (myrank == 0 && id_sim == 0){
+                mpi_debug_print_ranks();
+                std::cout << "Curvature condition not satisfied" << sub_iter 
+                        << ", step length may be too small, Increase the searching step length from " << alpha_L 
+                        << " to " << alpha << std::endl;
+            }
+        }
+    } else {
+        // neither condition is satisfied
+        alpha_R = alpha;
+        alpha = (alpha_L + alpha_R) / 2.0;
+        if (sub_iter == quit_sub_iter) {
+            if (myrank == 0 && id_sim == 0){
+                std::cout   << "Quit line search due to too many tries. Curvature and Armijo conditions not satisfied. "
+                            << "Reduce the initial step length to " << alpha << " at the next iteration." << std::endl;
+            }
+            exit_flag = true;
+        } else {
+            if (myrank == 0 && id_sim == 0){
+                std::cout << "Curvature and Armijo conditions not satisfied " << sub_iter 
+                        << ", step length may be too large, Reduce the searching step length from " << alpha_R 
+                        << " to " << alpha << std::endl;
+            }
+        }
+    }
+
+
+    if (exit_flag){
+        if (myrank == 0 && id_sim == 0){
+            std::cout << std::endl;
+            std::cout << "Line search ends. The search process contains  " << sub_iter+1 << " sub-iterations." << std::endl;
+            std::cout << "The information is summarized as follows: " << std::endl;
+            std::cout   << std::setw(25)        << "    Current, ";
+            std::cout   << std::setw(25)        << " step length = " << 0;
+            std::cout   << std::setw(25)        << ", obj value = " << v_obj_inout;
+            std::cout   << std::setw(25)        << ", projection = " << pk_gradfk_inner_product_old << std::endl;
+            for(int tmp_i = 0; tmp_i <= sub_iter; tmp_i++){
+                std::cout   << std::setw(25)    << "    Sub-iter " << tmp_i+1 << ",";
+                std::cout   << std::setw(25)    << " step length = " << alpha_sub_iter[tmp_i];
+                std::cout   << std::setw(25)    << ", obj value = " << v_obj_sub_iter[tmp_i] << std::boolalpha << " (" << armijo_sub_iter[tmp_i] << ")";
+                std::cout   << std::setw(25)    << ", projection = " << proj_sub_iter[tmp_i] << std::boolalpha << " (" << curvature_sub_iter[tmp_i] << ")" << std::endl;
+            }
+            std::cout << std::endl;
+        }
+    }
+
+
+
+    return exit_flag;
+}
+
+
