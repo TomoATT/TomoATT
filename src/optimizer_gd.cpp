@@ -31,10 +31,20 @@ void Optimizer_gd::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io,
     // check kernel value range
     check_kernel_value_range(grid);
 
-    // post-processing kernels, depending on the optimization method in the .yaml file
-    // 1. multigrid smoothing + kernel density normalization
-    // 2. XXX (to do)
+    // multigrid parameterization + kernel density normalization
+    // Ks_loc, Keta_loc, Kxi_loc
+    // --> 
+    // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
     Kernel_postprocessing::process_kernels(IP, grid);
+
+    // 2. normalize kernels to -1 ~ 1
+    Kernel_postprocessing::normalize_kernels(grid);
+
+    // assign to modified kernels
+    // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
+    // -->
+    // Ks_update_loc, Keta_update_loc, Kxi_update_loc
+    Kernel_postprocessing::assign_to_modified_kernels(grid);
 }
 
 

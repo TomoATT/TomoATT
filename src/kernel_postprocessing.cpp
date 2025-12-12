@@ -9,11 +9,13 @@ namespace Kernel_postprocessing {
     // process kernels (multigrid, normalization ...)
     // Ks_loc, Keta_loc, Kxi_loc
     // --> 
-    // Ks_update_loc, Keta_update_loc, Kxi_update_loc
+    // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
     void process_kernels(InputParams& IP, Grid& grid) {
         
         if (subdom_main){ // parallel level 3
             if (id_sim==0){ // parallel level 1
+                initialize_processing_kernels(grid);
+
                 if (smooth_method == MULTI_GRID_SMOOTHING) {
                     // eliminate overlapping kernels on ghost layers when performing multigrid smoothing
                     eliminate_ghost_layer_multigrid(grid);
@@ -22,26 +24,88 @@ namespace Kernel_postprocessing {
                     multigrid_parameterization_density_normalization(IP, grid);
                 }
                 // make the boundary values of updated kernels consistent among subdomains
-                shared_boundary_of_updated_kernels(grid);
+                shared_boundary_of_processing_kernels(grid);
             } // end if id_sim == 0
 
             // boardcast modified kernels to all simultaneous runs
-            broadcast_cr_inter_sim(grid.Ks_update_loc, loc_I*loc_J*loc_K, 0);
-            broadcast_cr_inter_sim(grid.Kxi_update_loc, loc_I*loc_J*loc_K, 0);
-            broadcast_cr_inter_sim(grid.Keta_update_loc, loc_I*loc_J*loc_K, 0);
-            broadcast_cr_inter_sim(grid.Ks_density_update_loc, loc_I*loc_J*loc_K, 0);
-            broadcast_cr_inter_sim(grid.Kxi_density_update_loc, loc_I*loc_J*loc_K, 0);
-            broadcast_cr_inter_sim(grid.Keta_density_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Ks_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Kxi_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Keta_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Ks_density_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Kxi_density_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Keta_density_processing_loc.data(), loc_I*loc_J*loc_K, 0);
         } // end if subdom_main
 
         synchronize_all_world();
     }
 
 
+    // normalize kernels to -1 ~ 1
+    void normalize_kernels(Grid& grid){
+        if (subdom_main){ // parallel level 3
+            if (id_sim==0){ // parallel level 1
+                kernel_rescaling_to_unit(grid);
+            }
+            // boardcast modified kernels to all simultaneous runs
+            broadcast_cr_inter_sim(grid.Ks_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Kxi_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Keta_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Ks_density_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Kxi_density_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Keta_density_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+        }
+        synchronize_all_world();
+    }
+    
+
+    // assign processing kernels to modified kernels for model update
+    void assign_to_modified_kernels(Grid& grid){
+        if (subdom_main){ // parallel level 3
+            if (id_sim==0){ // parallel level 1
+                // assign processing kernels to modified kernels for model update
+                std::copy(grid.Ks_processing_loc.begin(), grid.Ks_processing_loc.end(), grid.Ks_update_loc);
+                std::copy(grid.Kxi_processing_loc.begin(), grid.Kxi_processing_loc.end(), grid.Kxi_update_loc);
+                std::copy(grid.Keta_processing_loc.begin(), grid.Keta_processing_loc.end(), grid.Keta_update_loc);
+
+                std::copy(grid.Ks_density_processing_loc.begin(), grid.Ks_density_processing_loc.end(), grid.Ks_density_update_loc);
+                std::copy(grid.Kxi_density_processing_loc.begin(), grid.Kxi_density_processing_loc.end(), grid.Kxi_density_update_loc);
+                std::copy(grid.Keta_density_processing_loc.begin(), grid.Keta_density_processing_loc.end(), grid.Keta_density_update_loc);
+            }
+            // boardcast modified kernels to all simultaneous runs
+            broadcast_cr_inter_sim(grid.Ks_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Kxi_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Keta_update_loc, loc_I*loc_J*loc_K, 0);
+
+            broadcast_cr_inter_sim(grid.Ks_density_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Kxi_density_update_loc, loc_I*loc_J*loc_K, 0);
+            broadcast_cr_inter_sim(grid.Keta_density_update_loc, loc_I*loc_J*loc_K, 0);
+        }
+        synchronize_all_world();
+    }
 
     // ---------------------------------------------------
     // ------------------ sub functions ------------------
     // ---------------------------------------------------
+
+    // initialize processing kernels
+    void initialize_processing_kernels(Grid& grid){
+        if (subdom_main && id_sim==0 ){ // main of level 3 and level 1   
+            for (int k = 0; k < loc_K; k++) {
+                for (int j = 0; j < loc_J; j++) {
+                    for (int i = 0; i < loc_I; i++) {
+                        // initialize processing kernel
+                        grid.Ks_processing_loc[I2V(i,j,k)]           = _0_CR;
+                        grid.Keta_processing_loc[I2V(i,j,k)]         = _0_CR;
+                        grid.Kxi_processing_loc[I2V(i,j,k)]          = _0_CR;
+                        grid.Ks_density_processing_loc[I2V(i,j,k)]   = _0_CR;
+                        grid.Kxi_density_processing_loc[I2V(i,j,k)]  = _0_CR;
+                        grid.Keta_density_processing_loc[I2V(i,j,k)] = _0_CR;
+                    }
+                }
+            }
+        }
+    }
+
 
     // eliminate overlapping kernels on ghost layers when performing multigrid smoothing
     void eliminate_ghost_layer_multigrid(Grid& grid){
@@ -119,22 +183,22 @@ namespace Kernel_postprocessing {
 
 
     // update boundary and corners between subdomains
-    void shared_boundary_of_updated_kernels(Grid& grid){
+    void shared_boundary_of_processing_kernels(Grid& grid){
         // 6 faces
-        grid.send_recev_boundary_data(grid.Ks_update_loc);
-        grid.send_recev_boundary_data(grid.Keta_update_loc);
-        grid.send_recev_boundary_data(grid.Kxi_update_loc);
-        grid.send_recev_boundary_data(grid.Ks_density_update_loc);
-        grid.send_recev_boundary_data(grid.Kxi_density_update_loc);
-        grid.send_recev_boundary_data(grid.Keta_density_update_loc);
+        grid.send_recev_boundary_data(grid.Ks_processing_loc.data());
+        grid.send_recev_boundary_data(grid.Keta_processing_loc.data());
+        grid.send_recev_boundary_data(grid.Kxi_processing_loc.data());
+        grid.send_recev_boundary_data(grid.Ks_density_processing_loc.data());
+        grid.send_recev_boundary_data(grid.Kxi_density_processing_loc.data());
+        grid.send_recev_boundary_data(grid.Keta_density_processing_loc.data());
 
         // 20 edges and corners
-        grid.send_recev_boundary_data_kosumi(grid.Ks_update_loc);
-        grid.send_recev_boundary_data_kosumi(grid.Keta_update_loc);
-        grid.send_recev_boundary_data_kosumi(grid.Kxi_update_loc);
-        grid.send_recev_boundary_data_kosumi(grid.Ks_density_update_loc);
-        grid.send_recev_boundary_data_kosumi(grid.Kxi_density_update_loc);
-        grid.send_recev_boundary_data_kosumi(grid.Keta_density_update_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Ks_processing_loc.data());
+        grid.send_recev_boundary_data_kosumi(grid.Keta_processing_loc.data());
+        grid.send_recev_boundary_data_kosumi(grid.Kxi_processing_loc.data());
+        grid.send_recev_boundary_data_kosumi(grid.Ks_density_processing_loc.data());
+        grid.send_recev_boundary_data_kosumi(grid.Kxi_density_processing_loc.data());
+        grid.send_recev_boundary_data_kosumi(grid.Keta_density_processing_loc.data());
     }
 
 
@@ -614,12 +678,12 @@ namespace Kernel_postprocessing {
                         pert_Kxi_density    += r_r_ani*r_t_ani*r_p_ani*grid.Kxi_density_inv_loc[ I2V_INV_ANI_KNL(idp_ani+1,jdt_ani+1,kdr_ani+1)];
 
                         // update para
-                        grid.Ks_update_loc[             I2V(i_loc,j_loc,k_loc)] += weight * pert_Ks;
-                        grid.Keta_update_loc[           I2V(i_loc,j_loc,k_loc)] += weight * pert_Keta;
-                        grid.Kxi_update_loc[            I2V(i_loc,j_loc,k_loc)] += weight * pert_Kxi;
-                        grid.Ks_density_update_loc[     I2V(i_loc,j_loc,k_loc)] += weight * pert_Ks_density;
-                        grid.Keta_density_update_loc[   I2V(i_loc,j_loc,k_loc)] += weight * pert_Keta_density;
-                        grid.Kxi_density_update_loc[    I2V(i_loc,j_loc,k_loc)] += weight * pert_Kxi_density;
+                        grid.Ks_processing_loc[             I2V(i_loc,j_loc,k_loc)] += weight * pert_Ks;
+                        grid.Keta_processing_loc[           I2V(i_loc,j_loc,k_loc)] += weight * pert_Keta;
+                        grid.Kxi_processing_loc[            I2V(i_loc,j_loc,k_loc)] += weight * pert_Kxi;
+                        grid.Ks_density_processing_loc[     I2V(i_loc,j_loc,k_loc)] += weight * pert_Ks_density;
+                        grid.Keta_density_processing_loc[   I2V(i_loc,j_loc,k_loc)] += weight * pert_Keta_density;
+                        grid.Kxi_density_processing_loc[    I2V(i_loc,j_loc,k_loc)] += weight * pert_Kxi_density;
 
                     } // end for i
                 } // end for j
@@ -632,8 +696,11 @@ namespace Kernel_postprocessing {
         // grid.Ks_update_loc, grid.Keta_update_loc, grid.Kxi_update_loc
         // grid.Ks_density_update_loc, grid.Keta_density_update_loc, grid.Kxi_density_update_loc
         // ----------------
+    }
 
 
+    // rescale kernel updates to -1 ~ 1
+    void kernel_rescaling_to_unit(Grid& grid){
         //
         // rescale kernel update to -1 ~ 1
         //
@@ -645,13 +712,13 @@ namespace Kernel_postprocessing {
         for (int k = 1; k < loc_K-1; k++) {
             for (int j = 1; j < loc_J-1; j++) {
                 for (int i = 1; i < loc_I-1; i++) {
-                    Linf_Ks   = std::max(Linf_Ks,   std::abs(grid.Ks_update_loc[I2V(i,j,k)]));
-                    Linf_Keta = std::max(Linf_Keta, std::abs(grid.Keta_update_loc[I2V(i,j,k)]));
-                    Linf_Kxi  = std::max(Linf_Kxi,  std::abs(grid.Kxi_update_loc[I2V(i,j,k)]));
+                    Linf_Ks   = std::max(Linf_Ks,   std::abs(grid.Ks_processing_loc[I2V(i,j,k)]));
+                    Linf_Keta = std::max(Linf_Keta, std::abs(grid.Keta_processing_loc[I2V(i,j,k)]));
+                    Linf_Kxi  = std::max(Linf_Kxi,  std::abs(grid.Kxi_processing_loc[I2V(i,j,k)]));
 
-                    Linf_Ks_den   = std::max(Linf_Ks_den,   std::abs(grid.Ks_density_update_loc[I2V(i,j,k)]));
-                    Linf_Keta_den = std::max(Linf_Keta_den, std::abs(grid.Keta_density_update_loc[I2V(i,j,k)]));
-                    Linf_Kxi_den  = std::max(Linf_Kxi_den,  std::abs(grid.Kxi_density_update_loc[I2V(i,j,k)]));
+                    Linf_Ks_den   = std::max(Linf_Ks_den,   std::abs(grid.Ks_density_processing_loc[I2V(i,j,k)]));
+                    Linf_Keta_den = std::max(Linf_Keta_den, std::abs(grid.Keta_density_processing_loc[I2V(i,j,k)]));
+                    Linf_Kxi_den  = std::max(Linf_Kxi_den,  std::abs(grid.Kxi_density_processing_loc[I2V(i,j,k)]));
                 }
             }
         }
@@ -669,24 +736,21 @@ namespace Kernel_postprocessing {
         Linf_all = std::max(Linf_Ks, std::max(Linf_Keta, Linf_Kxi));
         Linf_all_den = std::max(Linf_Ks_den, std::max(Linf_Keta_den, Linf_Kxi_den));
 
-        // rescale the kernel update
+        // rescale the kernel processing
         for (int k = 0; k < loc_K; k++) {
             for (int j = 0; j < loc_J; j++) {
                 for (int i = 0; i < loc_I; i++) {
-                    grid.Ks_update_loc[I2V(i,j,k)]      /= Linf_all;
-                    grid.Keta_update_loc[I2V(i,j,k)]    /= Linf_all;
-                    grid.Kxi_update_loc[I2V(i,j,k)]     /= Linf_all;
+                    grid.Ks_processing_loc[I2V(i,j,k)]      /= Linf_all;
+                    grid.Keta_processing_loc[I2V(i,j,k)]    /= Linf_all;
+                    grid.Kxi_processing_loc[I2V(i,j,k)]     /= Linf_all;
 
-                    grid.Ks_density_update_loc[I2V(i,j,k)]    /= Linf_all_den;
-                    grid.Keta_density_update_loc[I2V(i,j,k)]  /= Linf_all_den;
-                    grid.Kxi_density_update_loc[I2V(i,j,k)]   /= Linf_all_den;
+                    grid.Ks_density_processing_loc[I2V(i,j,k)]    /= Linf_all_den;
+                    grid.Keta_density_processing_loc[I2V(i,j,k)]  /= Linf_all_den;
+                    grid.Kxi_density_processing_loc[I2V(i,j,k)]   /= Linf_all_den;
                 }
             }
         }
-
     }
 
-
-    
 
 }

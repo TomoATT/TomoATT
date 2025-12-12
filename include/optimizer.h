@@ -9,6 +9,7 @@
 #include "grid.h"
 #include "io.h"
 #include "main_routines_inversion_mode.h"
+#include "kernel_postprocessing.h"
 
 class Optimizer {
 public:
@@ -30,8 +31,10 @@ protected:
     std::vector<CUSTOMREAL> eta_loc_backup;
 
     CUSTOMREAL alpha;            // step length tried in line search
-    CUSTOMREAL pk_gradfk_inner_product_old; // p_k^T * grad_f(x_k)
 
+    // line search bounds
+    CUSTOMREAL alpha_R;                 // upper bound of step length
+    CUSTOMREAL alpha_L;                 // lower bound of step length
 
     // ---------------------------------------------------
     // ------------------ main function ------------------
@@ -68,13 +71,9 @@ protected:
     // check kernel value range
     void check_kernel_value_range(Grid& grid);
 
-    // calculate the angle between previous and current model update directions
-    CUSTOMREAL calculate_angle_between_grid_values(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n);
-
     // check write model and kernel condition
     bool is_write_model(InputParams& IP, int& i_inv);
-    bool is_write_original_kernel(InputParams& IP, int& i_inv);
-    bool is_write_modified_kernel(InputParams& IP, int& i_inv);
+    bool is_write_kernel(InputParams& IP, int& i_inv);
 
     // vector dot product
     CUSTOMREAL grid_value_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n);

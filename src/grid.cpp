@@ -541,6 +541,13 @@ void Grid::memory_allocation() {
             Ks_update_loc_previous   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
             Kxi_update_loc_previous  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
             Keta_update_loc_previous = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
+
+            Ks_processing_loc.resize(n_total_loc_grid_points);
+            Kxi_processing_loc.resize(n_total_loc_grid_points);
+            Keta_processing_loc.resize(n_total_loc_grid_points);
+            Ks_density_processing_loc.resize(n_total_loc_grid_points);
+            Kxi_density_processing_loc.resize(n_total_loc_grid_points);
+            Keta_density_processing_loc.resize(n_total_loc_grid_points);
         }
 
         if (sub_nprocs <= 1){

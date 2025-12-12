@@ -67,7 +67,7 @@ std::vector<CUSTOMREAL> Optimizer::model_update(InputParams& IP, Grid& grid, IO_
 
 // write out original kernels
 void Optimizer::write_original_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){
-    if (is_write_original_kernel(IP, i_inv)) {
+    if (is_write_kernel(IP, i_inv)) {
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
 
@@ -86,12 +86,15 @@ void Optimizer::write_original_kernels(InputParams& IP, Grid& grid, IO_utils& io
 
 
 // VIRTUAL function, to be specialized in derived classes
+// Ks_loc, Keta_loc, Kxi_loc
+// --> 
+// Ks_update_loc, Keta_update_loc, Kxi_update_loc
 void Optimizer::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){}
 
 
 // write out modified kernels (descent direction)
 void Optimizer::write_modified_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){
-    if (is_write_modified_kernel(IP, i_inv)) {
+    if (is_write_kernel(IP, i_inv)) {
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
 
@@ -145,7 +148,25 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
             // Option 2: we modulate the step length according to the angle between the previous and current gradient directions.
             // If the angle is less than XX degree, which means the model update direction is successive, we should enlarge the step size
             // Otherwise, the step length should decrease
-            CUSTOMREAL angle = calculate_angle_between_grid_values(grid.Ks_update_loc_previous, grid.Ks_update_loc, n_total_loc_grid_points);
+
+            CUSTOMREAL norm_grad = _0_CR;
+            norm_grad  = grid_value_dot_product(grid.Ks_update_loc, grid.Ks_update_loc, n_total_loc_grid_points);
+            norm_grad += grid_value_dot_product(grid.Kxi_update_loc, grid.Kxi_update_loc, n_total_loc_grid_points);
+            norm_grad += grid_value_dot_product(grid.Keta_update_loc, grid.Keta_update_loc, n_total_loc_grid_points);
+
+            CUSTOMREAL norm_grad_previous = _0_CR;
+            norm_grad_previous  = grid_value_dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc_previous, n_total_loc_grid_points);
+            norm_grad_previous += grid_value_dot_product(grid.Kxi_update_loc_previous, grid.Kxi_update_loc_previous, n_total_loc_grid_points);
+            norm_grad_previous += grid_value_dot_product(grid.Keta_update_loc_previous, grid.Keta_update_loc_previous, n_total_loc_grid_points);
+
+            CUSTOMREAL inner_product = _0_CR;
+            inner_product  = grid_value_dot_product(grid.Ks_update_loc_previous, grid.Ks_update_loc, n_total_loc_grid_points);
+            inner_product += grid_value_dot_product(grid.Kxi_update_loc_previous, grid.Kxi_update_loc, n_total_loc_grid_points);
+            inner_product += grid_value_dot_product(grid.Keta_update_loc_previous, grid.Keta_update_loc, n_total_loc_grid_points);
+
+            CUSTOMREAL cos_angle = inner_product / (std::sqrt(norm_grad) * std::sqrt(norm_grad_previous));
+            CUSTOMREAL angle = acos(cos_angle) * RAD2DEG;
+
             if(i_inv != 0){
                 if (angle > step_length_gradient_angle){
                     CUSTOMREAL old_step_length = step_length_init;
@@ -207,23 +228,12 @@ std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams
     }
 
     // ----------------------- step 2, do line search -----------------------
-    // CUSTOMREAL alpha = step_length_init;        // initial step length
-    // int quit_sub_iter = 2;                      // maximum sub-iteration number to quit (avoid too many sub-iterations)
-    // CUSTOMREAL alpha_R = _0_CR;                 // upper bound of step length
-    // CUSTOMREAL alpha_L = _0_CR;                 // lower bound of step length
-    // std::vector<CUSTOMREAL> alpha_sub_iter(3);     // store tried step lengths
-    // std::vector<CUSTOMREAL> v_obj_sub_iter(3);     // store objective function values at tried step lengths
-    // constant value for curvature condition (p_k is descent direction, Ks_update_loc is ascent direction, so use negative value)
-    // CUSTOMREAL c2_inner_product_old = - 0.9 * grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
-    // CUSTOMREAL angle_old = calculate_angle_between_grid_values(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
-
     bool exit_flag = false;
     alpha = step_length_init;   // tried step length
     int quit_sub_iter = 2;  // 2 mean maximum 3 sub-iterations; maximum sub-iteration number to quit (avoid too many sub-iterations) 
 
-    if(optim_method == LBFGS_MODE){
-        pk_gradfk_inner_product_old = - grid_value_dot_product(grid.Ks_update_loc, grid.Ks_loc, n_total_loc_grid_points);
-    }
+    alpha_L = _0_CR;    // lower bound of step length
+    alpha_R = _0_CR;    // upper bound of step length
 
     // main line search iteration
     for(int sub_iter = 0; sub_iter <= 1000; sub_iter++){
@@ -249,8 +259,10 @@ std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams
         v_obj_misfit_line_search = run_simulation_one_step(IP, grid, io, i_inv, true, false);
         CUSTOMREAL v_obj_try = v_obj_misfit_line_search[0];
 
-        // substep 4, --------- evaluate the update performance ---------     
-        
+        // substep 4, --------- process kernels ---------
+        Kernel_postprocessing::process_kernels(IP, grid); 
+
+        // substep 5, --------- evaluate the update performance ---------     
         exit_flag = check_conditions_for_line_search(IP, grid, sub_iter, quit_sub_iter, v_obj_inout, v_obj_try);
         if(exit_flag){
             break;
@@ -332,24 +344,6 @@ void Optimizer::write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& 
 // ------------------ sub functions ------------------
 // ---------------------------------------------------
 
-// calculate the angle between previous and current model update directions
-CUSTOMREAL Optimizer::calculate_angle_between_grid_values(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n){
-    CUSTOMREAL norm_grad = _0_CR;
-    CUSTOMREAL norm_grad_previous = _0_CR;
-    CUSTOMREAL inner_product = _0_CR;
-    CUSTOMREAL cos_angle = _0_CR;
-    CUSTOMREAL angle = _0_CR;
-    if (subdom_main) {
-        inner_product      = grid_value_dot_product(vec1, vec2, n);
-        norm_grad          = grid_value_dot_product(vec2, vec2, n);
-        norm_grad_previous = grid_value_dot_product(vec1, vec1, n);
-
-        cos_angle = inner_product / (std::sqrt(norm_grad) * std::sqrt(norm_grad_previous));
-        angle     = acos(cos_angle) * RAD2DEG;
-    }
-    return angle;
-}
-
 
 // initialize and backup modified kernels
 void Optimizer::initialize_and_backup_modified_kernels(Grid& grid) {
@@ -428,25 +422,13 @@ bool Optimizer::is_write_model(InputParams& IP, int& i_inv){
 }
 
 
-bool Optimizer::is_write_modified_kernel(InputParams& IP, int& i_inv){
+bool Optimizer::is_write_kernel(InputParams& IP, int& i_inv){
     bool is_write = false;
 
     is_write =  (id_sim == 0 && subdom_main) &&             //  read and write can only be done by main process (level 3) in main simulateous group (level 1)
                 IP.get_if_output_kernel() &&                // if users request to write the kernel
                 (IP.get_if_output_in_process() ||           // if users request to writeat intermediate iterations
                 (i_inv >= IP.get_max_iter_inv() - 2));      // or at the last two iterations
-
-    return is_write;
-}
-
-
-bool Optimizer::is_write_original_kernel(InputParams& IP, int& i_inv){
-    bool is_write = false;
-
-    is_write =  (id_sim == 0 && subdom_main) &&                                         // read and write can only be done by main process (level 3) in main simulateous group (level 1)
-                (need_write_original_kernel ||                                          // if this method needs to read and write kernel,
-                (IP.get_if_output_kernel() && IP.get_if_output_in_process()) ||         // or users request to write the kernel at intermediate iterations
-                (IP.get_if_output_kernel() && (i_inv >= IP.get_max_iter_inv() - 2)));   // or users request to write the kernel, but at the last two iterations
 
     return is_write;
 }

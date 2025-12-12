@@ -17,19 +17,30 @@ namespace Kernel_postprocessing {
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
     void process_kernels(InputParams& IP, Grid& grid);
     
+    // normalize kernels to -1 ~ 1
+    void normalize_kernels(Grid& grid);
+
+    // assign processing kernels to modified kernels for model update
+    void assign_to_modified_kernels(Grid& grid);
 
     // ---------------------------------------------------
     // ------------------ sub functions ------------------
     // ---------------------------------------------------
 
+    // initialize processing kernels
+    void initialize_processing_kernels(Grid& grid);
+
     // eliminate overlapping kernels on ghost layers when performing multigrid smoothing (just for MULTI_GRID_SMOOTHING)
     void eliminate_ghost_layer_multigrid(Grid& grid);
 
     // make the boundary values of updated kernels consistent among subdomains
-    void shared_boundary_of_updated_kernels(Grid& grid);
+    void shared_boundary_of_processing_kernels(Grid& grid);
 
-    // METHOD 1, multigrid parameterization + kernel density normalization (+ kernel rescaling to -1.0 - +1.0)
+    // METHOD 1, multigrid parameterization + kernel density normalization
     void multigrid_parameterization_density_normalization(InputParams& IP, Grid& grid);
+
+    // (kernel rescaling to -1.0 - +1.0)
+    void kernel_rescaling_to_unit(Grid& grid); 
 }
 
 
