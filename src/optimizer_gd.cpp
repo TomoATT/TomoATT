@@ -188,6 +188,8 @@ bool Optimizer_gd::check_conditions_for_line_search(InputParams& IP, Grid& grid,
                 std::cout   << std::setw(25) << " step length = " << alpha_sub_iter[tmp_i];
                 std::cout   << std::setw(25) << ", obj value = " << v_obj_sub_iter[tmp_i] << std::endl;
             }
+            // (to do) the output step length (in obj) is not the actual tried step length (used for model update), instead, the initial step length of the next iteration.
+            // fix this bug later
             std::cout << std::endl;
             std::cout << "The step length is " << alpha << ". This step length may exceed the range [" << step_length_min << ", " << step_length_max << "], due to line search." << std::endl;
             alpha = std::max(step_length_min, std::min(step_length_max,  alpha));
