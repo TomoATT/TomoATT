@@ -1909,13 +1909,16 @@ def read_objective_function_file(path):
             tmp2        = tmp[11].split('/')
             mean_tele   = float(tmp2[0])
             std_tele    = float(tmp2[1])
+            try:
+                step_length = float(tmp[12])
+            except:
+                step_length = np.nan
 
-            full_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele])
+            full_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele,step_length])
             if tag.__contains__("relocation"):
-                location_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele])
+                location_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele,step_length])
             if tag.__contains__("model"):
-                model_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele])
-
+                model_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele,step_length])
     return np.array(full_curve),np.array(location_curve),np.array(model_curve)
 
 # %% [markdown]
