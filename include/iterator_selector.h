@@ -7,7 +7,7 @@
 #include "iterator_level.h"
 
 
-void select_iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const std::string& src_name, \
+inline void select_iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const std::string& src_name, \
                      bool first_init, bool is_teleseismic, std::unique_ptr<Iterator>& It, bool is_second_run) {
     // initialize iterator object
 
