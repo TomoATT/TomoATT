@@ -173,7 +173,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
                     step_length_init    = std::max(step_length_min, step_length_init * step_length_down);
                     if(myrank == 0 && id_sim == 0){
                         std::cout << std::endl;
-                        std::cout << "The angle between two update darections is " << angle
+                        std::cout << "The angle between two update directions is " << angle
                                 << ". Because the angle is greater than " << step_length_gradient_angle << " degree, the step length decreases from "
                                 << old_step_length << " to " << step_length_init << std::endl;
                         std::cout << std::endl;
@@ -183,7 +183,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
                     step_length_init    = std::min(step_length_max, step_length_init * step_length_up);
                     if(myrank == 0 && id_sim == 0){
                         std::cout << std::endl;
-                        std::cout << "The angle between two update darections is " << angle
+                        std::cout << "The angle between two update directions is " << angle
                                 << ". Because the angle is less than " << step_length_gradient_angle << " degree, the step length increases from "
                                 << old_step_length << " to " << step_length_init << std::endl;
                         std::cout << std::endl;
