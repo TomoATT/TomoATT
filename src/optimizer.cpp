@@ -149,6 +149,10 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
             // If the angle is less than XX degree, which means the model update direction is successive, we should enlarge the step size
             // Otherwise, the step length should decrease
 
+            // Here, we consider not only slowness but also anisotropy. (In old version, only slowness was considered) 
+            // So, the step length may be a little different from old codes methods.
+            // For eg 1, the step length trajectory changes at the 26-th iteration for noise-free case. 
+
             CUSTOMREAL norm_grad = _0_CR;
             norm_grad  = grid_value_dot_product(grid.Ks_update_loc, grid.Ks_update_loc, n_total_loc_grid_points);
             norm_grad += grid_value_dot_product(grid.Kxi_update_loc, grid.Kxi_update_loc, n_total_loc_grid_points);
