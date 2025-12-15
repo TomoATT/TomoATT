@@ -114,7 +114,7 @@ void Optimizer::write_modified_kernels(InputParams& IP, Grid& grid, IO_utils& io
 // determine step length
 void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj) {
 
-    if(subdom_main && id_sim == 0){     // main of level 1 and level 3 determine steo
+    if(subdom_main && id_sim == 0){     // main of level 1 and level 3 determine step length
         // change stepsize
         // Option 1: the step length is modulated when obj changes.
         if (step_method == OBJ_DEFINED){
@@ -203,8 +203,11 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
         }
     }
 
-    // broadcast the step_length
-    broadcast_cr_single(step_length_init,0);
+    // broadcast the step_length (level 1， level 2, level 3)
+    broadcast_cr_single_inter_and_intra_sim(step_length_init,0);
+
+
+    std::cout << "id_sim " << id_sim << " process " << myrank << " set step length to " << step_length_init << std::endl;
 
     // set new model
     set_new_model(IP, grid, step_length_init);
