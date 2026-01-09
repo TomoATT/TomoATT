@@ -10,12 +10,13 @@
 #include "io.h"
 #include "source.h"
 #include "receiver.h"
-#include "kernel.h"
-#include "model_update.h"
+// #include "kernel.h"
+// #include "model_update.h"
 #include "main_routines_calling.h"
 #include "eikonal_solver_2d.h"
 #include "version.h"
 #include "oneD_inversion.h"
+#include "optimizer.h"
 
 #ifdef USE_CUDA
 #include "cuda_initialize.cuh"

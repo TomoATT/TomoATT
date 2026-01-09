@@ -22,6 +22,7 @@ inline void finalize_mpi();
 inline void cleanup_all_mpi_windows(); // Add cleanup function declaration
 
 inline void mpi_debug(char const* str);
+inline void mpi_debug_print_ranks();
 
 template<typename T>
 inline std::vector<size_t> node_reordering(const std::vector<T>&);
@@ -159,6 +160,19 @@ inline void finalize_mpi(){
 inline void mpi_debug(char const* str){
     std::cout << "rank: " << world_rank << ", " << str << std::endl;
     synchronize_all_world();
+}
+
+inline void mpi_debug_print_ranks(){
+    std::cout   << "world_rank: " << world_rank 
+                << ", sim_rank: " << sim_rank 
+                << ", inter_sim_rank: " << inter_sim_rank
+                << ", sub_rank: " << sub_rank 
+                << ", inter_sub_rank: " << inter_sub_rank
+                << ", id_sim (L1): " << id_sim 
+                << ", id_subdomain (L2): " << id_subdomain 
+                << ", subdom_main (L3): " << subdom_main 
+                << ", myrank: " << myrank
+                << std::endl;
 }
 
 

@@ -134,10 +134,13 @@ public:
     CUSTOMREAL* get_Ks_density_update()     {return get_array_for_vis(Ks_density_update_loc,false);}; // Ks_density_update
     CUSTOMREAL* get_Kxi_density_update()    {return get_array_for_vis(Kxi_density_update_loc,false);}; // Kxi_density_update
     CUSTOMREAL* get_Keta_density_update()   {return get_array_for_vis(Keta_density_update_loc,false);}; // Keta_density_update
+    CUSTOMREAL* get_Ks_processing()         {return get_array_for_vis(Ks_processing_loc.data(),   false);}; // Ks
+    CUSTOMREAL* get_Kxi_processing()        {return get_array_for_vis(Kxi_processing_loc.data(),  false);}; // Kxi
+    CUSTOMREAL* get_Keta_processing()       {return get_array_for_vis(Keta_processing_loc.data(), false);}; // Keta
 
-    CUSTOMREAL* get_Ks_descent_dir() {return get_array_for_vis(Ks_descent_dir_loc, false);}; // Ks_descent_dir
-    CUSTOMREAL* get_Kxi_descent_dir(){return get_array_for_vis(Kxi_descent_dir_loc,false);}; // Kxi_descent_dir
-    CUSTOMREAL* get_Keta_descent_dir(){return get_array_for_vis(Keta_descent_dir_loc,false);}; // Keta_descent_dir
+    // CUSTOMREAL* get_Ks_descent_dir() {return get_array_for_vis(Ks_descent_dir_loc, false);}; // Ks_descent_dir
+    // CUSTOMREAL* get_Kxi_descent_dir(){return get_array_for_vis(Kxi_descent_dir_loc,false);}; // Kxi_descent_dir
+    // CUSTOMREAL* get_Keta_descent_dir(){return get_array_for_vis(Keta_descent_dir_loc,false);}; // Keta_descent_dir
 
     // get physical parameters
     CUSTOMREAL get_r_min()       {return r_min;};
@@ -268,12 +271,12 @@ public:
     CUSTOMREAL *fac_c_loc_back;
     CUSTOMREAL *fac_f_loc_back;
     // for lbfgs
-    CUSTOMREAL *Ks_grad_store_loc, *Keta_grad_store_loc, *Kxi_grad_store_loc;
-    CUSTOMREAL *Ks_model_store_loc, *Keta_model_store_loc, *Kxi_model_store_loc;
-    CUSTOMREAL *Ks_descent_dir_loc, *Keta_descent_dir_loc, *Kxi_descent_dir_loc;
-    CUSTOMREAL *fun_regularization_penalty_loc, *eta_regularization_penalty_loc, *xi_regularization_penalty_loc;
-    CUSTOMREAL *fun_gradient_regularization_penalty_loc, *eta_gradient_regularization_penalty_loc, *xi_gradient_regularization_penalty_loc;
-    CUSTOMREAL *fun_prior_loc, *eta_prior_loc, *xi_prior_loc; // *zeta_prior_loc; TODO
+    // CUSTOMREAL *Ks_grad_store_loc, *Keta_grad_store_loc, *Kxi_grad_store_loc;
+    // CUSTOMREAL *Ks_model_store_loc, *Keta_model_store_loc, *Kxi_model_store_loc;
+    // CUSTOMREAL *Ks_descent_dir_loc, *Keta_descent_dir_loc, *Kxi_descent_dir_loc;
+    // CUSTOMREAL *fun_regularization_penalty_loc, *eta_regularization_penalty_loc, *xi_regularization_penalty_loc;
+    // CUSTOMREAL *fun_gradient_regularization_penalty_loc, *eta_gradient_regularization_penalty_loc, *xi_gradient_regularization_penalty_loc;
+    // CUSTOMREAL *fun_prior_loc, *eta_prior_loc, *xi_prior_loc; // *zeta_prior_loc; TODO
     // tmp array for file IO
     CUSTOMREAL *vis_data;
 
@@ -307,28 +310,37 @@ private:
     //int n_inv_grids; // in config.h
     //int n_inv_I_loc, n_inv_J_loc, n_inv_K_loc; // in config.h
 public:
-    CUSTOMREAL *Ks_loc;
+    CUSTOMREAL *Ks_loc;             // original kernel
     CUSTOMREAL *Kxi_loc;
     CUSTOMREAL *Keta_loc;
     CUSTOMREAL *Ks_density_loc;
     CUSTOMREAL *Kxi_density_loc;
     CUSTOMREAL *Keta_density_loc;
+
     CUSTOMREAL *Tadj_loc; // timetable for adjoint source
     CUSTOMREAL *Tadj_density_loc; // timetable for density of adjoint source
-    CUSTOMREAL *Ks_inv_loc;
+
+    CUSTOMREAL *Ks_inv_loc;             // kernel on coarse inversion grid
     CUSTOMREAL *Kxi_inv_loc;
     CUSTOMREAL *Keta_inv_loc;
     CUSTOMREAL *Ks_density_inv_loc;
     CUSTOMREAL *Kxi_density_inv_loc;
     CUSTOMREAL *Keta_density_inv_loc;
+    // kernel processing
+    std::vector<CUSTOMREAL> Ks_processing_loc;      // kernel during processing
+    std::vector<CUSTOMREAL> Kxi_processing_loc;
+    std::vector<CUSTOMREAL> Keta_processing_loc;
+    std::vector<CUSTOMREAL> Ks_density_processing_loc;      
+    std::vector<CUSTOMREAL> Kxi_density_processing_loc;
+    std::vector<CUSTOMREAL> Keta_density_processing_loc;
     // model update para
-    CUSTOMREAL *Ks_update_loc;
+    CUSTOMREAL *Ks_update_loc;              // desceent direction (modified kernel)
     CUSTOMREAL *Kxi_update_loc;
     CUSTOMREAL *Keta_update_loc;
     CUSTOMREAL *Ks_density_update_loc;
     CUSTOMREAL *Kxi_density_update_loc;
     CUSTOMREAL *Keta_density_update_loc;
-    // model update para of the previous step
+    // model update para of the previous step       // backup descent direction
     CUSTOMREAL *Ks_update_loc_previous;
     CUSTOMREAL *Kxi_update_loc_previous;
     CUSTOMREAL *Keta_update_loc_previous;

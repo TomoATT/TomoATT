@@ -112,8 +112,10 @@ inline const int        ASCII_OUTPUT_PRECISION = dbl::max_digits10;
 inline CUSTOMREAL       R_earth        = 6371.0; // for compatibility with fortran code
 inline const CUSTOMREAL GAMMA          = 0.0;
 inline const CUSTOMREAL r_kermel_mask  = 40.0;
-inline CUSTOMREAL       step_length_init = 0.01; // update step size limit
-inline CUSTOMREAL       step_length_init_sc = 0.001; // update step size limit (for station correction)
+inline CUSTOMREAL       step_length_init = 0.01;        // update step size limit
+inline CUSTOMREAL       step_length_min  = 0.001;       // minimum step size
+inline CUSTOMREAL       step_length_max  = 0.02;        // maximum step size
+inline CUSTOMREAL       step_length_init_sc = 0.001;    // update step size limit (for station correction)
 inline CUSTOMREAL       step_length_decay = 0.9;
 inline CUSTOMREAL       step_length_down = 0.5;
 inline CUSTOMREAL       step_length_up = 1.2;
@@ -171,17 +173,17 @@ inline int ngrid_k     = 0; // number of grid points in k direction
 #define INV_GRID_TRAPE   2
 
 // mpi parameters
-inline int      world_nprocs;     // total number of processes (all groups)
-inline int      world_rank;       // mpi rank of this process  (all groups)
-inline int      sim_nprocs;       // number of processes in this simulation group
-inline int      sim_rank;         // mpi rank of this process in this simulation group
-inline int      inter_sim_rank;
-inline int      sub_nprocs;       // total number of processes
-inline int      sub_rank;         // mpi rank of this process
-inline int      inter_sub_rank;   // mpi rank of this process in the inter-subdomain communicator
+inline int      world_nprocs;     // total number of processes (all groups): n_l1*n_l2*n_l3
+inline int      world_rank;       // mpi rank of this process  (all groups): 0 to (n_l1*n_l2*n_l3 - 1)
+inline int      sim_nprocs;       // number of processes in this simulation group: n_l2 * n_l3)
+inline int      sim_rank;         // mpi rank of this process within a simulation group: 0 to  (n_l2 * n_l3 - 1)
+inline int      inter_sim_rank;   // the range of sim group: 0 to (n_l1 - 1)
+inline int      sub_nprocs;       // total number of processes within a subdomain: n_l3
+inline int      sub_rank;         // mpi rank of this process within a subdomain: 0 to (n_l3 - 1)
+inline int      inter_sub_rank;   // mpi rank of this process in the inter-subdomain communicator: 0 to (n_l2 - 1), but is only valid when subdom_main == true (it is the main proc of a subdomain)
 inline int      inter_sub_nprocs; // number of processes in the inter-subdomain communicator
 inline int      nprocs;           // = n subdomains
-inline int      myrank;           // = id subdomain
+inline int      myrank;           // = id subdomain if submain_main == true; else = -9999
 inline MPI_Comm sim_comm, inter_sim_comm, sub_comm, inter_sub_comm; // mpi communicator for simulation, inter-simulation, subdomain, and inter subdomains
 inline int      n_sims           = 1; // number of mpi groups for simultaneous runs
 inline int      n_procs_each_sim = 1; // number of processes in each simulation group
@@ -193,6 +195,37 @@ inline int      ndiv_k           = 1; // number of divisions in z direction
 inline int      id_sim           = 0; // simultaneous run id  (not equal to src id)                 (parallel level 1)
 inline int      id_subdomain     = 0; // subdomain id                                               (parallel level 2)
 inline bool     subdom_main      = false; // true if this process is main process in subdomain      (parallel level 3)
+// Note 1:
+// sim_comm: within one simultaneous group: n_l2*n_l3 processes
+// inter_sim_comm: between simultaneous groups, rank 0 of each simultaneous group: n_l1 processes
+// sub_comm: within one subdomain: n_l3 processes
+// inter_sub_comm: between subdomain main processes, main of each subdomain: n_l2 processes
+// see "broadcast_bool_inter_and_intra_sim" in mpi_funcs.h for example of usage
+
+// Note 2:
+// id of simultaneous group (level 1) (0 to n_l1 -1) -> id_sim
+// id of subdomain (level 2)          (0 to n_l2 -1) -> id_subdomain, or inter_sub_rank (only for subdom_main == true)
+// id within a subdomain (level 3)    (0 to n_l3 -1) -> sub_rank
+// The main proc of the main subdomain (id_subdomain == 0 and sub_rank == 0): subdom_main = true
+// myrank and inter_sub_rank are the same, both are valid only when subdom_main == true
+
+// eg: n_l1 = 2, n_l2 = 2, n_l3 = 4:
+// world_rank: 0, sim_rank: 0, inter_sim_rank: 0, sub_rank: 0, inter_sub_rank: 0, id_sim (L1): 0, id_subdomain (L2): 0, subdom_main (L3): 1, myrank: 0
+// world_rank: 1, sim_rank: 1, inter_sim_rank: 0, sub_rank: 1, inter_sub_rank: 0, id_sim (L1): 0, id_subdomain (L2): 0, subdom_main (L3): 0, myrank: -9999
+// world_rank: 2, sim_rank: 2, inter_sim_rank: 0, sub_rank: 2, inter_sub_rank: 0, id_sim (L1): 0, id_subdomain (L2): 0, subdom_main (L3): 0, myrank: -9999
+
+// world_rank: 3, sim_rank: 3, inter_sim_rank: 0, sub_rank: 0, inter_sub_rank: 1, id_sim (L1): 0, id_subdomain (L2): 1, subdom_main (L3): 1, myrank: 1
+// world_rank: 4, sim_rank: 4, inter_sim_rank: 0, sub_rank: 1, inter_sub_rank: 0, id_sim (L1): 0, id_subdomain (L2): 1, subdom_main (L3): 0, myrank: -9999
+// world_rank: 5, sim_rank: 5, inter_sim_rank: 0, sub_rank: 2, inter_sub_rank: 0, id_sim (L1): 0, id_subdomain (L2): 1, subdom_main (L3): 0, myrank: -9999
+
+// world_rank: 6, sim_rank: 0, inter_sim_rank: 1, sub_rank: 0, inter_sub_rank: 0, id_sim (L1): 1, id_subdomain (L2): 0, subdom_main (L3): 1, myrank: 0
+// world_rank: 7, sim_rank: 1, inter_sim_rank: 1, sub_rank: 1, inter_sub_rank: 0, id_sim (L1): 1, id_subdomain (L2): 0, subdom_main (L3): 0, myrank: -9999
+// world_rank: 8, sim_rank: 2, inter_sim_rank: 1, sub_rank: 2, inter_sub_rank: 0, id_sim (L1): 1, id_subdomain (L2): 0, subdom_main (L3): 0, myrank: -9999
+
+// world_rank: 9, sim_rank: 3, inter_sim_rank: 1, sub_rank: 0, inter_sub_rank: 1, id_sim (L1): 1, id_subdomain (L2): 1, subdom_main (L3): 1, myrank: 1
+// world_rank: 10, sim_rank: 4, inter_sim_rank: 1, sub_rank: 1, inter_sub_rank: 0, id_sim (L1): 1, id_subdomain (L2): 1, subdom_main (L3): 0, myrank: -9999
+// world_rank: 11, sim_rank: 5, inter_sim_rank: 1, sub_rank: 2, inter_sub_rank: 0, id_sim (L1): 1, id_subdomain (L2): 1, subdom_main (L3): 0, myrank: -9999
+
 
 // flags for explaining the process's role
 inline bool proc_read_srcrec = false;  // true if this process is reading source file
@@ -225,7 +258,10 @@ inline int output_format = OUTPUT_FORMAT_HDF5; // 0 - ascii, 1 - hdf5, 2 - binar
 #endif
 
 // smooth parameters
-inline int        smooth_method = 0; // 0: multi grid parametrization, 1: laplacian smoothing
+#define MULTI_GRID_SMOOTHING 0
+#define LAPLACIAN_SMOOTHING  1
+
+inline int        smooth_method = MULTI_GRID_SMOOTHING; // 0: multi grid parametrization, 1: laplacian smoothing
 inline CUSTOMREAL smooth_lp = 1.0;
 inline CUSTOMREAL smooth_lt = 1.0;
 inline CUSTOMREAL smooth_lr = 1.0;
@@ -233,9 +269,10 @@ inline CUSTOMREAL regul_lp  = 1.0;
 inline CUSTOMREAL regul_lt  = 1.0;
 inline CUSTOMREAL regul_lr  = 1.0;
 inline const int  GRADIENT_DESCENT    = 0;
-inline const int  HALVE_STEPPING_MODE = 1;
-inline const int  LBFGS_MODE          = 2;
-inline int        optim_method        = 0; // 0: gradient descent, 1: halve_stepping, 2: LBFGS
+// inline const int  HALVE_STEPPING_MODE = 1;
+inline const int  LBFGS_MODE          = 1;
+inline int        optim_method        = 0; // 0: gradient descent, 1: lbfgs
+inline bool       line_search_mode    = false; // if true, use line search to determine step length
 inline const CUSTOMREAL wolfe_c1     = 1e-4;
 inline const CUSTOMREAL wolfe_c2     = 0.9;
 inline const int        Mbfgs        = 5;            // number of gradients/models stored in memory
