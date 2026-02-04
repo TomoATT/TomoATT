@@ -2904,6 +2904,13 @@ void InputParams::check_contradictions(){
         sweep_type = SWEEP_TYPE_LEVEL;
     }
 
+    if (update_azi_ani == false && invgrid_ani == true){
+        if(myrank == 0){
+            std::cout << "Warning: do not invert for azi_ani(update_azi_ani = false), but use unique inv grid for ani (invgrid_ani = true). invgrid_ani changes to false" << std::endl;
+        }
+        invgrid_ani = false;
+    }
+
     // if run_mode == 4 (1d inversion), only source parallelization is allowed
     if (run_mode == 4 && (ndiv_k > 1 || ndiv_j > 1 || ndiv_i > 1 || n_subprocs > 1)){
         if(myrank == 0){
