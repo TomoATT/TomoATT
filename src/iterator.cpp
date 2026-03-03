@@ -1047,7 +1047,8 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         ar2 =  grid.T0r_loc[ii] - grid.T0v_loc[ii]/dr;
         br2 =  grid.T0v_loc[ii]/dr*grid.tau_loc[ii_pr];
     }
-    bc_f2 = grid.fac_b_loc[ii]*grid.fac_c_loc[ii] - std::pow(grid.fac_f_loc[ii],_2_CR);
+    bc_f2 = grid.fac_b_loc[ii]*grid.fac_c_loc[ii] - grid.fac_f_loc[ii]*grid.fac_f_loc[ii];
+    fun_loc_sq = grid.fun_loc[ii]*grid.fun_loc[ii];
 
     // start to find candidate solutions
 
@@ -1116,24 +1117,25 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
 
         // plug T_p, T_t, T_r into eikonal equation, solving the quadratic equation with respect to tau(iip,jjt,kkr)
         // that is a*(ar*tau+br)^2 + b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2*f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_a_loc[ii] * std::pow(ar, _2_CR) + grid.fac_b_loc[ii] * std::pow(at, _2_CR)
-              + grid.fac_c_loc[ii] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[ii] * at * ap;
+        eqn_a = grid.fac_a_loc[ii] * ar*ar + grid.fac_b_loc[ii] * at*at
+              + grid.fac_c_loc[ii] * ap*ap - _2_CR*grid.fac_f_loc[ii] * at * ap;
         eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*grid.fac_b_loc[ii] * at * bt
               + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
-        eqn_c = grid.fac_a_loc[ii] * std::pow(br, _2_CR) + grid.fac_b_loc[ii] * std::pow(bt, _2_CR)
-              + grid.fac_c_loc[ii] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[ii] * bt * bp
-              - std::pow(grid.fun_loc[ii], _2_CR);
-        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+        eqn_c = grid.fac_a_loc[ii] * br*br + grid.fac_b_loc[ii] * bt*bt
+              + grid.fac_c_loc[ii] * bp*bp - _2_CR*grid.fac_f_loc[ii] * bt * bp
+              - fun_loc_sq;
+        eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
+            eqn_Delta_sqrt = std::sqrt(eqn_Delta);
             for (int i_solution = 0; i_solution < 2; i_solution++){
                 // solutions
                 switch (i_solution){
                     case 0:
-                        tmp_tau = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_tau = (-eqn_b + eqn_Delta_sqrt)/(_2_CR*eqn_a);
                         break;
                     case 1:
-                        tmp_tau = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_tau = (-eqn_b - eqn_Delta_sqrt)/(_2_CR*eqn_a);
                         break;
                 }
 
@@ -1300,21 +1302,22 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 + (bc-f^2)/c*(at*tau+bt)^2 = s^2
-        eqn_a = grid.fac_a_loc[ii] * std::pow(ar, _2_CR) + bc_f2/grid.fac_c_loc[ii] * std::pow(at, _2_CR);
+        eqn_a = grid.fac_a_loc[ii] * ar*ar + bc_f2/grid.fac_c_loc[ii] * at*at;
         eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*bc_f2/grid.fac_c_loc[ii] * at * bt;
-        eqn_c = grid.fac_a_loc[ii] * std::pow(br, _2_CR) + bc_f2/grid.fac_c_loc[ii] * std::pow(bt, _2_CR)
-              - std::pow(grid.fun_loc[ii], _2_CR);
-        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+        eqn_c = grid.fac_a_loc[ii] * br*br + bc_f2/grid.fac_c_loc[ii] * bt*bt
+              - fun_loc_sq;
+        eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
+            eqn_Delta_sqrt = std::sqrt(eqn_Delta);
             for (int i_solution = 0; i_solution < 2; i_solution++){
                 // solutions
                 switch (i_solution){
                     case 0:
-                        tmp_tau = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_tau = (-eqn_b + eqn_Delta_sqrt)/(_2_CR*eqn_a);
                         break;
                     case 1:
-                        tmp_tau = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_tau = (-eqn_b - eqn_Delta_sqrt)/(_2_CR*eqn_a);
                         break;
                 }
 
@@ -1425,21 +1428,22 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 + (bc-f^2)/b*(ap*tau+bp)^2 = s^2
-        eqn_a = grid.fac_a_loc[ii] * std::pow(ar, _2_CR) + bc_f2/grid.fac_b_loc[ii] * std::pow(ap, _2_CR);
+        eqn_a = grid.fac_a_loc[ii] * ar*ar + bc_f2/grid.fac_b_loc[ii] * ap*ap;
         eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*bc_f2/grid.fac_b_loc[ii] * ap * bp;
-        eqn_c = grid.fac_a_loc[ii] * std::pow(br, _2_CR) + bc_f2/grid.fac_b_loc[ii] * std::pow(bp, _2_CR)
-              - std::pow(grid.fun_loc[ii], _2_CR);
-        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+        eqn_c = grid.fac_a_loc[ii] * br*br + bc_f2/grid.fac_b_loc[ii] * bp*bp
+              - fun_loc_sq;
+        eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
+            eqn_Delta_sqrt = std::sqrt(eqn_Delta);
             for (int i_solution = 0; i_solution < 2; i_solution++){
                 // solutions
                 switch (i_solution){
                     case 0:
-                        tmp_tau = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_tau = (-eqn_b + eqn_Delta_sqrt)/(_2_CR*eqn_a);
                         break;
                     case 1:
-                        tmp_tau = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_tau = (-eqn_b - eqn_Delta_sqrt)/(_2_CR*eqn_a);
                         break;
                 }
 
@@ -1549,24 +1553,25 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_p, T_t into eikonal equation, solve the quadratic equation:  b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_b_loc[ii] * std::pow(at, _2_CR)
-              + grid.fac_c_loc[ii] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[ii] * at * ap;
+        eqn_a = grid.fac_b_loc[ii] * at*at 
+              + grid.fac_c_loc[ii] * ap*ap - _2_CR*grid.fac_f_loc[ii] * at * ap;
         eqn_b = _2_CR*grid.fac_b_loc[ii] * at * bt
               + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
-        eqn_c = grid.fac_b_loc[ii] * std::pow(bt, _2_CR)
-              + grid.fac_c_loc[ii] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[ii] * bt * bp
-              - std::pow(grid.fun_loc[ii], _2_CR);
-        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+        eqn_c = grid.fac_b_loc[ii] * bt*bt
+              + grid.fac_c_loc[ii] * bp*bp - _2_CR*grid.fac_f_loc[ii] * bt * bp
+              - fun_loc_sq;
+        eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
+            eqn_Delta_sqrt = std::sqrt(eqn_Delta);
             for (int i_solution = 0; i_solution < 2; i_solution++){
                 // solutions
                 switch (i_solution){
                     case 0:
-                        tmp_tau = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_tau = (-eqn_b + eqn_Delta_sqrt)/(_2_CR*eqn_a);
                         break;
                     case 1:
-                        tmp_tau = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_tau = (-eqn_b - eqn_Delta_sqrt)/(_2_CR*eqn_a);
                         break;
                 }
 
@@ -1682,13 +1687,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 = s^2
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
+            fun_loc_sqrt = std::sqrt(fun_loc_sq/grid.fac_a_loc[ii]);
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)/grid.fac_a_loc[ii]) - br)/ar;
+                    tmp_tau = ( fun_loc_sqrt - br)/ar;
                     break;
                 case 1:
-                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)/grid.fac_a_loc[ii]) - br)/ar;
+                    tmp_tau = (-fun_loc_sqrt - br)/ar;
                     break;
             }
 
@@ -1757,13 +1763,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/c*(at*tau+bt)^2 = s^2
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
+            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_c_loc[ii]/bc_f2); 
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)*grid.fac_c_loc[ii]/bc_f2) - bt)/at;
+                    tmp_tau = ( fun_loc_sqrt - bt)/at;
                     break;
                 case 1:
-                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)*grid.fac_c_loc[ii]/bc_f2) - bt)/at;
+                    tmp_tau = (-fun_loc_sqrt - bt)/at;
                     break;
             }
 
@@ -1833,13 +1840,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/b*(ap*tau+bp)^2 = s^2
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
+            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_b_loc[ii]/bc_f2); 
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_tau = ( std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)*grid.fac_b_loc[ii]/bc_f2) - bp)/ap;
+                    tmp_tau = ( fun_loc_sqrt - bp)/ap;
                     break;
                 case 1:
-                    tmp_tau = (-std::sqrt(std::pow(grid.fun_loc[ii], _2_CR)*grid.fac_b_loc[ii]/bc_f2) - bp)/ap;
+                    tmp_tau = (-fun_loc_sqrt - bp)/ap;
                     break;
             }
 
