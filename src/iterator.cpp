@@ -1771,7 +1771,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
             fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_c_loc[ii]/bc_f2); 
-            one_over_a = at;
+            one_over_a = 1/at;
             // solutions
             switch (i_solution){
                 case 0:
@@ -1849,7 +1849,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
             fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_b_loc[ii]/bc_f2); 
-            one_over_a = ap;
+            one_over_a = 1/ap;
             // solutions
             switch (i_solution){
                 case 0:
