@@ -633,29 +633,29 @@ inline void allreduce_cr_single(CUSTOMREAL& loc_buf, CUSTOMREAL& all_buf){
 
 inline void allreduce_bool_inplace_inter_sim(bool* loc_buf, int count){
     // return true if any of the processes return true
-    MPI_Allreduce(MPI_IN_PLACE, loc_buf, count, MPI_CXX_BOOL, MPI_LOR, inter_sim_comm);
+    MPI_Allreduce(MPI_IN_PLACE, loc_buf, count, MPI_C_BOOL, MPI_LOR, inter_sim_comm);
 }
 
 
 inline void allreduce_bool_inplace(bool* loc_buf, int count){
     // return true if any of the processes return true
-    MPI_Allreduce(MPI_IN_PLACE, loc_buf, count, MPI_CXX_BOOL, MPI_LOR, inter_sub_comm);
+    MPI_Allreduce(MPI_IN_PLACE, loc_buf, count, MPI_C_BOOL, MPI_LOR, inter_sub_comm);
 }
 
 
 inline void allreduce_bool_inplace_sub(bool* loc_buf, int count){
     // return true if any of the processes return true
-    MPI_Allreduce(MPI_IN_PLACE, loc_buf, count, MPI_CXX_BOOL, MPI_LOR, sub_comm);
+    MPI_Allreduce(MPI_IN_PLACE, loc_buf, count, MPI_C_BOOL, MPI_LOR, sub_comm);
 }
 
 
 inline void allreduce_bool_single_inplace(bool& loc_buf){
-    MPI_Allreduce(MPI_IN_PLACE, &loc_buf, 1, MPI_CXX_BOOL, MPI_LAND, inter_sub_comm);
+    MPI_Allreduce(MPI_IN_PLACE, &loc_buf, 1, MPI_C_BOOL, MPI_LAND, inter_sub_comm);
 }
 
 // true if all processes return true else false
 inline void allreduce_bool_single_inplace_sim(bool& loc_buf){
-    MPI_Allreduce(MPI_IN_PLACE, &loc_buf, 1, MPI_CXX_BOOL, MPI_LAND, inter_sim_comm);
+    MPI_Allreduce(MPI_IN_PLACE, &loc_buf, 1, MPI_C_BOOL, MPI_LAND, inter_sim_comm);
 }
 
 inline void allreduce_i_inplace(int* loc_buf, int count){
@@ -706,22 +706,22 @@ inline void allgather_cr_single(CUSTOMREAL* loc_buf, CUSTOMREAL* all_buf){
 
 inline void allgather_bool_single(bool* loc_buf, bool* all_buf){
     int count = 1;
-    MPI_Allgather(loc_buf, count, MPI_CXX_BOOL, all_buf, count, MPI_CXX_BOOL, inter_sub_comm);
+    MPI_Allgather(loc_buf, count, MPI_C_BOOL, all_buf, count, MPI_C_BOOL, inter_sub_comm);
 }
 
 inline void broadcast_bool_single(bool& value, int root){
     int count = 1;
-    MPI_Bcast(&value, count, MPI_CXX_BOOL, root, inter_sub_comm);
+    MPI_Bcast(&value, count, MPI_C_BOOL, root, inter_sub_comm);
 }
 
 inline void broadcast_bool_single_sub(bool& value, int root){
     int count = 1;
-    MPI_Bcast(&value, count, MPI_CXX_BOOL, root, sub_comm);
+    MPI_Bcast(&value, count, MPI_C_BOOL, root, sub_comm);
 }
 
 inline void broadcast_bool_single_inter_sim(bool& value, int root){
     int count = 1;
-    MPI_Bcast(&value, count, MPI_CXX_BOOL, root, inter_sim_comm);
+    MPI_Bcast(&value, count, MPI_C_BOOL, root, inter_sim_comm);
 }
 
 inline void broadcast_bool_inter_and_intra_sim(bool& value, int root){
