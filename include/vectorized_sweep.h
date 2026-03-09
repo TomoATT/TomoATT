@@ -135,7 +135,6 @@ inline void vect_stencil_1st_pre_simd(
 #if USE_ARM_SVE
                                       svbool_t const& pg,
 #endif
-                                      __mT const& v_iip, __mT const& v_jjt, __mT const& v_kkr,
                                       __mT const& v_c__,
                                       __mT const& v_p__, __mT const& v_m__, __mT const& v__p_, __mT const& v__m_, __mT const& v___p, __mT const& v___m,
                                       __mT& v_pp1, __mT& v_pp2, __mT& v_pt1, __mT& v_pt2, __mT& v_pr1, __mT& v_pr2,
