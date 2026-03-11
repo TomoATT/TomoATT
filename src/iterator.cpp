@@ -2195,6 +2195,18 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     //CUSTOMREAL tmpr2 = (grid.r_loc_1d[kkr+1]+grid.r_loc_1d[kkr])/_2_CR;
 
     // consts
+    int ii      = I2V(iip,   jjt,   kkr);
+    int ii_mp   = I2V(iip-1, jjt,   kkr);
+    int ii_pp   = I2V(iip+1, jjt,   kkr);
+    int ii_mt   = I2V(iip  , jjt-1, kkr);
+    int ii_pt   = I2V(iip  , jjt+1, kkr);
+    int ii_mr   = I2V(iip  , jjt,   kkr-1);
+    int ii_pr   = I2V(iip  , jjt,   kkr+1);
+    int ii_pp_pt= I2V(iip+1,jjt+1,kkr);
+    int ii_mp_pt= I2V(iip-1,jjt+1,kkr);
+    int ii_pp_mt= I2V(iip+1,jjt-1,kkr);
+    int ii_mp_mt= I2V(iip-1,jjt-1,kkr);
+
     CUSTOMREAL dp_inv = 1/dp;
     CUSTOMREAL dr_inv = 1/dr;
     CUSTOMREAL dt_inv = 1/dt;
@@ -2207,53 +2219,53 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
 
     CUSTOMREAL tmpt1 = (grid.t_loc_1d[jjt-1]+grid.t_loc_1d[jjt])*_0_5_CR;
     CUSTOMREAL tmpt2 = (grid.t_loc_1d[jjt]  +grid.t_loc_1d[jjt+1])*_0_5_CR;
-    CUSTOMREAL tmp_T_ip = grid.T_loc[I2V(iip+1,jjt,kkr)]-grid.T_loc[I2V(iip-1,jjt,kkr)];
-    CUSTOMREAL tmp_T_jt = grid.T_loc[I2V(iip,jjt+1,kkr)]-grid.T_loc[I2V(iip,jjt-1,kkr)];
+    CUSTOMREAL tmp_T_ip = grid.T_loc[ii_pp]-grid.T_loc[ii_mp];
+    CUSTOMREAL tmp_T_jt = grid.T_loc[ii_pt]-grid.T_loc[ii_mt];
 
-    CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[I2V(iip,jjt,kkr-1)]+grid.zeta_loc[I2V(iip,jjt,kkr)]) * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip,jjt,kkr-1)]) * dr_inv;
+    CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[ii_mr]+grid.zeta_loc[ii]) * (grid.T_loc[ii]-grid.T_loc[ii_mr]) * dr_inv;
     CUSTOMREAL a1m = (a1 - std::abs(a1));
     CUSTOMREAL a1p = (a1 + std::abs(a1));
 
-    CUSTOMREAL a2  = - (_1_CR+grid.zeta_loc[I2V(iip,jjt,kkr)]+grid.zeta_loc[I2V(iip,jjt,kkr+1)]) * (grid.T_loc[I2V(iip,jjt,kkr+1)]-grid.T_loc[I2V(iip,jjt,kkr)]) * dr_inv;
+    CUSTOMREAL a2  = - (_1_CR+grid.zeta_loc[ii]+grid.zeta_loc[ii_pr]) * (grid.T_loc[ii_pr]-grid.T_loc[ii]) * dr_inv;
     CUSTOMREAL a2m = (a2 - std::abs(a2));
     CUSTOMREAL a2p = (a2 + std::abs(a2));
 
-    CUSTOMREAL b1  = - (_1_CR-grid.xi_loc[ I2V(iip,jjt-1,kkr)]-grid.xi_loc[ I2V(iip,jjt,kkr)]) * one_over_r_loc_1d_kkr_sq * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip,jjt-1,kkr)]) * dt_inv \
-                     - (      grid.eta_loc[I2V(iip,jjt-1,kkr)]+grid.eta_loc[I2V(iip,jjt,kkr)]) * one_over_r_loc_1d_kkr_sq / (std::cos(tmpt1)) * 0.25 * dp_inv \
-                     * ((grid.T_loc[I2V(iip+1,jjt-1,kkr)]-grid.T_loc[I2V(iip-1,jjt-1,kkr)]) \
-                     + (grid.T_loc[I2V(iip+1,jjt,kkr)]  -grid.T_loc[I2V(iip-1,jjt,kkr)]));
+    CUSTOMREAL b1  = - (_1_CR-grid.xi_loc[ii_mt]-grid.xi_loc[ii]) * one_over_r_loc_1d_kkr_sq * (grid.T_loc[ii]-grid.T_loc[ii_mt]) * dt_inv \
+                     - (      grid.eta_loc[ii_mt]+grid.eta_loc[ii]) * one_over_r_loc_1d_kkr_sq / (std::cos(tmpt1)) * 0.25 * dp_inv \
+                     * ((grid.T_loc[ii_pp_mt]-grid.T_loc[ii_mp_mt]) \
+                     + (grid.T_loc[ii_pp]  -grid.T_loc[ii_mp]));
     CUSTOMREAL b1m = (b1 - std::abs(b1));
     CUSTOMREAL b1p = (b1 + std::abs(b1));
 
-    CUSTOMREAL b2  = - (_1_CR-grid.xi_loc[ I2V(iip,jjt,kkr)]-grid.xi_loc[ I2V(iip,jjt+1,kkr)]) * one_over_r_loc_1d_kkr_sq * (grid.T_loc[I2V(iip,jjt+1,kkr)]-grid.T_loc[I2V(iip,jjt,kkr)]) * dt_inv \
-                     - (      grid.eta_loc[I2V(iip,jjt,kkr)]+grid.eta_loc[I2V(iip,jjt+1,kkr)]) * one_over_r_loc_1d_kkr_sq / (std::cos(tmpt2)) * 0.25 * dp_inv \
+    CUSTOMREAL b2  = - (_1_CR-grid.xi_loc[ ii]-grid.xi_loc[ ii_pt]) * one_over_r_loc_1d_kkr_sq * (grid.T_loc[ii_pt]-grid.T_loc[ii]) * dt_inv \
+                     - (      grid.eta_loc[ii]+grid.eta_loc[ii_pt]) * one_over_r_loc_1d_kkr_sq / (std::cos(tmpt2)) * 0.25 * dp_inv \
                      * (tmp_T_ip \
-                     + (grid.T_loc[I2V(iip+1,jjt+1,kkr)]-grid.T_loc[I2V(iip-1,jjt+1,kkr)]));
+                     + (grid.T_loc[ii_pp_pt]-grid.T_loc[ii_mp_pt]));
     CUSTOMREAL b2m = (b2 - std::abs(b2));
     CUSTOMREAL b2p = (b2 + std::abs(b2));
 
-    CUSTOMREAL c1  =  - (_1_CR+grid.xi_loc[I2V(iip-1,jjt,kkr)]+grid.xi_loc[I2V(iip,jjt,kkr)]) * one_over_r_loc_cos_t_loc_sq \
-                      * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip-1,jjt,kkr)]) * dp_inv \
-                      - (grid.eta_loc[I2V(iip-1,jjt,kkr)]+grid.eta_loc[I2V(iip,jjt,kkr)]) * one_over_r_loc_cos_t_loc_sq * 0.25 * dt_inv \
-                      * ((grid.T_loc[I2V(iip-1,jjt+1,kkr)]-grid.T_loc[I2V(iip-1,jjt-1,kkr)]) \
-                      + (grid.T_loc[I2V(iip,  jjt+1,kkr)]-grid.T_loc[I2V(iip,  jjt-1,kkr)]));
+    CUSTOMREAL c1  =  - (_1_CR+grid.xi_loc[ii_mp]+grid.xi_loc[ii]) * one_over_r_loc_cos_t_loc_sq \
+                      * (grid.T_loc[ii]-grid.T_loc[ii_mp]) * dp_inv \
+                      - (grid.eta_loc[ii_mp]+grid.eta_loc[ii]) * one_over_r_loc_cos_t_loc_sq * 0.25 * dt_inv \
+                      * ((grid.T_loc[ii_mp_pt]-grid.T_loc[ii_mp_mt]) \
+                      + (grid.T_loc[ii_pt]-grid.T_loc[ii_mt]));
     CUSTOMREAL c1m = (c1 - std::abs(c1));
     CUSTOMREAL c1p = (c1 + std::abs(c1));
 
-    CUSTOMREAL c2  =  - (_1_CR+grid.xi_loc[I2V(iip,jjt,kkr)]+grid.xi_loc[I2V(iip+1,jjt,kkr)]) * one_over_r_loc_cos_t_loc_sq \
-                      * (grid.T_loc[I2V(iip+1,jjt,kkr)]-grid.T_loc[I2V(iip,jjt,kkr)]) * dp_inv \
-                      - (grid.eta_loc[I2V(iip,jjt,kkr)]+grid.eta_loc[I2V(iip+1,jjt,kkr)]) * one_over_r_loc_cos_t_loc_sq * 0.25 * dt_inv \
+    CUSTOMREAL c2  =  - (_1_CR+grid.xi_loc[ii]+grid.xi_loc[ii_pp]) * one_over_r_loc_cos_t_loc_sq \
+                      * (grid.T_loc[ii_pp]-grid.T_loc[ii]) * dp_inv \
+                      - (grid.eta_loc[ii]+grid.eta_loc[ii_pp]) * one_over_r_loc_cos_t_loc_sq * 0.25 * dt_inv \
                       * (tmp_T_jt \
-                      + (grid.T_loc[I2V(iip+1,jjt+1,kkr)]-grid.T_loc[I2V(iip+1,jjt-1,kkr)]));
+                      + (grid.T_loc[ii_pp_pt]-grid.T_loc[ii_pp_mt]));
     CUSTOMREAL c2m = (c2 - std::abs(c2));
     CUSTOMREAL c2p = (c2 + std::abs(c2));
 
     // additional terms of divergence in spherical cooridinate
-    CUSTOMREAL d   = - _2_CR * (_1_CR+grid.zeta_loc[I2V(iip,jjt,kkr)]) * one_over_r_loc_1d_kkr \
-                     * (grid.T_loc[I2V(iip,jjt,kkr+1)]-grid.T_loc[I2V(iip,jjt,kkr-1)]) * dr_inv \
-                     + (_0_5_CR-grid.xi_loc[I2V(iip,jjt,kkr)]) * sin_t_loc * one_over_r_loc_1d_kkr_sq * one_over_cos_t_loc \
+    CUSTOMREAL d   = - _2_CR * (_1_CR+grid.zeta_loc[ii]) * one_over_r_loc_1d_kkr \
+                     * (grid.T_loc[ii_pr]-grid.T_loc[ii_mr]) * dr_inv \
+                     + (_0_5_CR-grid.xi_loc[ii]) * sin_t_loc * one_over_r_loc_1d_kkr_sq * one_over_cos_t_loc \
                      * tmp_T_jt * dt_inv \
-                     + grid.eta_loc[I2V(iip,jjt,kkr)] * sin_t_loc * one_over_r_loc_cos_t_loc_sq \
+                     + grid.eta_loc[ii] * sin_t_loc * one_over_r_loc_cos_t_loc_sq \
                      * tmp_T_ip * dp_inv;
 
     // stabilize the calculation on the boundary
@@ -2266,14 +2278,14 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     CUSTOMREAL coe = _0_5_CR * ( (a2p-a1m)* dr_inv + (b2p-b1m)* dt_inv + (c2p-c1m)* dp_inv );
 
     if (isZeroAdj(coe)) {   // here the traveltime is larger than surrounding
-        grid.tau_loc[I2V(iip,jjt,kkr)] = _0_CR;
+        grid.tau_loc[ii] = _0_CR;
     } else {
         // hamiltonian
-        CUSTOMREAL Hadj = _0_5_CR * ( (a1p*grid.tau_loc[I2V(iip,jjt,kkr-1)] - a2m*grid.tau_loc[I2V(iip,jjt,kkr+1)]) * dr_inv \
-                        + (b1p*grid.tau_loc[I2V(iip,jjt-1,kkr)] - b2m*grid.tau_loc[I2V(iip,jjt+1,kkr)]) * dt_inv \
-                        + (c1p*grid.tau_loc[I2V(iip-1,jjt,kkr)] - c2m*grid.tau_loc[I2V(iip+1,jjt,kkr)]) * dp_inv );
+        CUSTOMREAL Hadj = _0_5_CR * ( (a1p*grid.tau_loc[ii_mr] - a2m*grid.tau_loc[ii_pr]) * dr_inv \
+                        + (b1p*grid.tau_loc[ii_mt] - b2m*grid.tau_loc[ii_pt]) * dt_inv \
+                        + (c1p*grid.tau_loc[ii_mp] - c2m*grid.tau_loc[ii_pp]) * dp_inv );
 
-        grid.tau_loc[I2V(iip,jjt,kkr)] = (grid.tau_old_loc[I2V(iip,jjt,kkr)] + Hadj) / (coe + d);
+        grid.tau_loc[ii] = (grid.tau_old_loc[ii] + Hadj) / (coe + d);
     }
 }
 
