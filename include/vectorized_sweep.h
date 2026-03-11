@@ -144,12 +144,12 @@ inline void vect_stencil_1st_pre_simd(
 
 #if USE_AVX512 || USE_AVX
 
-    v_pp1 = calc_1d_stencil(v_c__, v_m__, v_DP_inv);
-    v_pp2 = calc_1d_stencil(v_p__, v_c__, v_DP_inv);
-    v_pt1 = calc_1d_stencil(v_c__, v__m_, v_DT_inv);
-    v_pt2 = calc_1d_stencil(v__p_, v_c__, v_DT_inv);
-    v_pr1 = calc_1d_stencil(v_c__, v___m, v_DR_inv);
-    v_pr2 = calc_1d_stencil(v___p, v_c__, v_DR_inv);
+    v_pp1 = calc_1d_stencil(v_c__, v_m__, v_DP_inv_half);
+    v_pp2 = calc_1d_stencil(v_p__, v_c__, v_DP_inv_half);
+    v_pt1 = calc_1d_stencil(v_c__, v__m_, v_DT_inv_half);
+    v_pt2 = calc_1d_stencil(v__p_, v_c__, v_DT_inv_half);
+    v_pr1 = calc_1d_stencil(v_c__, v___m, v_DR_inv_half);
+    v_pr2 = calc_1d_stencil(v___p, v_c__, v_DR_inv_half);
 
 #elif USE_ARM_SVE
 
@@ -369,12 +369,13 @@ inline void vect_stencil_1st_3rd_apre_simd(
 
 #if USE_AVX512 || USE_AVX
 
+    // COEF = 1.0
     // sigr = COEF * sqrt(v_fac_a)*v_T0v;
-    __mT sigr = _mmT_mul_pT(_mmT_mul_pT(COEF,_mmT_sqrt_pT(v_fac_a)),v_T0v);
+    __mT sigr = _mmT_mul_pT(_mmT_sqrt_pT(v_fac_a),v_T0v);
     // sigt = COEF * sqrt(v_fac_b)*v_T0v;
-    __mT sigt = _mmT_mul_pT(_mmT_mul_pT(COEF,_mmT_sqrt_pT(v_fac_b)),v_T0v);
+    __mT sigt = _mmT_mul_pT(_mmT_sqrt_pT(v_fac_b),v_T0v);
     // sigp = COEF * sqrt(v_fac_c)*v_T0v;
-    __mT sigp = _mmT_mul_pT(_mmT_mul_pT(COEF,_mmT_sqrt_pT(v_fac_c)),v_T0v);
+    __mT sigp = _mmT_mul_pT(_mmT_sqrt_pT(v_fac_c),v_T0v);
 
     // coe = 1.0 / (sigr/D + sigt/D + sigz/D);
     __mT coe = _mmT_div_pT(v_1,_mmT_add_pT(_mmT_add_pT(_mmT_mul_pT(sigr,DR_inv),_mmT_mul_pT(sigt,DT_inv)),_mmT_mul_pT(sigp,DP_inv)));
@@ -382,26 +383,27 @@ inline void vect_stencil_1st_3rd_apre_simd(
     // if coe > 1e19, set coe = 1e19
     coe = _mmT_min_pT(coe,coe_max);
 
-    // Htau  = v_fac_a * square(v_T0r * v_tau + v_T0v * (v_pr1 + v_pr2)*0.5);
-    __mT Htau = _mmT_mul_pT(v_fac_a,my_square_v(_mmT_add_pT(_mmT_mul_pT(v_T0r,v_tau),_mmT_mul_pT(v_T0v,_mmT_mul_pT(_mmT_add_pT(v_pr1,v_pr2),v_half)))));
+    // tmp1 = ( v_T0t * v_tau + v_T0v * (v_pt1 + v_pt2))
+    __mT tmp1 = _mmT_add_pT(_mmT_mul_pT(v_T0t,v_tau),_mmT_mul_pT(v_T0v,_mmT_add_pT(v_pt1,v_pt2)));
+    // tmp2 = ( v_T0p * v_tau + v_T0v * (v_pp1 + v_pp2)))
+    __mT tmp2 = _mmT_add_pT(_mmT_mul_pT(v_T0p,v_tau),_mmT_mul_pT(v_T0v,_mmT_add_pT(v_pp1,v_pp2)));
 
-    // Htau += v_fac_b * square(v_T0t * v_tau + v_T0v * (v_pt1 + v_pt2)*0.5))
-    Htau = _mmT_add_pT(Htau,_mmT_mul_pT(v_fac_b,my_square_v(_mmT_add_pT(_mmT_mul_pT(v_T0t,v_tau),_mmT_mul_pT(v_T0v,_mmT_mul_pT(_mmT_add_pT(v_pt1,v_pt2), v_half))))));
-    // Htau += v_fac_c * square(v_T0p * v_tau + v_T0v * (v_pp1 + v_pp2)*0.5))
-    Htau = _mmT_add_pT(Htau,_mmT_mul_pT(v_fac_c,my_square_v(_mmT_add_pT(_mmT_mul_pT(v_T0p,v_tau),_mmT_mul_pT(v_T0v,_mmT_mul_pT(_mmT_add_pT(v_pp1,v_pp2), v_half))))));
+    // Htau  = v_fac_a * square(v_T0r * v_tau + v_T0v * (v_pr1 + v_pr2));
+    __mT Htau = _mmT_mul_pT(v_fac_a,my_square_v(_mmT_add_pT(_mmT_mul_pT(v_T0r,v_tau),_mmT_mul_pT(v_T0v,_mmT_add_pT(v_pr1,v_pr2)))));
 
-    // tmp1 = ( v_T0t * v_tau + v_T0v * (v_pt1 + v_pt2)*0.5)
-    __mT tmp1 = _mmT_add_pT(_mmT_mul_pT(v_T0t,v_tau),_mmT_mul_pT(v_T0v,_mmT_mul_pT(_mmT_add_pT(v_pt1,v_pt2), v_half)));
-    // tmp2 = ( v_T0p * v_tau + v_T0v * (v_pp1 + v_pp2)*0.5))
-    __mT tmp2 = _mmT_add_pT(_mmT_mul_pT(v_T0p,v_tau),_mmT_mul_pT(v_T0v,_mmT_mul_pT(_mmT_add_pT(v_pp1,v_pp2), v_half)));
+    // Htau += v_fac_b * square(v_T0t * v_tau + v_T0v * (v_pt1 + v_pt2)))
+    Htau = _mmT_add_pT(Htau,_mmT_mul_pT(v_fac_b,my_square_v(tmp1)));
+    // Htau += v_fac_c * square(v_T0p * v_tau + v_T0v * (v_pp1 + v_pp2)))
+    Htau = _mmT_add_pT(Htau,_mmT_mul_pT(v_fac_c,my_square_v(tmp2)));
+
     // tmp3 = -2.0 * v_fac_f * tmp1 * tmp2;
     __mT tmp3 = _mmT_mul_pT(v_m2,_mmT_mul_pT(v_fac_f,_mmT_mul_pT(tmp1,tmp2)));
 
     // Htau = sqrt(Htau + tmp3); // # becamse nan as Htau - tmp3 goes to 0
     Htau = _mmT_sqrt_pT(_mmT_add_pT(Htau,tmp3));
 
-    // tmp = (sigr*(v_pr2 - v_pr1) + sigt*(v_pt2 - v_pt1) + sigz*(v_pp2 - v_pp1))*0.5
-    __mT tmp = _mmT_mul_pT(v_half,_mmT_add_pT(_mmT_add_pT(_mmT_mul_pT(sigr,_mmT_sub_pT(v_pr2,v_pr1)),_mmT_mul_pT(sigt,_mmT_sub_pT(v_pt2,v_pt1))),_mmT_mul_pT(sigp,_mmT_sub_pT(v_pp2,v_pp1))));
+    // tmp = (sigr*(v_pr2 - v_pr1) + sigt*(v_pt2 - v_pt1) + sigz*(v_pp2 - v_pp1))
+    __mT tmp = _mmT_add_pT(_mmT_add_pT(_mmT_mul_pT(sigr,_mmT_sub_pT(v_pr2,v_pr1)),_mmT_mul_pT(sigt,_mmT_sub_pT(v_pt2,v_pt1))),_mmT_mul_pT(sigp,_mmT_sub_pT(v_pp2,v_pp1)));
 
     // v_tau += coe * ((v_fun - Htau) + tmp) if mask is true
     v_tau = _mmT_add_pT(v_tau,_mmT_mul_pT(coe,_mmT_add_pT(_mmT_sub_pT(v_fun,Htau),tmp)));
