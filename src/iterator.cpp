@@ -2193,54 +2193,68 @@ void Iterator::calculate_stencil_3rd_order(Grid& grid, int& iip, int& jjt, int&k
 void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     //CUSTOMREAL tmpr1 = (grid.r_loc_1d[kkr-1]+grid.r_loc_1d[kkr])/_2_CR;
     //CUSTOMREAL tmpr2 = (grid.r_loc_1d[kkr+1]+grid.r_loc_1d[kkr])/_2_CR;
-    CUSTOMREAL tmpt1 = (grid.t_loc_1d[jjt-1]+grid.t_loc_1d[jjt])/_2_CR;
-    CUSTOMREAL tmpt2 = (grid.t_loc_1d[jjt]  +grid.t_loc_1d[jjt+1])/_2_CR;
 
-    CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[I2V(iip,jjt,kkr-1)]+grid.zeta_loc[I2V(iip,jjt,kkr)]) * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip,jjt,kkr-1)]) / dr;
-    CUSTOMREAL a1m = (a1 - std::abs(a1))/_2_CR;
-    CUSTOMREAL a1p = (a1 + std::abs(a1))/_2_CR;
+    // consts
+    CUSTOMREAL dp_inv = 1/dp;
+    CUSTOMREAL dr_inv = 1/dr;
+    CUSTOMREAL dt_inv = 1/dt;
 
-    CUSTOMREAL a2  = - (_1_CR+grid.zeta_loc[I2V(iip,jjt,kkr)]+grid.zeta_loc[I2V(iip,jjt,kkr+1)]) * (grid.T_loc[I2V(iip,jjt,kkr+1)]-grid.T_loc[I2V(iip,jjt,kkr)]) / dr;
-    CUSTOMREAL a2m = (a2 - std::abs(a2))/_2_CR;
-    CUSTOMREAL a2p = (a2 + std::abs(a2))/_2_CR;
+    CUSTOMREAL one_over_r_loc_1d_kkr = 1/grid.r_loc_1d[kkr];
+    CUSTOMREAL one_over_r_loc_1d_kkr_sq = my_square(one_over_r_loc_1d_kkr);
+    CUSTOMREAL one_over_cos_t_loc = 1/std::cos(grid.t_loc_1d[jjt]);
+    CUSTOMREAL sin_t_loc = std::sin(grid.t_loc_1d[jjt]);
+    CUSTOMREAL one_over_r_loc_cos_t_loc_sq = one_over_r_loc_1d_kkr_sq*my_square(one_over_cos_t_loc);
 
-    CUSTOMREAL b1  = - (_1_CR-grid.xi_loc[ I2V(iip,jjt-1,kkr)]-grid.xi_loc[ I2V(iip,jjt,kkr)]) /  my_square(grid.r_loc_1d[kkr]) * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip,jjt-1,kkr)]) / dt \
-                     - (      grid.eta_loc[I2V(iip,jjt-1,kkr)]+grid.eta_loc[I2V(iip,jjt,kkr)]) / (my_square(grid.r_loc_1d[kkr])*std::cos(tmpt1)) / (_4_CR*dp) \
+    CUSTOMREAL tmpt1 = (grid.t_loc_1d[jjt-1]+grid.t_loc_1d[jjt])*_0_5_CR;
+    CUSTOMREAL tmpt2 = (grid.t_loc_1d[jjt]  +grid.t_loc_1d[jjt+1])*_0_5_CR;
+    CUSTOMREAL tmp_T_ip = grid.T_loc[I2V(iip+1,jjt,kkr)]-grid.T_loc[I2V(iip-1,jjt,kkr)];
+    CUSTOMREAL tmp_T_jt = grid.T_loc[I2V(iip,jjt+1,kkr)]-grid.T_loc[I2V(iip,jjt-1,kkr)];
+
+    CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[I2V(iip,jjt,kkr-1)]+grid.zeta_loc[I2V(iip,jjt,kkr)]) * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip,jjt,kkr-1)]) * dr_inv;
+    CUSTOMREAL a1m = (a1 - std::abs(a1));
+    CUSTOMREAL a1p = (a1 + std::abs(a1));
+
+    CUSTOMREAL a2  = - (_1_CR+grid.zeta_loc[I2V(iip,jjt,kkr)]+grid.zeta_loc[I2V(iip,jjt,kkr+1)]) * (grid.T_loc[I2V(iip,jjt,kkr+1)]-grid.T_loc[I2V(iip,jjt,kkr)]) * dr_inv;
+    CUSTOMREAL a2m = (a2 - std::abs(a2));
+    CUSTOMREAL a2p = (a2 + std::abs(a2));
+
+    CUSTOMREAL b1  = - (_1_CR-grid.xi_loc[ I2V(iip,jjt-1,kkr)]-grid.xi_loc[ I2V(iip,jjt,kkr)]) * one_over_r_loc_1d_kkr_sq * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip,jjt-1,kkr)]) * dt_inv \
+                     - (      grid.eta_loc[I2V(iip,jjt-1,kkr)]+grid.eta_loc[I2V(iip,jjt,kkr)]) * one_over_r_loc_1d_kkr_sq / (std::cos(tmpt1)) * 0.25 * dp_inv \
                      * ((grid.T_loc[I2V(iip+1,jjt-1,kkr)]-grid.T_loc[I2V(iip-1,jjt-1,kkr)]) \
                      + (grid.T_loc[I2V(iip+1,jjt,kkr)]  -grid.T_loc[I2V(iip-1,jjt,kkr)]));
-    CUSTOMREAL b1m = (b1 - std::abs(b1))/_2_CR;
-    CUSTOMREAL b1p = (b1 + std::abs(b1))/_2_CR;
+    CUSTOMREAL b1m = (b1 - std::abs(b1));
+    CUSTOMREAL b1p = (b1 + std::abs(b1));
 
-    CUSTOMREAL b2  = - (_1_CR-grid.xi_loc[ I2V(iip,jjt,kkr)]-grid.xi_loc[ I2V(iip,jjt+1,kkr)]) /  my_square(grid.r_loc_1d[kkr]) * (grid.T_loc[I2V(iip,jjt+1,kkr)]-grid.T_loc[I2V(iip,jjt,kkr)]) / dt \
-                     - (      grid.eta_loc[I2V(iip,jjt,kkr)]+grid.eta_loc[I2V(iip,jjt+1,kkr)]) / (my_square(grid.r_loc_1d[kkr])*std::cos(tmpt2)) / (_4_CR*dp) \
-                     * ((grid.T_loc[I2V(iip+1,jjt,kkr)]-grid.T_loc[I2V(iip-1,jjt,kkr)]) \
+    CUSTOMREAL b2  = - (_1_CR-grid.xi_loc[ I2V(iip,jjt,kkr)]-grid.xi_loc[ I2V(iip,jjt+1,kkr)]) * one_over_r_loc_1d_kkr_sq * (grid.T_loc[I2V(iip,jjt+1,kkr)]-grid.T_loc[I2V(iip,jjt,kkr)]) * dt_inv \
+                     - (      grid.eta_loc[I2V(iip,jjt,kkr)]+grid.eta_loc[I2V(iip,jjt+1,kkr)]) * one_over_r_loc_1d_kkr_sq / (std::cos(tmpt2)) * 0.25 * dp_inv \
+                     * (tmp_T_ip \
                      + (grid.T_loc[I2V(iip+1,jjt+1,kkr)]-grid.T_loc[I2V(iip-1,jjt+1,kkr)]));
-    CUSTOMREAL b2m = (b2 - std::abs(b2))/_2_CR;
-    CUSTOMREAL b2p = (b2 + std::abs(b2))/_2_CR;
+    CUSTOMREAL b2m = (b2 - std::abs(b2));
+    CUSTOMREAL b2p = (b2 + std::abs(b2));
 
-    CUSTOMREAL c1  =  - (_1_CR+grid.xi_loc[I2V(iip-1,jjt,kkr)]+grid.xi_loc[I2V(iip,jjt,kkr)]) / (my_square(grid.r_loc_1d[kkr])*my_square(std::cos(grid.t_loc_1d[jjt]))) \
-                      * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip-1,jjt,kkr)]) / dp \
-                      - (grid.eta_loc[I2V(iip-1,jjt,kkr)]+grid.eta_loc[I2V(iip,jjt,kkr)]) / (my_square(grid.r_loc_1d[kkr])*std::cos(grid.t_loc_1d[jjt])) / (_4_CR*dt) \
+    CUSTOMREAL c1  =  - (_1_CR+grid.xi_loc[I2V(iip-1,jjt,kkr)]+grid.xi_loc[I2V(iip,jjt,kkr)]) * one_over_r_loc_cos_t_loc_sq \
+                      * (grid.T_loc[I2V(iip,jjt,kkr)]-grid.T_loc[I2V(iip-1,jjt,kkr)]) * dp_inv \
+                      - (grid.eta_loc[I2V(iip-1,jjt,kkr)]+grid.eta_loc[I2V(iip,jjt,kkr)]) * one_over_r_loc_cos_t_loc_sq * 0.25 * dt_inv \
                       * ((grid.T_loc[I2V(iip-1,jjt+1,kkr)]-grid.T_loc[I2V(iip-1,jjt-1,kkr)]) \
                       + (grid.T_loc[I2V(iip,  jjt+1,kkr)]-grid.T_loc[I2V(iip,  jjt-1,kkr)]));
-    CUSTOMREAL c1m = (c1 - std::abs(c1))/_2_CR;
-    CUSTOMREAL c1p = (c1 + std::abs(c1))/_2_CR;
+    CUSTOMREAL c1m = (c1 - std::abs(c1));
+    CUSTOMREAL c1p = (c1 + std::abs(c1));
 
-    CUSTOMREAL c2  =  - (_1_CR+grid.xi_loc[I2V(iip,jjt,kkr)]+grid.xi_loc[I2V(iip+1,jjt,kkr)]) / (my_square(grid.r_loc_1d[kkr])*my_square(std::cos(grid.t_loc_1d[jjt]))) \
-                      * (grid.T_loc[I2V(iip+1,jjt,kkr)]-grid.T_loc[I2V(iip,jjt,kkr)]) / dp \
-                      - (grid.eta_loc[I2V(iip,jjt,kkr)]+grid.eta_loc[I2V(iip+1,jjt,kkr)]) / (my_square(grid.r_loc_1d[kkr])*std::cos(grid.t_loc_1d[jjt])) / (_4_CR*dt) \
-                      * ((grid.T_loc[I2V(iip,jjt+1,kkr)]-grid.T_loc[I2V(iip,jjt-1,kkr)]) \
+    CUSTOMREAL c2  =  - (_1_CR+grid.xi_loc[I2V(iip,jjt,kkr)]+grid.xi_loc[I2V(iip+1,jjt,kkr)]) * one_over_r_loc_cos_t_loc_sq \
+                      * (grid.T_loc[I2V(iip+1,jjt,kkr)]-grid.T_loc[I2V(iip,jjt,kkr)]) * dp_inv \
+                      - (grid.eta_loc[I2V(iip,jjt,kkr)]+grid.eta_loc[I2V(iip+1,jjt,kkr)]) * one_over_r_loc_cos_t_loc_sq * 0.25 * dt_inv \
+                      * (tmp_T_jt \
                       + (grid.T_loc[I2V(iip+1,jjt+1,kkr)]-grid.T_loc[I2V(iip+1,jjt-1,kkr)]));
-    CUSTOMREAL c2m = (c2 - std::abs(c2))/_2_CR;
-    CUSTOMREAL c2p = (c2 + std::abs(c2))/_2_CR;
+    CUSTOMREAL c2m = (c2 - std::abs(c2));
+    CUSTOMREAL c2p = (c2 + std::abs(c2));
 
     // additional terms of divergence in spherical cooridinate
-    CUSTOMREAL d   = - _2_CR * (_1_CR+_2_CR*grid.zeta_loc[I2V(iip,jjt,kkr)]) / grid.r_loc_1d[kkr] \
-                     * (grid.T_loc[I2V(iip,jjt,kkr+1)]-grid.T_loc[I2V(iip,jjt,kkr-1)]) / _2_CR / dr \
-                     + (_1_CR-_2_CR*grid.xi_loc[I2V(iip,jjt,kkr)]) * std::sin(grid.t_loc_1d[jjt]) / (my_square(grid.r_loc_1d[kkr])*std::cos(grid.t_loc_1d[jjt])) \
-                     * (grid.T_loc[I2V(iip,jjt+1,kkr)]-grid.T_loc[I2V(iip,jjt-1,kkr)]) / _2_CR / dt \
-                     + _2_CR * grid.eta_loc[I2V(iip,jjt,kkr)] * std::sin(grid.t_loc_1d[jjt]) / (my_square(grid.r_loc_1d[kkr])*my_square(std::cos(grid.t_loc_1d[jjt]))) \
-                     * (grid.T_loc[I2V(iip+1,jjt,kkr)]-grid.T_loc[I2V(iip-1,jjt,kkr)]) / _2_CR / dp;
+    CUSTOMREAL d   = - _2_CR * (_1_CR+grid.zeta_loc[I2V(iip,jjt,kkr)]) * one_over_r_loc_1d_kkr \
+                     * (grid.T_loc[I2V(iip,jjt,kkr+1)]-grid.T_loc[I2V(iip,jjt,kkr-1)]) * dr_inv \
+                     + (_0_5_CR-grid.xi_loc[I2V(iip,jjt,kkr)]) * sin_t_loc * one_over_r_loc_1d_kkr_sq * one_over_cos_t_loc \
+                     * tmp_T_jt * dt_inv \
+                     + grid.eta_loc[I2V(iip,jjt,kkr)] * sin_t_loc * one_over_r_loc_cos_t_loc_sq \
+                     * tmp_T_ip * dp_inv;
 
     // stabilize the calculation on the boundary
     // if (kkr == 1 && grid.k_first() && a1p > 0 ){
@@ -2249,15 +2263,15 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     // }
 
     // coe
-    CUSTOMREAL coe = (a2p-a1m)/dr + (b2p-b1m)/dt + (c2p-c1m)/dp;
+    CUSTOMREAL coe = _0_5_CR * ( (a2p-a1m)* dr_inv + (b2p-b1m)* dt_inv + (c2p-c1m)* dp_inv );
 
     if (isZeroAdj(coe)) {   // here the traveltime is larger than surrounding
         grid.tau_loc[I2V(iip,jjt,kkr)] = _0_CR;
     } else {
         // hamiltonian
-        CUSTOMREAL Hadj = (a1p*grid.tau_loc[I2V(iip,jjt,kkr-1)] - a2m*grid.tau_loc[I2V(iip,jjt,kkr+1)]) / dr \
-                        + (b1p*grid.tau_loc[I2V(iip,jjt-1,kkr)] - b2m*grid.tau_loc[I2V(iip,jjt+1,kkr)]) / dt \
-                        + (c1p*grid.tau_loc[I2V(iip-1,jjt,kkr)] - c2m*grid.tau_loc[I2V(iip+1,jjt,kkr)]) / dp;
+        CUSTOMREAL Hadj = _0_5_CR * ( (a1p*grid.tau_loc[I2V(iip,jjt,kkr-1)] - a2m*grid.tau_loc[I2V(iip,jjt,kkr+1)]) * dr_inv \
+                        + (b1p*grid.tau_loc[I2V(iip,jjt-1,kkr)] - b2m*grid.tau_loc[I2V(iip,jjt+1,kkr)]) * dt_inv \
+                        + (c1p*grid.tau_loc[I2V(iip-1,jjt,kkr)] - c2m*grid.tau_loc[I2V(iip+1,jjt,kkr)]) * dp_inv );
 
         grid.tau_loc[I2V(iip,jjt,kkr)] = (grid.tau_old_loc[I2V(iip,jjt,kkr)] + Hadj) / (coe + d);
     }
