@@ -12,8 +12,7 @@ Grid::Grid(InputParams& IP, IO_utils& io) {
                    &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
                    &win_Tadj_loc, &win_Tadj_density_loc,
                    &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_over_cos_t_loc,
-                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc});
-
+                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_tmpt1, &win_tmpt2});
     // initialize grid parameters are done by only the main process of each subdomain
     if (subdom_main) {
         // domain decomposition
@@ -377,6 +376,8 @@ void Grid::memory_allocation() {
         one_over_cos_t_loc       = allocateMemory<CUSTOMREAL>(loc_J, 9003);
         one_over_cos_t_loc_sq    = allocateMemory<CUSTOMREAL>(loc_J, 9004);
         sin_t_loc                = allocateMemory<CUSTOMREAL>(loc_J, 9005);
+        tmpt1                    = allocateMemory<CUSTOMREAL>(loc_J, 9006);
+        tmpt2                    = allocateMemory<CUSTOMREAL>(loc_J, 9007);
     }
 
     if (if_test)
@@ -675,7 +676,7 @@ void Grid::shm_memory_deallocation() {
                       &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
                       &win_Tadj_loc, &win_Tadj_density_loc,
                       &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_over_cos_t_loc,
-                      &win_one_over_cos_t_loc_sq, &win_sin_t_loc});
+                      &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_tmpt1, &win_tmpt2});
 }
 
 // function for memory allocation, called only for subdomain.
@@ -717,6 +718,8 @@ void Grid::memory_deallocation() {
         delete[] one_over_cos_t_loc;
         delete[] one_over_cos_t_loc_sq;
         delete[] sin_t_loc;
+        delete[] tmpt1;
+        delete[] tmpt2;
 
     }
 
@@ -982,6 +985,14 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         one_over_cos_t_loc[j] = 1/std::cos(t_loc_1d[j]);
         one_over_cos_t_loc_sq[j] = my_square(one_over_cos_t_loc[j]);
         sin_t_loc[j] = std::sin(t_loc_1d[j]);
+    }
+
+    for (int j = 1; j < loc_J; j++) {
+        tmpt1[j] = 1 / std::cos((t_loc_1d[j-1]+t_loc_1d[j])*_0_5_CR);
+    }
+
+    for (int j = 0; j < loc_J - 1; j++) {
+        tmpt2[j] = 1 / std::cos((t_loc_1d[j]+t_loc_1d[j+1])*_0_5_CR);
     }
 
     for (int i = 0; i < nprocs; i++) {
