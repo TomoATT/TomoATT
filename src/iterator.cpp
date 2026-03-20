@@ -15,6 +15,9 @@ Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const
         dr = grid.dr;
         dt = grid.dt;
         dp = grid.dp;
+        dr_inv = 1/dr;
+        dt_inv = 1/dt;
+        dp_inv = 1/dp;
 
         if (first_init) {
 
@@ -24,6 +27,9 @@ Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const
             broadcast_cr_single_sub(dr,0);
             broadcast_cr_single_sub(dt,0);
             broadcast_cr_single_sub(dp,0);
+            broadcast_cr_single_sub(dr_inv,0);
+            broadcast_cr_single_sub(dt_inv,0);
+            broadcast_cr_single_sub(dp_inv,0);
 
             // initialize n_elms for subprocs
             if (!subdom_main){
@@ -55,6 +61,9 @@ Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const
         dr = grid.dr;
         dt = grid.dt;
         dp = grid.dp;
+        dr_inv = 1/dr;
+        dt_inv = 1/dt;
+        dp_inv = 1/dp;
         is_teleseismic = is_teleseismic_in;
     }
 
@@ -2207,15 +2216,11 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     int ii_pp_mt= I2V(iip+1,jjt-1,kkr);
     int ii_mp_mt= I2V(iip-1,jjt-1,kkr);
 
-    CUSTOMREAL dp_inv = 1/dp;
-    CUSTOMREAL dr_inv = 1/dr;
-    CUSTOMREAL dt_inv = 1/dt;
-
-    CUSTOMREAL one_over_r_loc_1d_kkr = 1/grid.r_loc_1d[kkr];
-    CUSTOMREAL one_over_r_loc_1d_kkr_sq = my_square(one_over_r_loc_1d_kkr);
-    CUSTOMREAL one_over_cos_t_loc = 1/std::cos(grid.t_loc_1d[jjt]);
-    CUSTOMREAL sin_t_loc = std::sin(grid.t_loc_1d[jjt]);
-    CUSTOMREAL one_over_r_loc_cos_t_loc_sq = one_over_r_loc_1d_kkr_sq*my_square(one_over_cos_t_loc);
+    CUSTOMREAL one_over_r_loc_1d_kkr = grid.one_over_r_loc_1d[kkr];
+    CUSTOMREAL one_over_r_loc_1d_kkr_sq = grid.one_over_r_loc_1d_sq[kkr];
+    CUSTOMREAL one_over_cos_t_loc_jjt = grid.one_over_cos_t_loc[jjt];
+    CUSTOMREAL sin_t_loc_jjt = grid.sin_t_loc[jjt];
+    CUSTOMREAL one_over_r_loc_cos_t_loc_sq = one_over_r_loc_1d_kkr_sq*grid.one_over_cos_t_loc_sq[jjt];
 
     CUSTOMREAL tmpt1 = (grid.t_loc_1d[jjt-1]+grid.t_loc_1d[jjt])*_0_5_CR;
     CUSTOMREAL tmpt2 = (grid.t_loc_1d[jjt]  +grid.t_loc_1d[jjt+1])*_0_5_CR;
@@ -2263,9 +2268,9 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     // additional terms of divergence in spherical cooridinate
     CUSTOMREAL d   = - _2_CR * (_1_CR+grid.zeta_loc[ii]) * one_over_r_loc_1d_kkr \
                      * (grid.T_loc[ii_pr]-grid.T_loc[ii_mr]) * dr_inv \
-                     + (_0_5_CR-grid.xi_loc[ii]) * sin_t_loc * one_over_r_loc_1d_kkr_sq * one_over_cos_t_loc \
+                     + (_0_5_CR-grid.xi_loc[ii]) * sin_t_loc_jjt * one_over_r_loc_1d_kkr_sq * one_over_cos_t_loc_jjt \
                      * tmp_T_jt * dt_inv \
-                     + grid.eta_loc[ii] * sin_t_loc * one_over_r_loc_cos_t_loc_sq \
+                     + grid.eta_loc[ii] * sin_t_loc_jjt * one_over_r_loc_cos_t_loc_sq \
                      * tmp_T_ip * dp_inv;
 
     // stabilize the calculation on the boundary

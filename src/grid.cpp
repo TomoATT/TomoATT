@@ -10,7 +10,9 @@ Grid::Grid(InputParams& IP, IO_utils& io) {
                    &win_T_loc, &win_tau_old_loc,
                    &win_xi_loc, &win_eta_loc, &win_zeta_loc,
                    &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
-                   &win_Tadj_loc, &win_Tadj_density_loc});
+                   &win_Tadj_loc, &win_Tadj_density_loc,
+                   &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_over_cos_t_loc,
+                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc});
 
     // initialize grid parameters are done by only the main process of each subdomain
     if (subdom_main) {
@@ -370,6 +372,11 @@ void Grid::memory_allocation() {
         p_loc_1d    = allocateMemory<CUSTOMREAL>(loc_I, 17);
         t_loc_1d    = allocateMemory<CUSTOMREAL>(loc_J, 18);
         r_loc_1d    = allocateMemory<CUSTOMREAL>(loc_K, 19);
+        one_over_r_loc_1d        = allocateMemory<CUSTOMREAL>(loc_K, 9001);
+        one_over_r_loc_1d_sq     = allocateMemory<CUSTOMREAL>(loc_K, 9002);
+        one_over_cos_t_loc       = allocateMemory<CUSTOMREAL>(loc_J, 9003);
+        one_over_cos_t_loc_sq    = allocateMemory<CUSTOMREAL>(loc_J, 9004);
+        sin_t_loc                = allocateMemory<CUSTOMREAL>(loc_J, 9005);
     }
 
     if (if_test)
@@ -645,6 +652,12 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(loc_J, t_loc_1d, win_t_loc_1d);
     prepare_shm_array_cr(loc_K, r_loc_1d, win_r_loc_1d);
 
+    prepare_shm_array_cr(loc_J, one_over_cos_t_loc, win_over_cos_t_loc);
+    prepare_shm_array_cr(loc_J, one_over_cos_t_loc_sq, win_one_over_cos_t_loc_sq);
+    prepare_shm_array_cr(loc_J, sin_t_loc, win_sin_t_loc);
+    prepare_shm_array_cr(loc_K, one_over_r_loc_1d, win_one_over_r_loc_1d);
+    prepare_shm_array_cr(loc_K, one_over_r_loc_1d_sq, win_one_over_r_loc_1d_sq);
+
     // inversion
     prepare_shm_array_cr(n_total_loc_grid_points, Tadj_loc, win_Tadj_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, Tadj_density_loc, win_Tadj_density_loc);
@@ -660,7 +673,9 @@ void Grid::shm_memory_deallocation() {
                       &win_T_loc, &win_tau_old_loc,
                       &win_xi_loc, &win_eta_loc, &win_zeta_loc,
                       &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
-                      &win_Tadj_loc, &win_Tadj_density_loc});
+                      &win_Tadj_loc, &win_Tadj_density_loc,
+                      &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_over_cos_t_loc,
+                      &win_one_over_cos_t_loc_sq, &win_sin_t_loc});
 }
 
 // function for memory allocation, called only for subdomain.
@@ -696,6 +711,12 @@ void Grid::memory_deallocation() {
         delete[] t_loc_1d;
         delete[] p_loc_1d;
         delete[] r_loc_1d;
+
+        delete[] one_over_r_loc_1d;
+        delete[] one_over_r_loc_1d_sq;
+        delete[] one_over_cos_t_loc;
+        delete[] one_over_cos_t_loc_sq;
+        delete[] sin_t_loc;
 
     }
 
@@ -949,6 +970,18 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
     // lon
     for (int i = 0; i < loc_I; i++) {
         p_loc_1d[i] = lon_min + (tmp_offset_i + i)*dlon;
+    }
+
+    // pre-calculate inverses, sines and cosines.
+    for (int k = 0; k < loc_K; k++) {
+        one_over_r_loc_1d[k] = 1/r_loc_1d[k];
+        one_over_r_loc_1d_sq[k] = my_square(one_over_r_loc_1d[k]);
+    }
+
+    for (int j = 0; j < loc_J; j++) {
+        one_over_cos_t_loc[j] = 1/std::cos(t_loc_1d[j]);
+        one_over_cos_t_loc_sq[j] = my_square(one_over_cos_t_loc[j]);
+        sin_t_loc[j] = std::sin(t_loc_1d[j]);
     }
 
     for (int i = 0; i < nprocs; i++) {
