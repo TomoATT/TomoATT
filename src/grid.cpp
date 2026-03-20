@@ -656,6 +656,8 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(loc_J, one_over_cos_t_loc, win_over_cos_t_loc);
     prepare_shm_array_cr(loc_J, one_over_cos_t_loc_sq, win_one_over_cos_t_loc_sq);
     prepare_shm_array_cr(loc_J, sin_t_loc, win_sin_t_loc);
+    prepare_shm_array_cr(loc_J, tmpt1, win_tmpt1);
+    prepare_shm_array_cr(loc_J, tmpt2, win_tmpt2);
     prepare_shm_array_cr(loc_K, one_over_r_loc_1d, win_one_over_r_loc_1d);
     prepare_shm_array_cr(loc_K, one_over_r_loc_1d_sq, win_one_over_r_loc_1d_sq);
 
