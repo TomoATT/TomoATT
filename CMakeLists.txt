@@ -124,13 +124,17 @@ if(CUDA_FOUND) # TODO : add HIP here in the future
 
   # cuda flag
   #
+  # CUDA architecture: configurable via -DCUDA_ARCH (default: 70 for Volta and newer)
+  if(NOT DEFINED CUDA_ARCH)
+    set(CUDA_ARCH "70" CACHE STRING "CUDA compute capability (e.g. 61, 70, 80, 86, 89, 90)")
+  endif()
   # for production
-  set(CMAKE_CUDA_FLAGS "-fPIC -O3 -use_fast_math -extra-device-vectorization -gencode arch=compute_61,code=sm_61")
+  set(CMAKE_CUDA_FLAGS "-fPIC -O3 -use_fast_math -extra-device-vectorization -gencode arch=compute_${CUDA_ARCH},code=sm_${CUDA_ARCH}")
   #
   # for debugging
-  #set(CMAKE_CUDA_FLAGS "-fPIC -lineinfo -g -G -O0 -gencode arch=compute_61,code=sm_61")
-  set(CMAKE_CUDA_STANDARD "11")
-  message(STATUS, "TomoATT will be compiled with cuda.")
+  #set(CMAKE_CUDA_FLAGS "-fPIC -lineinfo -g -G -O0 -gencode arch=compute_${CUDA_ARCH},code=sm_${CUDA_ARCH}")
+  set(CMAKE_CUDA_STANDARD "14")
+  message(STATUS "TomoATT will be compiled with cuda (arch: sm_${CUDA_ARCH}).")
 else()
   message(STATUS "TomoATT will be compiled without cuda, because cuda is not found or -DUSE_CUDA=True was not specified.")
 endif()
@@ -259,8 +263,8 @@ foreach( execsourcefile ${APP_SOURCES} )
   if (CUDA_FOUND)
 
     #set_target_properties(${CUDA_LIBRARY_NAME} PROPERTIES CUDA_ARCHITECTURES "35;50;72")
-    set_target_properties(${CUDA_LIBRARY_NAME} PROPERTIES CUDA_ARCHITECTURES "61")
-    set_property(TARGET ${CUDA_LIBRARY_NAME} PROPERTY CUDA_ARCHITECTURES 61)
+    set_target_properties(${CUDA_LIBRARY_NAME} PROPERTIES CUDA_ARCHITECTURES "${CUDA_ARCH}")
+    set_property(TARGET ${CUDA_LIBRARY_NAME} PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCH})
 
     target_link_libraries(${EXEC_NAME} PRIVATE ${CUDA_LIBRARY_NAME})
     target_link_libraries(${CUDA_LIBRARY_NAME} PUBLIC MPI::MPI_CXX)

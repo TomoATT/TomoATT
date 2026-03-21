@@ -298,7 +298,7 @@ void Iterator::assign_processes_for_levels(Grid& grid, InputParams& IP) {
     //
     // TODO: upwind scheme + sweep parallelization does not support SIMD yet
     //
-    return;
+    if (IP.get_stencil_type() == UPWIND) return;
 
 
 #if defined USE_SIMD || defined USE_CUDA
