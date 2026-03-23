@@ -815,14 +815,12 @@ iter_end:
 void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
     if(if_verbose) std::cout << "initializing delta and Tadj" << std::endl;
 
-    for (int k = 0; k < nr; k++) {
-        for (int j = 0; j < nt; j++) {
-            for (int i = 0; i < np; i++) {
-                grid.tau_old_loc[I2V(i,j,k)] = _0_CR; // use tau_old_loc for delta
-                grid.tau_loc[I2V(i,j,k)]     = _0_CR; // use tau_loc for Tadj_loc (later copy to Tadj_loc)
-                grid.Tadj_loc[I2V(i,j,k)]    = 9999999.9;
-            }
-        }
+    // I2V maps to a 1-D continuous array
+    const int total_elements = nr * nt * np;
+    for (int idx = 0; idx < total_elements; idx++) {
+        grid.tau_old_loc[idx] = _0_CR; // use tau_old_loc for delta
+        grid.tau_loc[idx]     = _0_CR; // use tau_loc for Tadj_loc (later copy to Tadj_loc)
+        grid.Tadj_loc[idx]    = 9999999.9;
     }
 
     // loop all receivers
@@ -841,6 +839,9 @@ void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
         CUSTOMREAL delta_lat = grid.get_delta_lat();
         CUSTOMREAL delta_r   = grid.get_delta_r();
 
+        CUSTOMREAL one_over_delta_lon = 1/delta_lon;
+        CUSTOMREAL one_over_delta_lat = 1/delta_lat;
+        CUSTOMREAL one_over_delta_r   = 1/delta_r  ; 
 
         // get positions
         CUSTOMREAL rec_lon = rec.lon*DEG2RAD;
@@ -853,9 +854,9 @@ void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
             grid.get_r_min_loc()   <= rec_r   && rec_r   <= grid.get_r_max_loc()   ) {
 
             // descretize receiver position (LOCAL ID)
-            int i_rec_loc =  std::floor((rec_lon - grid.get_lon_min_loc()) / delta_lon);
-            int j_rec_loc =  std::floor((rec_lat - grid.get_lat_min_loc()) / delta_lat);
-            int k_rec_loc =  std::floor((rec_r   - grid.get_r_min_loc())   / delta_r);
+            int i_rec_loc =  std::floor((rec_lon - grid.get_lon_min_loc()) *  one_over_delta_lon);
+            int j_rec_loc =  std::floor((rec_lat - grid.get_lat_min_loc()) *  one_over_delta_lat);
+            int k_rec_loc =  std::floor((rec_r   - grid.get_r_min_loc())   *  one_over_delta_r);
 
             if(i_rec_loc +1 >= loc_I)
                 i_rec_loc = loc_I - 2;
@@ -870,19 +871,21 @@ void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
             CUSTOMREAL dis_rec_r   = grid.r_loc_1d[k_rec_loc];
 
             // relative position errors
-            CUSTOMREAL e_lon = std::min(_1_CR,(rec_lon - dis_rec_lon)/delta_lon);
-            CUSTOMREAL e_lat = std::min(_1_CR,(rec_lat - dis_rec_lat)/delta_lat);
-            CUSTOMREAL e_r   = std::min(_1_CR,(rec_r   - dis_rec_r)  /delta_r);
+            CUSTOMREAL e_lon = std::min(_1_CR,(rec_lon - dis_rec_lon)*one_over_delta_lon);
+            CUSTOMREAL e_lat = std::min(_1_CR,(rec_lat - dis_rec_lat)*one_over_delta_lat);
+            CUSTOMREAL e_r   = std::min(_1_CR,(rec_r   - dis_rec_r)  *one_over_delta_r);
+
+            CUSTOMREAL denom = one_over_delta_lon*one_over_delta_lat*one_over_delta_r/(my_square(rec_r)*std::cos(rec_lat));
 
             // set delta values
-            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc,k_rec_loc)]       += rec.adjoint_source*(1.0-e_lon)*(1.0-e_lat)*(1.0-e_r)/(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc,k_rec_loc+1)]     += rec.adjoint_source*(1.0-e_lon)*(1.0-e_lat)*     e_r /(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc+1,k_rec_loc)]     += rec.adjoint_source*(1.0-e_lon)*     e_lat* (1.0-e_r)/(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc+1,k_rec_loc+1)]   += rec.adjoint_source*(1.0-e_lon)*     e_lat*      e_r /(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc,k_rec_loc)]     += rec.adjoint_source*     e_lon *(1.0-e_lat)*(1.0-e_r)/(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc,k_rec_loc+1)]   += rec.adjoint_source*     e_lon *(1.0-e_lat)*     e_r /(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc+1,k_rec_loc)]   += rec.adjoint_source*     e_lon *     e_lat *(1.0-e_r)/(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc+1,k_rec_loc+1)] += rec.adjoint_source*     e_lon *     e_lat *     e_r /(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
+            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc,k_rec_loc)]       += rec.adjoint_source*(1.0-e_lon)*(1.0-e_lat)*(1.0-e_r)*denom;
+            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc,k_rec_loc+1)]     += rec.adjoint_source*(1.0-e_lon)*(1.0-e_lat)*     e_r *denom;
+            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc+1,k_rec_loc)]     += rec.adjoint_source*(1.0-e_lon)*     e_lat* (1.0-e_r)*denom;
+            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc+1,k_rec_loc+1)]   += rec.adjoint_source*(1.0-e_lon)*     e_lat*      e_r *denom;
+            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc,k_rec_loc)]     += rec.adjoint_source*     e_lon *(1.0-e_lat)*(1.0-e_r)*denom;
+            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc,k_rec_loc+1)]   += rec.adjoint_source*     e_lon *(1.0-e_lat)*     e_r *denom;
+            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc+1,k_rec_loc)]   += rec.adjoint_source*     e_lon *     e_lat *(1.0-e_r)*denom;
+            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc+1,k_rec_loc+1)] += rec.adjoint_source*     e_lon *     e_lat *     e_r *denom;
         }
     } // end of loop all receivers
 
@@ -895,14 +898,12 @@ void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
 void Iterator::init_delta_and_Tadj_density(Grid& grid, InputParams& IP) {
     if(if_verbose) std::cout << "initializing delta and Tadj" << std::endl;
 
-    for (int k = 0; k < nr; k++) {
-        for (int j = 0; j < nt; j++) {
-            for (int i = 0; i < np; i++) {
-                grid.tau_old_loc[I2V(i,j,k)] = _0_CR; // use tau_old_loc for delta
-                grid.tau_loc[I2V(i,j,k)]     = _0_CR; // use tau_loc for Tadj_density_loc (later copy to Tadj_density_loc)
-                grid.Tadj_density_loc[I2V(i,j,k)]    = 9999999.9;
-            }
-        }
+    // I2V maps to a 1-D continuous array
+    const int total_elements = nr * nt * np;
+    for (int idx = 0; idx < total_elements; idx++) {
+        grid.tau_old_loc[idx] = _0_CR; // use tau_old_loc for delta
+        grid.tau_loc[idx]     = _0_CR; // use tau_loc for Tadj_loc (later copy to Tadj_loc)
+        grid.Tadj_loc[idx]    = 9999999.9;
     }
 
     // loop all receivers
@@ -921,6 +922,9 @@ void Iterator::init_delta_and_Tadj_density(Grid& grid, InputParams& IP) {
         CUSTOMREAL delta_lat = grid.get_delta_lat();
         CUSTOMREAL delta_r   = grid.get_delta_r();
 
+        CUSTOMREAL one_over_delta_lon = 1/delta_lon;
+        CUSTOMREAL one_over_delta_lat = 1/delta_lat;
+        CUSTOMREAL one_over_delta_r   = 1/delta_r  ; 
 
         // get positions
         CUSTOMREAL rec_lon = rec.lon*DEG2RAD;
@@ -933,9 +937,9 @@ void Iterator::init_delta_and_Tadj_density(Grid& grid, InputParams& IP) {
             grid.get_r_min_loc()   <= rec_r   && rec_r   <= grid.get_r_max_loc()   ) {
 
             // descretize receiver position (LOCAL ID)
-            int i_rec_loc =  std::floor((rec_lon - grid.get_lon_min_loc()) / delta_lon);
-            int j_rec_loc =  std::floor((rec_lat - grid.get_lat_min_loc()) / delta_lat);
-            int k_rec_loc =  std::floor((rec_r   - grid.get_r_min_loc())   / delta_r);
+            int i_rec_loc =  std::floor((rec_lon - grid.get_lon_min_loc()) *  one_over_delta_lon);
+            int j_rec_loc =  std::floor((rec_lat - grid.get_lat_min_loc()) *  one_over_delta_lat);
+            int k_rec_loc =  std::floor((rec_r   - grid.get_r_min_loc())   *  one_over_delta_r);
 
             if(i_rec_loc +1 >= loc_I)
                 i_rec_loc = loc_I - 2;
@@ -950,19 +954,20 @@ void Iterator::init_delta_and_Tadj_density(Grid& grid, InputParams& IP) {
             CUSTOMREAL dis_rec_r   = grid.r_loc_1d[k_rec_loc];
 
             // relative position errors
-            CUSTOMREAL e_lon = std::min(_1_CR,(rec_lon - dis_rec_lon)/delta_lon);
-            CUSTOMREAL e_lat = std::min(_1_CR,(rec_lat - dis_rec_lat)/delta_lat);
-            CUSTOMREAL e_r   = std::min(_1_CR,(rec_r   - dis_rec_r)  /delta_r);
+            CUSTOMREAL e_lon = std::min(_1_CR,(rec_lon - dis_rec_lon)*one_over_delta_lon);
+            CUSTOMREAL e_lat = std::min(_1_CR,(rec_lat - dis_rec_lat)*one_over_delta_lat);
+            CUSTOMREAL e_r   = std::min(_1_CR,(rec_r   - dis_rec_r)  *one_over_delta_r);
 
+            CUSTOMREAL denom = one_over_delta_lon*one_over_delta_lat*one_over_delta_r/(my_square(rec_r)*std::cos(rec_lat));
             // set delta values
-            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc,k_rec_loc)]       += rec.adjoint_source_density*(1.0-e_lon)*(1.0-e_lat)*(1.0-e_r)/(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc,k_rec_loc+1)]     += rec.adjoint_source_density*(1.0-e_lon)*(1.0-e_lat)*     e_r /(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc+1,k_rec_loc)]     += rec.adjoint_source_density*(1.0-e_lon)*     e_lat* (1.0-e_r)/(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc+1,k_rec_loc+1)]   += rec.adjoint_source_density*(1.0-e_lon)*     e_lat*      e_r /(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc,k_rec_loc)]     += rec.adjoint_source_density*     e_lon *(1.0-e_lat)*(1.0-e_r)/(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc,k_rec_loc+1)]   += rec.adjoint_source_density*     e_lon *(1.0-e_lat)*     e_r /(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc+1,k_rec_loc)]   += rec.adjoint_source_density*     e_lon *     e_lat *(1.0-e_r)/(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
-            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc+1,k_rec_loc+1)] += rec.adjoint_source_density*     e_lon *     e_lat *     e_r /(delta_lon*delta_lat*delta_r*my_square(rec_r)*std::cos(rec_lat));
+            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc,k_rec_loc)]       += rec.adjoint_source_density*(1.0-e_lon)*(1.0-e_lat)*(1.0-e_r)*denom;
+            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc,k_rec_loc+1)]     += rec.adjoint_source_density*(1.0-e_lon)*(1.0-e_lat)*     e_r *denom;
+            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc+1,k_rec_loc)]     += rec.adjoint_source_density*(1.0-e_lon)*     e_lat* (1.0-e_r)*denom;
+            grid.tau_old_loc[I2V(i_rec_loc,j_rec_loc+1,k_rec_loc+1)]   += rec.adjoint_source_density*(1.0-e_lon)*     e_lat*      e_r *denom;
+            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc,k_rec_loc)]     += rec.adjoint_source_density*     e_lon *(1.0-e_lat)*(1.0-e_r)*denom;
+            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc,k_rec_loc+1)]   += rec.adjoint_source_density*     e_lon *(1.0-e_lat)*     e_r *denom;
+            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc+1,k_rec_loc)]   += rec.adjoint_source_density*     e_lon *     e_lat *(1.0-e_r)*denom;
+            grid.tau_old_loc[I2V(i_rec_loc+1,j_rec_loc+1,k_rec_loc+1)] += rec.adjoint_source_density*     e_lon *     e_lat *     e_r *denom;
         }
     } // end of loop all receivers
 
