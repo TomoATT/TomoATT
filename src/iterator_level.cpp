@@ -225,16 +225,13 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
                 // store v_c__ to dump_c__
                 _mmT_store_pT(dump_c__, v_c__);
 
-                if (_i_vec < num_iter - 1) {
-                    for (int i = 0; i < NSIMD; i++) {
-                        grid.tau_loc[dump_ijk[i_vec+i]] = dump_c__[i];
-                    }
-                } else {
-                    int remain = n_nodes % NSIMD == 0 ? NSIMD : n_nodes % NSIMD;
-                    for (int i = 0; i < remain; i++) {
-                        grid.tau_loc[dump_ijk[i_vec+i]] = dump_c__[i];
-                    }                    
+
+                for (int i = 0; i < NSIMD; i++) {
+                    if(i_vec+i>=n_nodes) break;
+
+                    grid.tau_loc[dump_ijk[i_vec+i]] = dump_c__[i];
                 }
+
 
 
             } // end of i_vec loop
