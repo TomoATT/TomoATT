@@ -201,20 +201,19 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
 
                 int i_vec = _i_vec * NSIMD;
                 __mT v_c__    = load_mem_gen_to_mTd(grid.tau_loc, &dump_ijk[i_vec]);
+                // Try to load the relevant tau_loc only when needed?
                 __mT v_p__    = load_mem_gen_to_mTd(grid.tau_loc, &dump_ip1jk[i_vec]);
                 __mT v_m__    = load_mem_gen_to_mTd(grid.tau_loc, &dump_im1jk[i_vec]);
+                v_pp1 = calc_1d_stencil(v_c__, v_m__, v_DP_inv_half);
+                v_pp2 = calc_1d_stencil(v_p__, v_c__, v_DP_inv_half);
                 __mT v__p_    = load_mem_gen_to_mTd(grid.tau_loc, &dump_ijp1k[i_vec]);
                 __mT v__m_    = load_mem_gen_to_mTd(grid.tau_loc, &dump_ijm1k[i_vec]);
+                v_pt1 = calc_1d_stencil(v_c__, v__m_, v_DT_inv_half);
+                v_pt2 = calc_1d_stencil(v__p_, v_c__, v_DT_inv_half);                
                 __mT v___p    = load_mem_gen_to_mTd(grid.tau_loc, &dump_ijkp1[i_vec]);
                 __mT v___m    = load_mem_gen_to_mTd(grid.tau_loc, &dump_ijkm1[i_vec]);
-
-                // loop over all nodes in one level
-                vect_stencil_1st_pre_simd(v_c__, \
-                                          v_p__,    v_m__,    v__p_,    v__m_,    v___p,    v___m, \
-                                          v_pp1, v_pp2, v_pt1, v_pt2, v_pr1, v_pr2, \
-                                          v_DP_inv, v_DT_inv, v_DR_inv, \
-                                          v_DP_inv_half, v_DT_inv_half, v_DR_inv_half, \
-                                          loc_I, loc_J, loc_K);
+                v_pr1 = calc_1d_stencil(v_c__, v___m, v_DR_inv_half);
+                v_pr2 = calc_1d_stencil(v___p, v_c__, v_DR_inv_half);
 
                 // calculate updated value on c
                 vect_stencil_1st_3rd_apre_simd(v_c__, v_fac_a[_i_vec], v_fac_b[_i_vec], v_fac_c[_i_vec], v_fac_f[_i_vec], \
