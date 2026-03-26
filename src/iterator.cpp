@@ -903,7 +903,7 @@ void Iterator::init_delta_and_Tadj_density(Grid& grid, InputParams& IP) {
     for (int idx = 0; idx < total_elements; idx++) {
         grid.tau_old_loc[idx] = _0_CR; // use tau_old_loc for delta
         grid.tau_loc[idx]     = _0_CR; // use tau_loc for Tadj_loc (later copy to Tadj_loc)
-        grid.Tadj_loc[idx]    = 9999999.9;
+        grid.Tadj_density_loc[idx]    = 9999999.9;
     }
 
     // loop all receivers
