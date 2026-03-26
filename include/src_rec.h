@@ -69,7 +69,7 @@ public:
     CUSTOMREAL change_tau = 0.0;
     int        Ndata      = 0.0;
 
-    bool       is_T_written_into_file = false; 
+    bool       is_T_written_into_file = false;
 };
 
 class DataInfo {
@@ -96,6 +96,9 @@ public:
     // traveltime
     CUSTOMREAL travel_time     = -999.0;
     CUSTOMREAL travel_time_obs = -999.0;
+
+    // per-phase traveltimes (for reflected/converted phases)
+    std::map<std::string, CUSTOMREAL> travel_time_by_phase;
 
     // receiver pair infomation
     bool is_rec_pair                       = false;   // common source differential traveltime

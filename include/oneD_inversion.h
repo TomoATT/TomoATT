@@ -44,7 +44,7 @@ public:
     CUSTOMREAL      *Ks_density_1dinv;              // Ks_density
     CUSTOMREAL      *Ks_over_Kden_1dinv;            // Ks_over_Kdensity
     CUSTOMREAL      *Ks_multigrid_1dinv;            // (Ks_over_Kdensity) parameterized by multigrid
-    CUSTOMREAL      *Ks_multigrid_previous_1dinv;   // Ks_multigrid at previous iteration 
+    CUSTOMREAL      *Ks_multigrid_previous_1dinv;   // Ks_multigrid at previous iteration
 
     // parameters for optimization
     CUSTOMREAL      v_obj;
@@ -52,7 +52,7 @@ public:
 
     // functions
     std::vector<CUSTOMREAL> run_simulation_one_step_1dinv(InputParams&, IO_utils&, const int&);
-    void model_optimize_1dinv(InputParams&, Grid&, IO_utils&, const int&); 
+    void model_optimize_1dinv(InputParams&, Grid&, IO_utils&, const int&);
 
     // h5 file output
     void write_T_1dinv(IO_utils&, const std::string&, const int&);
@@ -63,7 +63,7 @@ private:
 
     // for eikonal solver
     int count_cand;
-    int ii,ii_nr,ii_n2r,ii_pr,ii_p2r,ii_nt,ii_n2t,ii_pt,ii_p2t;
+    int ii,ii_nr,ii_pr,ii_nt,ii_pt;
     CUSTOMREAL ar,br,at,bt,ar1,ar2,at1,at2,br1,br2,bt1,bt2;
     CUSTOMREAL eqn_a, eqn_b, eqn_c, eqn_Delta;
     CUSTOMREAL tmp_tau, T_r, T_t, charact_r, charact_t;
@@ -78,13 +78,13 @@ private:
     void allocate_arrays();
     void load_1d_model(Grid&);
     int I2V_1DINV(const int&,const int&);
-    
+
     // "run_simulation_one_step_1dinv" subfunctions:
     void eikonal_solver_2d(InputParams&, int& );
     void initialize_eikonal_array(CUSTOMREAL);
     void FSM_2d();
     void calculate_stencil(const int&, const int&);
-    
+
     void calculate_synthetic_traveltime_and_adjoint_source(InputParams&, int& );
     CUSTOMREAL interpolate_2d_traveltime(const CUSTOMREAL&, const CUSTOMREAL&);
 

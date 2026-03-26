@@ -305,6 +305,76 @@ void Receiver::calculate_adjoint_source(InputParams& IP, const std::string& name
 }
 
 
+void Receiver::calculate_adjoint_source_for_phase(InputParams& IP,
+                                                  const std::string& name_sim_src,
+                                                  const std::string& phase_name) {
+    // Compute adjoint source specifically for data whose phase matches phase_name.
+    // Uses travel_time_by_phase[phase_name] as synthetic, travel_time_obs as observed.
+
+    if (proc_store_srcrec) {
+
+        // Zero out adjoint sources before accumulating
+        IP.initialize_adjoint_source();
+
+        for (auto it_src = IP.data_map[name_sim_src].begin();
+             it_src != IP.data_map[name_sim_src].end(); ++it_src) {
+
+            for (auto& data : it_src->second) {
+                // Only process absolute traveltime data matching this phase
+                if (!data.is_src_rec) continue;
+                if (data.phase != phase_name) continue;
+
+                // Get the per-phase predicted traveltime
+                auto it_phase = data.travel_time_by_phase.find(phase_name);
+                if (it_phase == data.travel_time_by_phase.end()) continue;
+
+                CUSTOMREAL syn_time = it_phase->second;
+                CUSTOMREAL obs_time = data.travel_time_obs;
+                std::string name_rec = data.name_rec;
+
+                CUSTOMREAL local_weight = _1_CR;
+
+                // Residual-based weighting (same logic as direct phases)
+                CUSTOMREAL local_residual = abs(syn_time - obs_time);
+                CUSTOMREAL* res_weight = IP.get_residual_weight_abs();
+
+                if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
+                else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
+                else                                        local_weight *= ((local_residual - res_weight[0])
+                    / (res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
+
+                // Distance-based weighting
+                std::string name_src = data.name_src;
+                CUSTOMREAL  local_dis = _0_CR;
+                Epicentral_distance_sphere(
+                    IP.get_rec_point(name_rec).lat * DEG2RAD,
+                    IP.get_rec_point(name_rec).lon * DEG2RAD,
+                    IP.get_src_point(name_src).lat * DEG2RAD,
+                    IP.get_src_point(name_src).lon * DEG2RAD,
+                    local_dis);
+                local_dis *= R_earth;
+                CUSTOMREAL* dis_weight = IP.get_distance_weight_abs();
+
+                if      (local_dis < dis_weight[0])    local_weight *= dis_weight[2];
+                else if (local_dis > dis_weight[1])    local_weight *= dis_weight[3];
+                else                                   local_weight *= ((local_dis - dis_weight[0])
+                    / (dis_weight[1] - dis_weight[0]) * (dis_weight[3] - dis_weight[2]) + dis_weight[2]);
+
+                // Accumulate adjoint source
+                CUSTOMREAL adjoint_source = IP.get_rec_point(name_rec).adjoint_source
+                    + (syn_time - obs_time) * data.weight * local_weight;
+                IP.set_adjoint_source(name_rec, adjoint_source);
+
+                CUSTOMREAL adjoint_source_density = IP.get_rec_point(name_rec).adjoint_source_density + _1_CR;
+                IP.set_adjoint_source_density(name_rec, adjoint_source_density);
+            }
+        }
+    }
+
+    synchronize_all();
+}
+
+
 std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
 
     CUSTOMREAL obj           = 0.0;
@@ -1503,7 +1573,7 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                 //     IP.rec_map[name_rec].is_stop = true;
                 // }
 
-                
+
 
 
                 // detect nan and inf then exit the program
@@ -1565,7 +1635,7 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                     IP.rec_map[name_rec].dep = IP.get_max_dep() - boundary_gap_r;
                     // report to user
                     std::cout << "Warning: source/receiver " << name_rec << " is out of domain in depth, set the location near max_dep boundary: " << IP.get_max_dep() - boundary_gap_r << std::endl;
-                }   
+                }
             }
 
             // share the flag of stop within the same simultanoue run group

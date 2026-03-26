@@ -18,6 +18,7 @@
 #include "mpi_funcs.h"
 #include "timer.h"
 #include "src_rec.h"
+#include "interface.h"
 
 
 // InputParams class for reading/storing and outputing input parameters and src_rec information
@@ -118,6 +119,14 @@ public:
     CUSTOMREAL* get_trapezoid()   {return trapezoid;};
 
     bool        get_ignore_velocity_discontinuity(){return ignore_velocity_discontinuity;};
+
+    // reflection getters
+    bool        get_reflections_enabled() const {return reflections_enabled;};
+    bool        get_auto_detect_interfaces() const {return auto_detect_interfaces_flag;};
+    CUSTOMREAL  get_auto_detect_threshold() const {return auto_detect_threshold;};
+    const std::vector<std::string>& get_reflection_phase_names() const {return reflection_phase_names;};
+    const std::vector<InterfaceDefinition>& get_configured_interfaces() const {return configured_interfaces;};
+    std::vector<InterfaceDefinition>& get_configured_interfaces_mutable() {return configured_interfaces;};
 
     // invgrid for ani
     bool        get_invgrid_ani()     {return invgrid_ani;};
@@ -426,10 +435,6 @@ private:
                                              std::map<std::string, SrcRecInfo>&,
                                              std::vector<std::string>&);
 
-    bool i_first=false, i_last=false, \
-         j_first=false, j_last=false, \
-         k_first=false; // store info if this subdomain has outer boundary
-
     // check contradictions in input parameters
     void check_contradictions();
 
@@ -452,6 +457,13 @@ private:
 
     // ignore velocity discontinuity
     bool ignore_velocity_discontinuity = false; // default is false. Error will occur if model velocity has discontinuity ( v[i+1] > v[i] * 1.2 or v[i+1] < v[i] * 0.8).
+
+    // reflection settings
+    bool reflections_enabled          = false;
+    bool auto_detect_interfaces_flag  = false;
+    CUSTOMREAL auto_detect_threshold  = 0.2;  // 20% velocity contrast
+    std::vector<std::string> reflection_phase_names;          // e.g. {"PmP", "pP", "sP"}
+    std::vector<InterfaceDefinition> configured_interfaces;   // from YAML
 
     CUSTOMREAL depth_taper[2] = {-9999999, -9999998};   // kernel weight:  0: -inf ~ taper[0]; 0 ~ 1 : taper[0] ~ taper[1]; 1 : taper[1] ~ inf
     bool use_sta_correction = false; // apply station correction or not.

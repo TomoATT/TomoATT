@@ -700,6 +700,15 @@ void Grid::memory_deallocation() {
         delete[] fun_loc;
         delete[] is_changed;
 
+        // S-wave arrays
+        if (fun_s_loc != nullptr) delete[] fun_s_loc;
+        if (fac_a_s_loc != nullptr) delete[] fac_a_s_loc;
+        if (fac_b_s_loc != nullptr) delete[] fac_b_s_loc;
+        if (fac_c_s_loc != nullptr) delete[] fac_c_s_loc;
+        if (fac_f_s_loc != nullptr) delete[] fac_f_s_loc;
+        if (xi_s_loc  != nullptr) delete[] xi_s_loc;
+        if (eta_s_loc != nullptr) delete[] eta_s_loc;
+
         delete[] t_loc_1d;
         delete[] p_loc_1d;
         delete[] r_loc_1d;
@@ -992,6 +1001,35 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         // set zeta = 0 (optimization for zeta is not implemented yet)
         std::fill(zeta_loc, zeta_loc + loc_I*loc_J*loc_K, _0_CR);
 
+        // read S-wave velocity model if available
+        if (IP.get_reflections_enabled()) {
+            int n_total = loc_I * loc_J * loc_K;
+            fun_s_loc = allocateMemory<CUSTOMREAL>(n_total, 100);
+            fac_a_s_loc = allocateMemory<CUSTOMREAL>(n_total, 101);
+            fac_b_s_loc = allocateMemory<CUSTOMREAL>(n_total, 102);
+            fac_c_s_loc = allocateMemory<CUSTOMREAL>(n_total, 103);
+            fac_f_s_loc = allocateMemory<CUSTOMREAL>(n_total, 104);
+            xi_s_loc  = allocateMemory<CUSTOMREAL>(n_total, 105);
+            eta_s_loc = allocateMemory<CUSTOMREAL>(n_total, 106);
+
+            if (io.check_dataset_exists(f_model_path, "vel_s")) {
+                io.read_model(f_model_path, "vel_s", fun_s_loc, tmp_offset_i, tmp_offset_j, tmp_offset_k);
+            } else {
+                // If no S-wave model, use Vp/Vs = 1.732 (Poisson solid)
+                for (int idx = 0; idx < n_total; idx++)
+                    fun_s_loc[idx] = fun_loc[idx] / 1.732;
+            }
+
+            // Read S-wave anisotropy or copy from P-wave
+            if (io.check_dataset_exists(f_model_path, "xi_s")) {
+                io.read_model(f_model_path, "xi_s",  xi_s_loc,  tmp_offset_i, tmp_offset_j, tmp_offset_k);
+                io.read_model(f_model_path, "eta_s", eta_s_loc, tmp_offset_i, tmp_offset_j, tmp_offset_k);
+            } else {
+                std::copy(xi_loc,  xi_loc  + n_total, xi_s_loc);
+                std::copy(eta_loc, eta_loc + n_total, eta_s_loc);
+            }
+        }
+
         // copy initial model to prior model arrays
         // if (optim_method==LBFGS_MODE){
         //     std::copy(xi_loc,  xi_loc + loc_I*loc_J*loc_K,  xi_prior_loc);
@@ -1011,6 +1049,13 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         broadcast_cr_inter_sim(u_loc, n_total_loc_grid_points, 0);
     }
 
+    // broadcast S-wave model if allocated
+    if (fun_s_loc != nullptr) {
+        broadcast_cr_inter_sim(fun_s_loc,  n_total_loc_grid_points, 0);
+        broadcast_cr_inter_sim(xi_s_loc,   n_total_loc_grid_points, 0);
+        broadcast_cr_inter_sim(eta_s_loc,  n_total_loc_grid_points, 0);
+    }
+
     // center of the domain
     CUSTOMREAL lon_center = (lon_min + lon_max) / 2.0;
     CUSTOMREAL lat_center = (lat_min + lat_max) / 2.0;
@@ -1028,6 +1073,15 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
                 fac_b_loc[I2V(i_lon, j_lat, k_r)] = _1_CR - _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
                 fac_c_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
                 fac_f_loc[I2V(i_lon, j_lat, k_r)] =       - _2_CR *  eta_loc[I2V(i_lon, j_lat, k_r)];
+
+                // compute S-wave factors if S-wave model is loaded
+                if (fun_s_loc != nullptr) {
+                    fun_s_loc[I2V(i_lon, j_lat, k_r)] = _1_CR / fun_s_loc[I2V(i_lon, j_lat, k_r)];
+                    fac_a_s_loc[I2V(i_lon, j_lat, k_r)] = _1_CR; // zeta_s = 0
+                    fac_b_s_loc[I2V(i_lon, j_lat, k_r)] = _1_CR - _2_CR * xi_s_loc[I2V(i_lon, j_lat, k_r)];
+                    fac_c_s_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR * xi_s_loc[I2V(i_lon, j_lat, k_r)];
+                    fac_f_s_loc[I2V(i_lon, j_lat, k_r)] =       - _2_CR * eta_s_loc[I2V(i_lon, j_lat, k_r)];
+                }
 
                 // construct 3d coordinate arrays and node connectivity for visualization
                 // exclude the ghost nodes
@@ -1074,6 +1128,40 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         }
     } // end of for loop
 
+
+    // identify interface nodes for reflections
+    if (IP.get_reflections_enabled()) {
+        std::vector<InterfaceDefinition>& ifaces = IP.get_configured_interfaces_mutable();
+        for (auto& iface : ifaces) {
+            identify_interface_nodes(iface, r_loc_1d, loc_I, loc_J, loc_K, dr);
+            if (inter_sub_rank == 0 && !iface.nodes.empty()) {
+                std::cout << "  Interface '" << iface.label << "': k_interface=" << iface.k_interface
+                          << " (depth ~" << iface.depth_km << " km), " << iface.nodes.size() << " nodes" << std::endl;
+            }
+        }
+
+        // auto-detect additional interfaces if requested
+        if (IP.get_auto_detect_interfaces()) {
+            auto detected = detect_velocity_interfaces(IP.get_auto_detect_threshold());
+            for (auto& d : detected) {
+                // avoid duplicates with user-specified interfaces
+                bool duplicate = false;
+                for (const auto& existing : ifaces) {
+                    if (std::abs(existing.depth_km - d.depth_km) < 1.0) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (!duplicate) {
+                    ifaces.push_back(d);
+                    if (inter_sub_rank == 0) {
+                        std::cout << "  Auto-detected interface '" << d.label << "': depth ~"
+                                  << d.depth_km << " km" << std::endl;
+                    }
+                }
+            }
+        }
+    }
 
     // check model discontinuity
     if (id_sim == 0 && (!IP.get_ignore_velocity_discontinuity())){
@@ -2307,6 +2395,125 @@ void Grid::calc_residual() {
             }
         }
     }
+}
+
+
+// ======================================================================
+// Reflection extension methods
+// ======================================================================
+
+void Grid::initialize_fields_from_interface(const InterfaceDefinition& iface, WaveType wave_type, InputParams& IP) {
+    // For interface-seeded solves:
+    //   T0v_loc = 1.0 everywhere (identity, so T = tau directly)
+    //   T0r/T0t/T0p = 0 everywhere (no source gradient)
+    //   tau = arrival_time at interface nodes, initial value elsewhere
+    //   is_changed = true for all nodes except interface nodes
+
+    // Choose initial tau for interface-seeded solves.
+    // Because T0v=1 for interface solves (T=tau directly), we need tau_init
+    // large enough to exceed any possible traveltime in the domain.
+    // TAU_INF_VAL (20.0) is too small when seeded arrival times exceed it.
+    CUSTOMREAL tau_init;
+    if (IP.get_stencil_type() == UPWIND) {
+        // Find maximum seeded arrival time to ensure tau_init exceeds it
+        CUSTOMREAL max_seed = _0_CR;
+        for (const auto& node : iface.nodes) {
+            max_seed = std::max(max_seed, node.arrival_time);
+        }
+        tau_init = max_seed + TAU_INF_VAL;  // always larger than any seeded value
+    } else {
+        tau_init = TAU_INITIAL_VAL;
+    }
+
+    // Initialize all nodes
+    for (int k_r = 0; k_r < loc_K; k_r++) {
+        for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+            for (int i_lon = 0; i_lon < loc_I; i_lon++) {
+                T0v_loc[I2V(i_lon, j_lat, k_r)] = _1_CR;
+                T0r_loc[I2V(i_lon, j_lat, k_r)] = _0_CR;
+                T0t_loc[I2V(i_lon, j_lat, k_r)] = _0_CR;
+                T0p_loc[I2V(i_lon, j_lat, k_r)] = _0_CR;
+                tau_loc[I2V(i_lon, j_lat, k_r)] = tau_init;
+                tau_old_loc[I2V(i_lon, j_lat, k_r)] = _0_CR;
+                is_changed[I2V(i_lon, j_lat, k_r)] = true;
+            }
+        }
+    }
+
+    // Seed interface nodes with their arrival times.
+    // Keep is_changed=true so the upwind solver can propagate along the
+    // interface surface (head-wave paths through neighboring seeds).
+    for (const auto& node : iface.nodes) {
+        if (node.i >= 0 && node.i < loc_I &&
+            node.j >= 0 && node.j < loc_J &&
+            node.k >= 0 && node.k < loc_K) {
+            tau_loc[I2V(node.i, node.j, node.k)] = node.arrival_time;
+        }
+    }
+}
+
+
+void Grid::set_active_velocity(WaveType wave_type) {
+    if (wave_type == S_WAVE && fun_s_loc != nullptr) {
+        if (using_s_wave) return; // already using S-wave
+        // Swap slowness pointers
+        std::swap(fun_loc, fun_s_loc);
+        // Swap anisotropy parameters
+        std::swap(xi_loc, xi_s_loc);
+        std::swap(eta_loc, eta_s_loc);
+        // Rebuild factor arrays from the (now S-wave) anisotropy
+        rejuvenate_abcf();
+        reinitialize_abcf();
+        using_s_wave = true;
+    } else if (wave_type == P_WAVE && using_s_wave) {
+        restore_p_velocity();
+    }
+}
+
+
+void Grid::restore_p_velocity() {
+    if (!using_s_wave) return;
+    // Swap back
+    std::swap(fun_loc, fun_s_loc);
+    std::swap(xi_loc, xi_s_loc);
+    std::swap(eta_loc, eta_s_loc);
+    // Rebuild P-wave factors
+    rejuvenate_abcf();
+    reinitialize_abcf();
+    using_s_wave = false;
+}
+
+
+void Grid::save_T_loc(CUSTOMREAL* T_backup) {
+    int n = loc_I * loc_J * loc_K;
+    std::copy(T_loc, T_loc + n, T_backup);
+}
+
+
+void Grid::restore_T_loc(const CUSTOMREAL* T_backup) {
+    int n = loc_I * loc_J * loc_K;
+    std::copy(T_backup, T_backup + n, T_loc);
+}
+
+
+void Grid::extract_interface_times(InterfaceDefinition& iface) {
+    // Extract arrival times from T_loc at interface nodes
+    for (auto& node : iface.nodes) {
+        if (node.i >= 0 && node.i < loc_I &&
+            node.j >= 0 && node.j < loc_J &&
+            node.k >= 0 && node.k < loc_K) {
+            // T = T0v * tau; here T0v = T0v_loc at node
+            node.arrival_time = T_loc[I2V(node.i, node.j, node.k)];
+        }
+    }
+}
+
+
+std::vector<InterfaceDefinition> Grid::detect_velocity_interfaces(CUSTOMREAL threshold) {
+    return auto_detect_interfaces(fun_loc, r_loc_1d,
+                                  loc_I, loc_J, loc_K,
+                                  threshold,
+                                  k_start_loc, k_end_loc);
 }
 
 

@@ -1,0 +1,78 @@
+version: 3
+
+#################################################
+#            computational domain               #
+#################################################
+domain:
+  min_max_dep: [-5, 75] # depth in km
+  min_max_lat: [0, 2]   # latitude in degree
+  min_max_lon: [0, 2]   # longitude in degree
+  n_rtp: [41, 41, 41]   # number of nodes in depth,latitude,longitude direction
+
+#################################################
+#            traveltime data file path          #
+#################################################
+source:
+  src_rec_file: src_rec_config.dat
+  swap_src_rec: false
+
+#################################################
+#            initial model file path            #
+#################################################
+model:
+  init_model_path: two_layer_model.h5
+
+#################################################
+#            parallel computation settings      #
+#################################################
+parallel:
+  n_sims: 1
+  ndiv_rtp: [1, 1, 1]
+  nproc_sub: 1
+  use_gpu: false
+
+############################################
+#            output file setting           #
+############################################
+output_setting:
+  output_dir: ./OUTPUT_FILES/
+  output_source_field: true
+  output_final_model: true
+  output_in_process: false
+  output_in_process_data: true
+  verbose_output_level: 1
+  output_file_format: 0
+
+#################################################
+#          forward modeling mode                 #
+#################################################
+run_mode: 0
+
+#################################################
+#          solver parameters                    #
+#################################################
+# stencil_order: 1 or 3
+stencil_order: 1
+# stencil_type: 0 (non-upwind) or 1 (upwind)
+stencil_type: 0
+# sweep_type: 0 (legacy) or 1 (level-set)
+sweep_type: 1
+# convergence tolerance
+conv_tol: 1.0e-5
+# max iterations
+max_iter: 200
+
+# allow velocity discontinuity (two-layer model)
+ignore_velocity_discontinuity: true
+
+#################################################
+#          reflection configuration             #
+#################################################
+reflections:
+  enabled: true
+  phases:
+    - PmP    # P reflected off Moho as P
+    - PmS    # P reflected off Moho as S (mode conversion)
+  interfaces:
+    - label: Moho
+      depth: 35.0

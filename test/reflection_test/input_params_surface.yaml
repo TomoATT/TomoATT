@@ -1,0 +1,49 @@
+version: 3
+
+#################################################
+#     Free-surface reflection test (pP, sP)     #
+#################################################
+domain:
+  min_max_dep: [-5, 75]
+  min_max_lat: [0, 2]
+  min_max_lon: [0, 2]
+  n_rtp: [41, 41, 41]
+
+source:
+  src_rec_file: src_rec_surface.dat
+  swap_src_rec: false
+
+model:
+  init_model_path: two_layer_model.h5
+
+parallel:
+  n_sims: 1
+  ndiv_rtp: [1, 1, 1]
+
+output_setting:
+  output_dir: ./OUTPUT_FILES_SURFACE/
+  output_source_field: true
+  output_final_model: true
+  output_file_format: 0
+
+run_mode: 0
+
+stencil_order: 1
+stencil_type: 0
+sweep_type: 1
+conv_tol: 1.0e-5
+max_iter: 200
+
+ignore_velocity_discontinuity: true
+
+reflections:
+  enabled: true
+  phases:
+    - pP    # upgoing P from source, reflected P at free surface
+    - sP    # upgoing S from source, reflected P at free surface
+  interfaces:
+    - label: freeSurface
+      depth: 0.0
+      is_free_surface: true
+    - label: Moho
+      depth: 35.0

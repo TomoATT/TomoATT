@@ -1258,7 +1258,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                                         << std::endl;
                             break;
                     }
-                    
+
                 }
 
 
@@ -1558,7 +1558,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_p, T_t into eikonal equation, solve the quadratic equation:  b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_b_loc[ii] * at*at 
+        eqn_a = grid.fac_b_loc[ii] * at*at
               + grid.fac_c_loc[ii] * ap*ap - _2_CR*grid.fac_f_loc[ii] * at * ap;
         eqn_b = _2_CR*grid.fac_b_loc[ii] * at * bt
               + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
@@ -1592,7 +1592,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 switch (i_case){
                     case 8:  //characteristic travels from -p, -t
                         if (charact_p >= 0 && charact_t >= 0 && tmp_tau > 0){
-                            
+
                             is_causality = true;
                         }
                         break;
@@ -1645,14 +1645,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                                         << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
                                         << "T_t: " << T_t << ", T_p: " << T_p << ", "
                                         << std::endl;
-                            // // T_t = (T0v * tau)_t = 
+                            // // T_t = (T0v * tau)_t =
                             // std::cout << " check T_t. " << std::endl;
                             // std::cout << "T_+ = T0v_loc[I2V(iip,jjt+1,kkr)] * tau_loc[I2V(iip,jjt+1,kkr)]:" << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << std::endl;
                             // std::cout << "T   = T0v_loc[I2V(iip,jjt,kkr)]   * tmp_tau  :" << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau << std::endl;
-                            // std::cout << "T_t_1 = (T_+ - T)/dt = " 
-                            //           <<  (grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] 
+                            // std::cout << "T_t_1 = (T_+ - T)/dt = "
+                            //           <<  (grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)]
                             //             - grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau) / grid.dt << std::endl;
-                            // std::cout << "T_t_2 = T0v * (tau_+ - tau)/dt + T0t * tau " << std::endl; 
+                            // std::cout << "T_t_2 = T0v * (tau_+ - tau)/dt + T0t * tau " << std::endl;
                             // std::cout << "T0v_+ : " << grid.T0v_loc[I2V(iip,jjt+1,kkr)] << std::endl;
                             // std::cout << "T0v   : " << grid.T0v_loc[I2V(iip  ,jjt,kkr)] << std::endl;
                             // std::cout << "tau_+ : " << grid.tau_loc[I2V(iip, jjt+1, kkr)] << std::endl;
@@ -1770,7 +1770,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/c*(at*tau+bt)^2 = s^2
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
-            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_c_loc[ii]/bc_f2); 
+            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_c_loc[ii]/bc_f2);
             one_over_a = 1/at;
             // solutions
             switch (i_solution){
@@ -1848,7 +1848,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/b*(ap*tau+bp)^2 = s^2
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
-            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_b_loc[ii]/bc_f2); 
+            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_b_loc[ii]/bc_f2);
             one_over_a = 1/ap;
             // solutions
             switch (i_solution){
@@ -1887,15 +1887,15 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 switch (i_case) {
                     case 4: //characteristic travels from -p
                         std::cout   << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", " << std::endl;
-                        
-                        // T_p = (T0v * tau)_p = 
+
+                        // T_p = (T0v * tau)_p =
                         std::cout << " check T_p. " << std::endl;
                         std::cout << "T_- = T0v_loc[I2V(iip-1,jjt,kkr)] * tau_loc[I2V(iip-1,jjt,kkr)]:" << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << std::endl;
                         std::cout << "T   = T0v_loc[I2V(iip,jjt,kkr)]   * tmp_tau  :" << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau << std::endl;
-                        std::cout << "T_p_1 = (T - T_-)/dp = " 
-                                    <<  (grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau 
+                        std::cout << "T_p_1 = (T - T_-)/dp = "
+                                    <<  (grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                                     - grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)]) / grid.dp << std::endl;
-                        std::cout << "T_p_2 = T0v * (tau - tau_-)/dt + T0t * tau " << std::endl; 
+                        std::cout << "T_p_2 = T0v * (tau - tau_-)/dt + T0t * tau " << std::endl;
                         std::cout << "T0v : " << grid.T0v_loc[I2V(iip,jjt,kkr)] << std::endl;
                         std::cout << "T0v_-   : " << grid.T0v_loc[I2V(iip-1,jjt,kkr)] << std::endl;
                         std::cout << "grid.dp: " << grid.dp << std::endl;

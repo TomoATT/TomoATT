@@ -156,11 +156,17 @@ add_definitions(-DFREQ_SYNC_GHOST)
 
 # submodules
 # yaml parser
-find_package(yaml-cpp 0.8 QUIET)
+if (NOT ${FORCE_DOWNLOAD_EXTERNAL_LIBS})
+  find_package(yaml-cpp 0.8 QUIET)
+endif()
 if (yaml-cpp_FOUND AND NOT ${FORCE_DOWNLOAD_EXTERNAL_LIBS})
   message(STATUS "yaml-cpp found")
   message(STATUS "YAML_CPP_INCLUDE_DIR: ${YAML_CPP_INCLUDE_DIR}")
   message(STATUS "YAML_CPP_LIBRARIES: ${YAML_CPP_LIBRARIES}")
+  # Use the imported target so the linker gets the full library path
+  if(TARGET yaml-cpp::yaml-cpp)
+    set(YAML_CPP_LIBRARIES yaml-cpp::yaml-cpp)
+  endif()
 else()
   message(STATUS "yaml-cpp not found. Using external_libs/yaml-cpp ...")
   add_subdirectory(external_libs)
@@ -243,9 +249,9 @@ foreach( execsourcefile ${APP_SOURCES} )
   # link mpi
   target_link_libraries(${EXEC_NAME} PUBLIC MPI::MPI_CXX)
 
-  # link yaml-app:
+  # link yaml-cpp (SYSTEM to suppress third-party warnings)
   target_link_libraries(${EXEC_NAME} PUBLIC ${YAML_CPP_LIBRARIES})
-  target_include_directories(${EXEC_NAME} PUBLIC ${YAML_CPP_INCLUDE_DIR})
+  target_include_directories(${EXEC_NAME} SYSTEM PUBLIC ${YAML_CPP_INCLUDE_DIR})
 
   # link HDF5
   if(HDF5_FOUND)

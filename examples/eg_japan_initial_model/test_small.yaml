@@ -1,0 +1,14 @@
+version: 3
+domain:
+  min_max_dep: [-2, 100]
+  min_max_lat: [34, 36]
+  min_max_lon: [137, 139]
+  n_rtp: [21, 11, 11]
+model:
+  init_model_path: test_model.h5
+parallel:
+  n_sims: 1
+  ndiv_rtp: [1, 1, 1]
+output_setting:
+  output_dir: OUTPUT_FILES
+run_mode: 0

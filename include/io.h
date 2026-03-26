@@ -81,6 +81,8 @@ public:
     //void write_tmp_tau(Grid&, int);
     // write result timetable T
     void write_T(Grid&, int);
+    // write reflected phase traveltime field
+    void write_T_phase(Grid&, const std::string& phase_name, int i_inv);
     // write temporal timetable T in a separated file
     void write_T_tmp(Grid&);
     // write residual (resudual = true_solution - result)
@@ -167,6 +169,8 @@ public:
 
     // read model data
     void read_model(std::string&, const char*, CUSTOMREAL*, int, int, int);
+    // check if a dataset exists in HDF5 file
+    bool check_dataset_exists(std::string& fname, const char* dset_name);
     // read Travel time from file for earthquake relocation and common receiver double-difference
     void read_T(Grid&);
     // read Travel time from a temporal file for earthquake relocation and common receiver double-difference

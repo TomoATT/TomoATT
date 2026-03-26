@@ -96,3 +96,6 @@ examples/realcase3_regional_tomography_Turkey/Script_data_filtering/*.ipynb
 examples/realcase3_regional_tomography_Turkey/Script_data_filtering/input_data
 examples/realcase3_regional_tomography_Turkey/Script_data_filtering/output_data
 examples/realcase3_regional_tomography_Turkey/Script_of_plot
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md

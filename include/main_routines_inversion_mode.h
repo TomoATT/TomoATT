@@ -143,26 +143,26 @@ inline void calculate_sensitivity_kernel(Grid& grid, InputParams& IP, const std:
                     CUSTOMREAL Tphi_km   = (grid.T_loc[I2V(iip+1,jjt,kkr)] - grid.T_loc[I2V(iip-1,jjt,kkr)]) / (_2_CR * dp) / (grid.r_loc_1d[kkr]*std::cos(grid.t_loc_1d[jjt]));
 
                     CUSTOMREAL azi_ratio = std::sqrt((my_square(Ttheta_km) + my_square(Tphi_km))/(my_square(Tr_km) + my_square(Ttheta_km) + my_square(Tphi_km)));
-                    
+
                     // mask within one grid around the source
                     if ((std::abs(grid.r_loc_1d[kkr] - src_r) >= dr) ||
                         (std::abs(grid.t_loc_1d[jjt] - src_lat) >= dt) ||
                         (std::abs(grid.p_loc_1d[iip] - src_lon) >= dp)) {
                         // density of ks
-                        grid.Ks_density_loc[I2V(iip,jjt,kkr)]   += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)];  
-                        
+                        grid.Ks_density_loc[I2V(iip,jjt,kkr)]   += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)];
+
                         // density of kxi
-                        // grid.Kxi_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)]; 
+                        // grid.Kxi_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)];
                         grid.Kxi_density_loc[I2V(iip,jjt,kkr)]  += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)] * azi_ratio;
-                                                                
+
                         // density of keta
-                        // grid.Keta_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)]; 
+                        // grid.Keta_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)];
                         grid.Keta_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)] * azi_ratio;
-        
+
 
                         if (IP.get_update_slowness()==1){      // we need to update slowness
                             // Kernel w r t slowness s
-                            grid.Ks_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] * my_square(grid.fun_loc[I2V(iip,jjt,kkr)]);                                                  
+                            grid.Ks_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] * my_square(grid.fun_loc[I2V(iip,jjt,kkr)]);
                         } else {
                             grid.Ks_loc[I2V(iip,jjt,kkr)] = _0_CR;
                         }
@@ -181,7 +181,7 @@ inline void calculate_sensitivity_kernel(Grid& grid, InputParams& IP, const std:
                                 grid.Kxi_loc[I2V(iip,jjt,kkr)]  += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] \
                                                             * ((- GAMMA * grid.xi_loc[I2V(iip,jjt,kkr)] / \
                                                                         std::sqrt(my_square(grid.xi_loc[ I2V(iip,jjt,kkr)]) + my_square(grid.eta_loc[I2V(iip,jjt,kkr)]))) * my_square(Tr_km) \
-                                                                + my_square(Ttheta_km) 
+                                                                + my_square(Ttheta_km)
                                                                 - my_square(Tphi_km));
 
                                 grid.Keta_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] \
@@ -202,7 +202,7 @@ inline void calculate_sensitivity_kernel(Grid& grid, InputParams& IP, const std:
                         grid.Ks_density_loc[I2V(iip,jjt,kkr)]   += _0_CR;
                         grid.Kxi_density_loc[I2V(iip,jjt,kkr)]  += _0_CR;
                         grid.Keta_density_loc[I2V(iip,jjt,kkr)] += _0_CR;
-        
+
                     }
                 }
             }
@@ -285,8 +285,8 @@ inline void check_kernel_density(InputParams& IP, Grid& grid) {
             for (int j_loc = 0; j_loc < loc_J; j_loc++) {
                 for (int k_loc = 0; k_loc < loc_K; k_loc++) {
                     if (isNegative(grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)])){
-                        std::cout   << "Warning, id_sim: " << id_sim << ", grid.Ks_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " 
-                                    << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]   
+                        std::cout   << "Warning, id_sim: " << id_sim << ", grid.Ks_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = "
+                                    << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]
                                     << std::endl;
                     }
                 }
@@ -435,6 +435,224 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         }
         // calculate the arrival times at each receivers
         recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, name_sim_src);
+
+        //////////////////////////////////
+        // Reflected/converted phase solves
+        //////////////////////////////////
+        if (IP.get_reflections_enabled()) {
+            // Save the direct-phase travel times so they are not overwritten
+            // by subsequent reflected-phase receiver extractions.
+            if (proc_store_srcrec) {
+                for (auto& rec_pair : IP.data_map[name_sim_src]) {
+                    for (auto& di : rec_pair.second) {
+                        di.travel_time_by_phase[di.phase] = di.travel_time;
+                    }
+                }
+            }
+
+            // Save the direct P-wave traveltime field
+            int n_grid = loc_I * loc_J * loc_K;
+            CUSTOMREAL* T_direct_backup = new CUSTOMREAL[n_grid];
+            grid.save_T_loc(T_direct_backup);
+
+            // Get the configured interfaces (with identified nodes)
+            std::vector<InterfaceDefinition>& interfaces = IP.get_configured_interfaces_mutable();
+
+            // Parse and solve each requested reflected phase
+            const auto& phase_names = IP.get_reflection_phase_names();
+            for (const auto& phase_name : phase_names) {
+
+                PhaseDefinition pdef = parse_phase_name(phase_name, interfaces);
+                if (!pdef.valid || pdef.legs.empty()) {
+                    if (myrank == 0) {
+                        std::cout << "Warning: Skipping invalid phase '" << phase_name << "'" << std::endl;
+                    }
+                    continue;
+                }
+
+                if (myrank == 0) {
+                    std::cout << "  Computing reflected phase: " << phase_name
+                              << " (" << pdef.legs.size() << " legs)" << std::endl;
+                }
+
+                // Restore P-wave direct traveltime as starting point
+                grid.restore_T_loc(T_direct_backup);
+
+                // For a standard 2-leg reflected phase (e.g., PmP):
+                //   Leg 0: incident wave travels from source to interface (already computed by direct solve)
+                //          → we extract T at the interface from the direct solve's T_loc
+                //   Leg 1: reflected wave propagates from interface back
+                //          → we seed the solver with interface arrival times and solve
+                //
+                // For phases with mode conversion (e.g., PmS):
+                //   Leg 0: P incident to interface
+                //   Leg 1: S reflected from interface → use S-wave velocity
+                //
+                // Multi-bounce phases (3+ legs) chain: extract times at next interface, re-solve.
+
+                bool phase_failed = false;
+
+                // If the first leg uses a wave type different from the direct
+                // solve (which is always P-wave), we need to re-solve from the
+                // source with the correct velocity first.
+                if (!pdef.legs.empty() && pdef.legs[0].wave_type == S_WAVE) {
+                    if (myrank == 0) {
+                        std::cout << "    First leg is S-wave — re-solving from source with S velocity" << std::endl;
+                    }
+                    grid.set_active_velocity(S_WAVE);
+
+                    // Re-initialize and solve with S velocity from the source
+                    // is_second_run=false so that Iterator constructor calls
+                    // grid.initialize_fields(src, IP) with the S-wave velocity
+                    std::unique_ptr<Iterator> It_sleg;
+                    bool sleg_second_run = false;
+                    select_iterator(IP, grid, src, io, name_sim_src, false,
+                                    is_teleseismic, It_sleg, sleg_second_run);
+                    bool sleg_first_init = false;
+                    It_sleg->run_iteration_forward(IP, grid, io, sleg_first_init);
+                    grid.calc_T_plus_tau();
+                    grid.restore_p_velocity();
+                }
+
+                for (size_t i_leg = 0; i_leg < pdef.legs.size(); i_leg++) {
+                    const PhaseLeg& leg = pdef.legs[i_leg];
+
+                    if (!leg.interface_label.empty()) {
+                        // This leg terminates at an interface — extract arrival times there
+                        const InterfaceDefinition* iface_ptr = find_interface_by_label(
+                            interfaces, leg.interface_label);
+                        if (iface_ptr == nullptr) {
+                            if (myrank == 0)
+                                std::cout << "Warning: Interface '" << leg.interface_label
+                                          << "' not found for phase " << phase_name << std::endl;
+                            phase_failed = true;
+                            break;
+                        }
+
+                        // Extract arrival times at the interface from current T_loc
+                        // For the first leg, T_loc comes from the direct solve (or
+                        // the S-wave re-solve above). For subsequent legs, T_loc
+                        // is from the prior reflection solve.
+                        InterfaceDefinition iface_work = *iface_ptr;
+                        grid.extract_interface_times(iface_work);
+
+                        // Determine velocity for the NEXT leg (the reflected/transmitted branch)
+                        if (i_leg + 1 < pdef.legs.size()) {
+                            WaveType next_wave = pdef.legs[i_leg + 1].wave_type;
+                            grid.set_active_velocity(next_wave);
+
+                            // Initialize the solver with interface seeds
+                            grid.initialize_fields_from_interface(iface_work, next_wave, IP);
+
+                            // Create and run the eikonal solver for the reflected leg
+                            std::unique_ptr<Iterator> It_refl;
+                            bool refl_second_run = true;
+                            select_iterator(IP, grid, src, io, name_sim_src, false,
+                                            is_teleseismic, It_refl, refl_second_run);
+                            bool refl_first_init = false;
+                            It_refl->run_iteration_forward(IP, grid, io, refl_first_init);
+
+                            // Convert tau → T for this leg (T0v=1, so T=tau)
+                            grid.calc_T_plus_tau();
+                        }
+                    }
+                    // Legs without interface_label are terminal legs (receiver end) — no action
+                }
+
+                if (phase_failed) {
+                    grid.restore_p_velocity();
+                    continue;  // skip to next phase
+                }
+
+                // Restore P-wave velocity if we switched to S-wave
+                grid.restore_p_velocity();
+
+                // Output reflected phase traveltime
+                if (!line_search_mode && IP.get_if_output_source_field()) {
+                    io.write_T_phase(grid, phase_name, i_inv);
+                }
+
+                // Extract reflected phase arrival times at receivers
+                recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, name_sim_src);
+
+                // Store per-phase traveltimes in data structures
+                if (proc_store_srcrec) {
+                    for (auto& rec_pair : IP.data_map[name_sim_src]) {
+                        for (auto& di : rec_pair.second) {
+                            if (di.phase == phase_name) {
+                                di.travel_time_by_phase[phase_name] = di.travel_time;
+                            }
+                        }
+                    }
+                }
+
+                //////////////////////////////////
+                // Adjoint for reflected phase
+                //////////////////////////////////
+                if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC) {
+                    // The reflected phase T_loc is currently in grid.
+                    // We need it for the kernel computation.
+
+                    // Compute adjoint source from reflected-phase traveltime residuals
+                    recs.calculate_adjoint_source_for_phase(IP, name_sim_src, phase_name);
+
+                    // Set the velocity used by the last reflected leg (for adjoint propagation)
+                    // The adjoint propagates backward through the reflected-phase velocity field
+                    WaveType last_wave = P_WAVE;
+                    for (int ileg = (int)pdef.legs.size() - 1; ileg >= 0; ileg--) {
+                        if (!pdef.legs[ileg].interface_label.empty()) {
+                            // The reflected leg is the one AFTER this interface leg
+                            if (ileg + 1 < (int)pdef.legs.size()) {
+                                last_wave = pdef.legs[ileg + 1].wave_type;
+                            }
+                            break;
+                        }
+                    }
+                    grid.set_active_velocity(last_wave);
+
+                    // Create iterator for adjoint solve
+                    std::unique_ptr<Iterator> It_adj_refl;
+                    bool adj_second_run = true;
+                    select_iterator(IP, grid, src, io, name_sim_src, false,
+                                    is_teleseismic, It_adj_refl, adj_second_run);
+
+                    // Run adjoint iteration (uses T_loc for computing adjoint field)
+                    int adj_type = 0;
+                    It_adj_refl->run_iteration_adjoint(IP, grid, io, adj_type);
+                    // Run density adjoint
+                    adj_type = 1;
+                    It_adj_refl->run_iteration_adjoint(IP, grid, io, adj_type);
+
+                    // Compute and accumulate sensitivity kernel from reflected phase
+                    // Kernels are ADDED to existing Ks_loc/Kxi_loc/Keta_loc
+                    calculate_sensitivity_kernel(grid, IP, name_sim_src);
+
+                    // Restore P-wave velocity
+                    grid.restore_p_velocity();
+
+                    if (subdom_main && !line_search_mode && IP.get_if_output_source_field()) {
+                        io.write_adjoint_field(grid, i_inv);
+                    }
+                }
+            }
+
+            // Restore the correct per-phase travel times that were
+            // overwritten by the last reflected-phase receiver extraction.
+            if (proc_store_srcrec) {
+                for (auto& rec_pair : IP.data_map[name_sim_src]) {
+                    for (auto& di : rec_pair.second) {
+                        auto it = di.travel_time_by_phase.find(di.phase);
+                        if (it != di.travel_time_by_phase.end()) {
+                            di.travel_time = it->second;
+                        }
+                    }
+                }
+            }
+
+            // Restore the direct P-wave traveltime field
+            grid.restore_T_loc(T_direct_backup);
+            delete[] T_direct_backup;
+        }
 
         /////////////////////////
         // run adjoint simulation

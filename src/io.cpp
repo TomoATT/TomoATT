@@ -626,7 +626,7 @@ void IO_utils::write_1dinv_field(CUSTOMREAL* field_1dinv, CUSTOMREAL* r_1dinv, C
             // open h5 file
             std::string fout = output_dir + "/" + h5_output_fname;
             hid_t tmp_file_id = H5Fopen(fout.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-      
+
             // try to create and open group "1dinv"
             if (!H5Lexists(tmp_file_id, "1dinv", H5P_DEFAULT)) {
                 file_id_2d = H5Gcreate(tmp_file_id, "1dinv", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -641,7 +641,7 @@ void IO_utils::write_1dinv_field(CUSTOMREAL* field_1dinv, CUSTOMREAL* r_1dinv, C
             // create dataset and write
             int dims_array[2] = {nr_1dinv, nt_1dinv};
             std::string str_dset = field_name;
-            
+
             if (H5Lexists(file_id_2d, str_dset.c_str(), H5P_DEFAULT) > 0){
                 H5Ldelete(file_id_2d, str_dset.c_str(), H5P_DEFAULT);  // delete nit
             }
@@ -649,17 +649,17 @@ void IO_utils::write_1dinv_field(CUSTOMREAL* field_1dinv, CUSTOMREAL* r_1dinv, C
 
             if (H5Lexists(file_id_2d, "r_1dinv", H5P_DEFAULT) > 0){
                 H5Ldelete(file_id_2d, "r_1dinv", H5P_DEFAULT);  // delete nit
-            } 
+            }
             str_dset = "r_1dinv";
             h5_create_and_write_dataset_2d(str_dset, 1, &nr_1dinv, dtype, r_1dinv);
-            
+
             if (H5Lexists(file_id_2d, "t_1dinv", H5P_DEFAULT) > 0){
                 H5Ldelete(file_id_2d, "t_1dinv", H5P_DEFAULT);  // delete nit
             }
             str_dset = "t_1dinv";
             h5_create_and_write_dataset_2d(str_dset, 1, &nt_1dinv, dtype, t_1dinv);
 
-            // close groud 
+            // close groud
             H5Gclose(file_id_2d);
 
             // close h5 file
@@ -998,6 +998,27 @@ void IO_utils::write_T(Grid& grid, int i_inv) {
 #endif
     } else if(output_format==OUTPUT_FORMAT_ASCII){
         std::string dset_name = "time_field_inv_" + int2string_zero_fill(i_inv);
+        std::string fname = create_fname_ascii(dset_name);
+        write_data_ascii(grid, fname, grid.get_T());
+    }
+}
+
+
+void IO_utils::write_T_phase(Grid& grid, const std::string& phase_name, int i_inv) {
+    if (!subdom_main) return;
+
+    if (output_format==OUTPUT_FORMAT_HDF5){
+#ifdef USE_HDF5
+        // Write under a phase-specific subgroup: src_EVENT/phase_PmP/
+        std::string phase_group = h5_group_name_data + "/phase_" + phase_name;
+        std::string h5_dset_name = "time_field";
+        write_data_h5(grid, phase_group, h5_dset_name, grid.get_T(), i_inv, src_data);
+#else
+        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+        exit(1);
+#endif
+    } else if(output_format==OUTPUT_FORMAT_ASCII){
+        std::string dset_name = "time_field_" + phase_name + "_inv_" + int2string_zero_fill(i_inv);
         std::string fname = create_fname_ascii(dset_name);
         write_data_ascii(grid, fname, grid.get_T());
     }
@@ -1705,6 +1726,19 @@ void IO_utils::insert_data_xdmf(std::string& group_name, std::string& dset_name_
         std::string h5_dset_path = h5_output_fname + ":/" + group_name + "/" + dset_name_h5;
         dataItem->InsertEndChild( doc->NewText( h5_dset_path.c_str() ) );
     }
+}
+
+
+bool IO_utils::check_dataset_exists(std::string& fname, const char* dset_name) {
+#ifdef USE_HDF5
+    hid_t file_id = H5Fopen(fname.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    if (file_id < 0) return false;
+    htri_t exists = H5Lexists(file_id, dset_name, H5P_DEFAULT);
+    H5Fclose(file_id);
+    return exists > 0;
+#else
+    return false;
+#endif
 }
 
 

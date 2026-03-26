@@ -20,6 +20,7 @@
 #include "source.h"
 #include "io.h"
 #include "inv_grid.h"
+#include "interface.h"
 
 #ifdef USE_CUDA
 #include <cuda_runtime.h>
@@ -41,6 +42,20 @@ public:
     void initialize_fields(Source &, InputParams&);
     // calculate initial fields T0 T0r T0t T0p and initialize tau for teleseismic source
     void initialize_fields_teleseismic();
+    // initialize fields from interface nodes (for reflected phase computation)
+    void initialize_fields_from_interface(const InterfaceDefinition& iface, WaveType wave_type, InputParams& IP);
+    // switch active velocity between P and S
+    void set_active_velocity(WaveType wave_type);
+    // restore active velocity to P-wave (undo set_active_velocity(S_WAVE))
+    void restore_p_velocity();
+    // save current T_loc into a backup array
+    void save_T_loc(CUSTOMREAL* T_backup);
+    // restore T_loc from a backup array
+    void restore_T_loc(const CUSTOMREAL* T_backup);
+    // extract interface arrival times from current T_loc
+    void extract_interface_times(InterfaceDefinition& iface);
+    // detect interfaces from velocity contrasts
+    std::vector<InterfaceDefinition> detect_velocity_interfaces(CUSTOMREAL threshold);
     // calculate L1 and Linf diff (sum of value change on the nodes)
     void calc_L1_and_Linf_diff(CUSTOMREAL&, CUSTOMREAL&);
     // calculate L1 and Linf diff for teleseismic source (sum of value change on the nodes)
@@ -114,7 +129,9 @@ public:
     CUSTOMREAL* get_b()            {return get_array_for_vis(fac_b_loc, false);}; //
     CUSTOMREAL* get_c()            {return get_array_for_vis(fac_c_loc, false);}; //
     CUSTOMREAL* get_f()            {return get_array_for_vis(fac_f_loc, false);}; //
-    CUSTOMREAL* get_vel()          {return get_array_for_vis(fun_loc,   true);}; // true velocity field
+    CUSTOMREAL* get_vel()          {return get_array_for_vis(fun_loc,   true);}; // true P-wave velocity field
+    CUSTOMREAL* get_vel_s()         {return fun_s_loc ? get_array_for_vis(fun_s_loc, true) : nullptr;}; // S-wave velocity field
+    bool        has_s_wave_model()  {return fun_s_loc != nullptr;};
     CUSTOMREAL* get_T0v()          {return get_array_for_vis(T0v_loc,   false);}; // initial T0
     CUSTOMREAL* get_u()            {return get_array_for_vis(u_loc,     false);}; // current solution
     CUSTOMREAL* get_tau()          {return get_array_for_vis(tau_loc,   false);}; // current tau
@@ -258,11 +275,22 @@ public:
     CUSTOMREAL *fac_c_loc; // factor c
     CUSTOMREAL *fac_f_loc; // factor f
     CUSTOMREAL *fun_loc;
+    CUSTOMREAL *fun_s_loc = nullptr;   // S-wave slowness (1/Vs), nullptr if no S-wave model
     CUSTOMREAL *T_loc;
     CUSTOMREAL *T0v_loc, *T0r_loc, *T0p_loc, *T0t_loc;
     CUSTOMREAL *tau_loc;
     CUSTOMREAL *tau_old_loc;
     bool       *is_changed;
+    // S-wave anisotropy factor arrays (allocated only if S-wave model provided)
+    CUSTOMREAL *fac_a_s_loc = nullptr;
+    CUSTOMREAL *fac_b_s_loc = nullptr;
+    CUSTOMREAL *fac_c_s_loc = nullptr;
+    CUSTOMREAL *fac_f_s_loc = nullptr;
+    // S-wave anisotropy parameters
+    CUSTOMREAL *xi_s_loc  = nullptr;
+    CUSTOMREAL *eta_s_loc = nullptr;
+    // flag: true if currently using S-wave velocity
+    bool using_s_wave = false;
     // for inversion backup
     CUSTOMREAL *fun_loc_back;
     CUSTOMREAL *xi_loc_back;
@@ -330,7 +358,7 @@ public:
     std::vector<CUSTOMREAL> Ks_processing_loc;      // kernel during processing
     std::vector<CUSTOMREAL> Kxi_processing_loc;
     std::vector<CUSTOMREAL> Keta_processing_loc;
-    std::vector<CUSTOMREAL> Ks_density_processing_loc;      
+    std::vector<CUSTOMREAL> Ks_density_processing_loc;
     std::vector<CUSTOMREAL> Kxi_density_processing_loc;
     std::vector<CUSTOMREAL> Keta_density_processing_loc;
     // model update para

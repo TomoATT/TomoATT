@@ -336,7 +336,6 @@ void PlainGrid::run_iteration(InputParams& IP){
 
     CUSTOMREAL L1_dif  =1000000000;
     CUSTOMREAL Linf_dif=1000000000;
-    CUSTOMREAL L1_err  =_0_CR;
     CUSTOMREAL Linf_err=_0_CR;
 
     int iter = 0;
@@ -414,15 +413,12 @@ void PlainGrid::run_iteration(InputParams& IP){
         }
         L1_dif /= nr_2d*nt_2d;
 
-        // calculate L1 and Linf error
-        L1_err  = _0_CR;
+        // calculate Linf error
         Linf_err= _0_CR;
 
         for (int ii = 0; ii < nr_2d*nt_2d; ii++){
-            L1_err  += std::abs(tau_2d[ii]*T0v_2d[ii] - u_2d[ii]);
             Linf_err = std::max(Linf_err, std::abs(tau_2d[ii]*T0v_2d[ii] - u_2d[ii]));
         }
-        L1_err /= nr_2d*nt_2d;
 
         // check convergence
         if (std::abs(L1_dif) < TOL_2D_SOLVER && std::abs(Linf_dif) < TOL_2D_SOLVER){
@@ -438,10 +434,6 @@ void PlainGrid::run_iteration(InputParams& IP){
                 std::cout << "Iteration " << iter << "L_1(Tnew-Told)= " << L1_dif << " , L_inf(Tnew-Told) = " << Linf_dif << std::endl;
             iter++;
         }
-        // if (myrank==0){
-        //     std::cout << "Iteration " << iter << "L_1(Tnew-Told)= " << L1_dif << " , L_inf(Tnew-Told) = " << Linf_dif << std::endl;
-        //     std::cout << "Iteration " << iter << ": L1 error = " << L1_err << ", Linf error = " << Linf_err << std::endl;
-        // }
     } // end of wile
 
 iter_end:

@@ -14,6 +14,8 @@ public:
 
     // adjoint source
     void calculate_adjoint_source(InputParams&, const std::string&);
+    // adjoint source for a specific reflected phase
+    void calculate_adjoint_source_for_phase(InputParams&, const std::string& name_sim_src, const std::string& phase_name);
     // objective function and residual
     std::vector<CUSTOMREAL> calculate_obj_and_residual(InputParams&);
     // Gradient of traveltime

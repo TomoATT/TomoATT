@@ -210,6 +210,60 @@ InputParams::InputParams(std::string& input_file){
             getNodeValue(config, "ignore_velocity_discontinuity", ignore_velocity_discontinuity);
         }
 
+        // reflection configuration
+        if (config["reflections"]) {
+            YAML::Node refl = config["reflections"];
+
+            if (refl["enabled"]) {
+                getNodeValue(refl, "enabled", reflections_enabled);
+            }
+
+            if (reflections_enabled) {
+                // parse phase names
+                if (refl["phases"]) {
+                    for (size_t i = 0; i < refl["phases"].size(); i++) {
+                        reflection_phase_names.push_back(refl["phases"][i].as<std::string>());
+                    }
+                }
+
+                // parse interface definitions
+                if (refl["interfaces"]) {
+                    for (size_t i = 0; i < refl["interfaces"].size(); i++) {
+                        InterfaceDefinition iface;
+                        iface.label = refl["interfaces"][i]["label"].as<std::string>();
+                        iface.depth_km = refl["interfaces"][i]["depth"].as<CUSTOMREAL>();
+                        if (refl["interfaces"][i]["is_free_surface"]) {
+                            iface.is_free_surface = refl["interfaces"][i]["is_free_surface"].as<bool>();
+                        }
+                        configured_interfaces.push_back(iface);
+                    }
+                }
+
+                // auto-detect interfaces from velocity contrast
+                if (refl["auto_detect_interfaces"]) {
+                    getNodeValue(refl, "auto_detect_interfaces", auto_detect_interfaces_flag);
+                }
+                if (refl["auto_detect_threshold"]) {
+                    getNodeValue(refl, "auto_detect_threshold", auto_detect_threshold);
+                }
+
+                if (inter_sub_rank == 0) {
+                    std::cout << "--- Reflections enabled ---" << std::endl;
+                    std::cout << "  Phases: ";
+                    for (const auto& p : reflection_phase_names) std::cout << p << " ";
+                    std::cout << std::endl;
+                    std::cout << "  Interfaces: " << configured_interfaces.size() << std::endl;
+                    for (const auto& iface : configured_interfaces) {
+                        std::cout << "    " << iface.label << " depth=" << iface.depth_km
+                                  << " km" << (iface.is_free_surface ? " (free surface)" : "") << std::endl;
+                    }
+                    if (auto_detect_interfaces_flag) {
+                        std::cout << "  Auto-detect interfaces: threshold=" << auto_detect_threshold << std::endl;
+                    }
+                }
+            }
+        }
+
         //
         // model update
         //
@@ -792,7 +846,32 @@ InputParams::InputParams(std::string& input_file){
     broadcast_i_single(run_mode, 0);
     broadcast_bool_single(have_tele_data, 0);
     broadcast_bool_single(ignore_velocity_discontinuity, 0);
-    
+    broadcast_bool_single(reflections_enabled, 0);
+    broadcast_bool_single(auto_detect_interfaces_flag, 0);
+    broadcast_cr_single(auto_detect_threshold, 0);
+    // broadcast reflection phase names
+    {
+        int n_phases = static_cast<int>(reflection_phase_names.size());
+        broadcast_i_single(n_phases, 0);
+        if (world_rank != 0) reflection_phase_names.resize(n_phases);
+        for (int i = 0; i < n_phases; i++) {
+            broadcast_str(reflection_phase_names[i], 0);
+        }
+    }
+    // broadcast configured interfaces
+    {
+        int n_ifaces = static_cast<int>(configured_interfaces.size());
+        broadcast_i_single(n_ifaces, 0);
+        if (world_rank != 0) configured_interfaces.resize(n_ifaces);
+        for (int i = 0; i < n_ifaces; i++) {
+            broadcast_str(configured_interfaces[i].label, 0);
+            broadcast_cr_single(configured_interfaces[i].depth_km, 0);
+            bool fs = configured_interfaces[i].is_free_surface;
+            broadcast_bool_single(fs, 0);
+            configured_interfaces[i].is_free_surface = fs;
+        }
+    }
+
     broadcast_i_single(max_iter_inv, 0);
     broadcast_i_single(optim_method, 0);
     broadcast_bool_single(line_search_mode, 0);
@@ -2924,7 +3003,7 @@ void InputParams::check_contradictions(){
             std::cout << "use_cr_time is set to be false" << std::endl;
             use_cr = false;
         }
-        
+
     }
 
 #ifdef USE_CUDA

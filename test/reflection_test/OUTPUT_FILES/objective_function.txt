@@ -1,0 +1,2 @@
+ # iter,        type,            obj(20),        obj_abs(20),      obj_cs_dif(0),      obj_cr_dif(0),        obj_tele(0),           res(mean/std),       res_abs(mean/std),    res_cs_dif(mean/std),    res_cr_dif(mean/std),      res_tele(mean/std),        step_length,
+      0, model update,                  0,             546854,                  0,                  0,                  0,    -32.842237/24.430659,    -32.842237/24.430659,                 0.0/0.0,                 0.0/0.0,                 0.0/0.0,               0.01,
