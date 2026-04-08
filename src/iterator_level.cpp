@@ -889,10 +889,6 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
             int num_iter = n_nodes / NSIMD + (n_nodes % NSIMD == 0 ? 0 : 1);
 
             // make alias to preloaded data
-            __mT* v_iip    = (__mT*) vv_iip.at(iswp).at(i_level);
-            __mT* v_jjt    = (__mT*) vv_jjt.at(iswp).at(i_level);
-            __mT* v_kkr    = (__mT*) vv_kkr.at(iswp).at(i_level);
-
             __mT* v_fac_a  = (__mT*) vv_fac_a.at(iswp).at(i_level);
             __mT* v_fac_b  = (__mT*) vv_fac_b.at(iswp).at(i_level);
             __mT* v_fac_c  = (__mT*) vv_fac_c.at(iswp).at(i_level);
@@ -926,8 +922,7 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
                 __mT v___m    = load_mem_gen_to_mTd(grid.tau_loc, &dump_ijkm1[i_vec]);
 
                 // loop over all nodes in one level
-                vect_stencil_1st_pre_simd(v_iip[_i_vec], v_jjt[_i_vec], v_kkr[_i_vec], \
-                                          v_c__, \
+                vect_stencil_1st_pre_simd(v_c__, \
                                           v_p__,    v_m__,    v__p_,    v__m_,    v___p,    v___m, \
                                           v_pp1, v_pp2, v_pt1, v_pt2, v_pr1, v_pr2, \
                                           v_DP_inv, v_DT_inv, v_DR_inv, \
@@ -986,9 +981,6 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
         __mT v___p   ;
         __mT v___m   ;
 
-        __mT v_iip_   ;
-        __mT v_jjt_   ;
-        __mT v_kkr_   ;
         __mT v_fac_a_ ;
         __mT v_fac_b_ ;
         __mT v_fac_c_ ;
@@ -1012,10 +1004,6 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
             int num_iter = n_nodes / NSIMD + (n_nodes % NSIMD == 0 ? 0 : 1);
 
             // make alias to preloaded data
-            CUSTOMREAL* v_iip    = vv_iip.at(iswp).at(i_level);
-            CUSTOMREAL* v_jjt    = vv_jjt.at(iswp).at(i_level);
-            CUSTOMREAL* v_kkr    = vv_kkr.at(iswp).at(i_level);
-
             CUSTOMREAL* v_fac_a  = vv_fac_a.at(iswp).at(i_level);
             CUSTOMREAL* v_fac_b  = vv_fac_b.at(iswp).at(i_level);
             CUSTOMREAL* v_fac_c  = vv_fac_c.at(iswp).at(i_level);
@@ -1051,9 +1039,6 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
                 v___m    = load_mem_gen_to_mTd(pg, grid.tau_loc,  &dump_ijkm1[i_vec]);
 
                 // load v_iip, v_jjt, v_kkr
-                v_iip_   = svld1_vnum_f64(pg, v_iip   , _i_vec);
-                v_jjt_   = svld1_vnum_f64(pg, v_jjt   , _i_vec);
-                v_kkr_   = svld1_vnum_f64(pg, v_kkr   , _i_vec);
                 v_fac_a_ = svld1_vnum_f64(pg, v_fac_a , _i_vec);
                 v_fac_b_ = svld1_vnum_f64(pg, v_fac_b , _i_vec);
                 v_fac_c_ = svld1_vnum_f64(pg, v_fac_c , _i_vec);
@@ -1066,7 +1051,7 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
                 v_change_= svld1_vnum_f64(pg, v_change, _i_vec);
 
                 // loop over all nodes in one level
-                vect_stencil_1st_pre_simd(pg, v_iip_, v_jjt_, v_kkr_, \
+                vect_stencil_1st_pre_simd(pg, \
                                           v_c__, \
                                           v_p__,    v_m__,    v__p_,    v__m_,    v___p,    v___m, \
                                           v_pp1, v_pp2, v_pt1, v_pt2, v_pr1, v_pr2, \

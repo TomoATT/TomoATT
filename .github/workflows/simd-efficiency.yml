@@ -1,0 +1,70 @@
+name: SIMD Efficiency
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - CMakeLists.txt
+      - include/**
+      - src/**
+      - cuda/**
+      - .github/scripts/**
+      - .github/workflows/**
+      - test/reflection_test/**
+  push:
+    paths:
+      - CMakeLists.txt
+      - include/**
+      - src/**
+      - cuda/**
+      - .github/scripts/**
+      - .github/workflows/**
+      - test/reflection_test/**
+
+jobs:
+  simd-efficiency:
+    name: Compare Scalar vs SIMD Runtime
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: ./.github/scripts/run_install.sh
+        shell: bash
+
+      - name: Configure scalar build
+        run: |
+          cmake -B ${{ github.workspace }}/build-scalar -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+      - name: Build scalar binary
+        run: |
+          cmake --build ${{ github.workspace }}/build-scalar -j2
+
+      - name: Configure SIMD build
+        run: |
+          cmake -B ${{ github.workspace }}/build-simd -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DUSE_SIMD=ON
+
+      - name: Build SIMD binary
+        run: |
+          cmake --build ${{ github.workspace }}/build-simd -j2
+
+      - name: Benchmark SIMD efficiency
+        run: |
+          python3 .github/scripts/check_simd_efficiency.py \
+            --scalar-bin "${{ github.workspace }}/build-scalar/bin/TOMOATT" \
+            --simd-bin "${{ github.workspace }}/build-simd/bin/TOMOATT" \
+            --fixture "${{ github.workspace }}/test/reflection_test" \
+            --generator make_benchmark_model.py \
+            --input input_params_benchmark.yaml \
+            --runs 3 \
+            --max-regression 0.10 \
+            --summary-path "${{ github.workspace }}/simd-efficiency-summary.md"
+
+      - name: Upload SIMD efficiency summary
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simd-efficiency-summary
+          path: ${{ github.workspace }}/simd-efficiency-summary.md
+          if-no-files-found: ignore
