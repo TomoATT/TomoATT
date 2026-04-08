@@ -16,10 +16,11 @@ void Iterator_level::do_sweep_adj(int iswp, Grid& grid, InputParams& IP){
     // set sweep direction
     set_sweep_direction(iswp);
 
-    int iip, jjt, kkr;
     int n_levels = ijk_for_this_subproc.size();
 
 #if !defined USE_SIMD
+
+    int iip, jjt, kkr;
 
     for (int i_level = 0; i_level < n_levels; i_level++) {
         size_t n_nodes = ijk_for_this_subproc[i_level].size();
@@ -447,10 +448,11 @@ void Iterator_level_tele::do_sweep_adj(int iswp, Grid& grid, InputParams& IP){
     // set sweep direction
     set_sweep_direction(iswp);
 
-    int iip, jjt, kkr;
     int n_levels = ijk_for_this_subproc.size();
 
 #if !defined USE_SIMD
+
+    int iip, jjt, kkr;
 
     for (int i_level = 0; i_level < n_levels; i_level++) {
         size_t n_nodes = ijk_for_this_subproc[i_level].size();
@@ -1604,8 +1606,7 @@ void Iterator_level_1st_order_tele::do_sweep(int iswp, Grid& grid, InputParams& 
 
 
                 // loop over all nodes in one level (this routine for teleseismic is same with that for local)
-                vect_stencil_1st_pre_simd(v_iip[_i_vec], v_jjt[_i_vec], v_kkr[_i_vec], \
-                                          v_c__, \
+                vect_stencil_1st_pre_simd(v_c__, \
                                           v_p__,    v_m__,    v__p_,    v__m_,    v___p,    v___m, \
                                           v_pp1, v_pp2, v_pt1, v_pt2, v_pr1, v_pr2, \
                                           v_DP_inv, v_DT_inv, v_DR_inv, \
@@ -1752,7 +1753,7 @@ void Iterator_level_1st_order_tele::do_sweep(int iswp, Grid& grid, InputParams& 
                 v_change_= svld1_vnum_f64(pg, v_change, _i_vec);
 
                 // loop over all nodes in one level
-                vect_stencil_1st_pre_simd(pg, v_iip_, v_jjt_, v_kkr_, \
+                vect_stencil_1st_pre_simd(pg, \
                                           v_c__, \
                                           v_p__,    v_m__,    v__p_,    v__m_,    v___p,    v___m, \
                                           v_pp1, v_pp2, v_pt1, v_pt2, v_pr1, v_pr2, \
