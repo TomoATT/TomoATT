@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Benchmark scalar and SIMD TomoATT binaries on the reflection-test fixture."""
+"""Benchmark scalar and SIMD TomoATT binaries on a direct-solver fixture."""
 
 from __future__ import annotations
 

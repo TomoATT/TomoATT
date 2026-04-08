@@ -58,17 +58,5 @@ sweep_type: 1
 conv_tol: 0.0
 max_iter: 8
 
-# allow velocity discontinuity (two-layer model)
-ignore_velocity_discontinuity: true
-
-#################################################
-#          reflection configuration             #
-#################################################
-reflections:
-  enabled: true
-  phases:
-    - PmP
-    - PmS
-  interfaces:
-    - label: Moho
-      depth: 35.0
+# Benchmark only the base forward solver path.
+ignore_velocity_discontinuity: false
