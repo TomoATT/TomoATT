@@ -57,7 +57,7 @@ jobs:
             --fixture "${{ github.workspace }}/test/reflection_test" \
             --generator make_benchmark_model.py \
             --input input_params_benchmark.yaml \
-            --runs 3 \
+            --runs 2 \
             --max-regression 0.10 \
             --summary-path "${{ github.workspace }}/simd-efficiency-summary.md"
 

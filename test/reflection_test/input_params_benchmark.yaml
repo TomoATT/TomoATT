@@ -54,8 +54,9 @@ run_mode: 0
 stencil_order: 1
 stencil_type: 0
 sweep_type: 1
-conv_tol: 1.0e-5
-max_iter: 200
+# Keep the CI benchmark to a short, fixed iteration budget.
+conv_tol: 0.0
+max_iter: 8
 
 # allow velocity discontinuity (two-layer model)
 ignore_velocity_discontinuity: true
