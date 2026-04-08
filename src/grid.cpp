@@ -11,7 +11,7 @@ Grid::Grid(InputParams& IP, IO_utils& io) {
                    &win_xi_loc, &win_eta_loc, &win_zeta_loc,
                    &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
                    &win_Tadj_loc, &win_Tadj_density_loc,
-                   &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_over_cos_t_loc,
+                   &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
                    &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_tmpt1, &win_tmpt2});
     // initialize grid parameters are done by only the main process of each subdomain
     if (subdom_main) {
@@ -653,7 +653,7 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(loc_J, t_loc_1d, win_t_loc_1d);
     prepare_shm_array_cr(loc_K, r_loc_1d, win_r_loc_1d);
 
-    prepare_shm_array_cr(loc_J, one_over_cos_t_loc, win_over_cos_t_loc);
+    prepare_shm_array_cr(loc_J, one_over_cos_t_loc, win_one_over_cos_t_loc);
     prepare_shm_array_cr(loc_J, one_over_cos_t_loc_sq, win_one_over_cos_t_loc_sq);
     prepare_shm_array_cr(loc_J, sin_t_loc, win_sin_t_loc);
     prepare_shm_array_cr(loc_J, tmpt1, win_tmpt1);
@@ -677,7 +677,7 @@ void Grid::shm_memory_deallocation() {
                       &win_xi_loc, &win_eta_loc, &win_zeta_loc,
                       &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
                       &win_Tadj_loc, &win_Tadj_density_loc,
-                      &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_over_cos_t_loc,
+                      &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
                       &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_tmpt1, &win_tmpt2});
 }
 
