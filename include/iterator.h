@@ -75,6 +75,7 @@ protected:
     int ed_level;                   // end level for sweeping
     std::vector< std::vector<int> > ijk_for_this_subproc; // ijk=I2V(i,j,k) for this process (level, ijk)
     int max_n_nodes_plane;                                // maximum number of nodes on a plane
+    CUSTOMREAL dr_inv, dt_inv, dp_inv; // inverse of dr, dt, dp.
 
 
 #if defined USE_SIMD || defined USE_CUDA
