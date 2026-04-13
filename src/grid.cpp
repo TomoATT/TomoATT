@@ -656,8 +656,8 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(loc_J, one_over_cos_t_loc, win_one_over_cos_t_loc);
     prepare_shm_array_cr(loc_J, one_over_cos_t_loc_sq, win_one_over_cos_t_loc_sq);
     prepare_shm_array_cr(loc_J, sin_t_loc, win_sin_t_loc);
-    prepare_shm_array_cr(loc_J, tmpt1, win_tmpt1);
-    prepare_shm_array_cr(loc_J, tmpt2, win_tmpt2);
+    prepare_shm_array_cr(loc_J, cos_t_loc_m0p5, win_cos_t_loc_m0p5);
+    prepare_shm_array_cr(loc_J, cos_t_loc_p0p5, win_cos_t_loc_p0p5);
     prepare_shm_array_cr(loc_K, one_over_r_loc_1d, win_one_over_r_loc_1d);
     prepare_shm_array_cr(loc_K, one_over_r_loc_1d_sq, win_one_over_r_loc_1d_sq);
 
@@ -678,7 +678,7 @@ void Grid::shm_memory_deallocation() {
                       &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
                       &win_Tadj_loc, &win_Tadj_density_loc,
                       &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
-                      &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_tmpt1, &win_tmpt2});
+                      &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
 }
 
 // function for memory allocation, called only for subdomain.
@@ -720,8 +720,8 @@ void Grid::memory_deallocation() {
         delete[] one_over_cos_t_loc;
         delete[] one_over_cos_t_loc_sq;
         delete[] sin_t_loc;
-        delete[] tmpt1;
-        delete[] tmpt2;
+        delete[] cos_t_loc_m0p5;
+        delete[] cos_t_loc_p0p5;
 
     }
 
@@ -990,11 +990,11 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
     }
 
     for (int j = 1; j < loc_J; j++) {
-        tmpt1[j] = 1 / std::cos((t_loc_1d[j-1]+t_loc_1d[j])*_0_5_CR);
+        cos_t_loc_m0p5[j] = 1 / std::cos((t_loc_1d[j-1]+t_loc_1d[j])*_0_5_CR);
     }
 
     for (int j = 0; j < loc_J - 1; j++) {
-        tmpt2[j] = 1 / std::cos((t_loc_1d[j]+t_loc_1d[j+1])*_0_5_CR);
+        cos_t_loc_p0p5[j] = 1 / std::cos((t_loc_1d[j]+t_loc_1d[j+1])*_0_5_CR);
     }
 
     for (int i = 0; i < nprocs; i++) {
