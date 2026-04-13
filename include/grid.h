@@ -287,7 +287,7 @@ private:
     MPI_Win win_xi_loc, win_eta_loc, win_zeta_loc;
     MPI_Win win_r_loc_1d, win_t_loc_1d, win_p_loc_1d;
     MPI_Win win_one_over_r_loc_1d, win_one_over_r_loc_1d_sq, win_one_over_cos_t_loc;
-    MPI_Win win_one_over_cos_t_loc_sq, win_sin_t_loc, win_tmpt1, win_tmpt2;
+    MPI_Win win_one_over_cos_t_loc_sq, win_sin_t_loc, win_cos_t_loc_m0p5, win_cos_t_loc_p0p5;
 
     CUSTOMREAL *x_loc_3d;     // local (lon) x (global position)
     CUSTOMREAL *y_loc_3d;     // local (lat) y (global position)
@@ -308,8 +308,8 @@ public:
     CUSTOMREAL *one_over_cos_t_loc;    // inverse of cosine of theta lat y
     CUSTOMREAL *one_over_cos_t_loc_sq; // square of inverse of cosine of theta lat y 
     CUSTOMREAL *sin_t_loc;             // sine of theta lat y
-    CUSTOMREAL *tmpt1;                 // precomputed temporary factor array
-    CUSTOMREAL *tmpt2;                 // precomputed temporary factor array
+    CUSTOMREAL *cos_t_loc_m0p5;        // precomputed temporary factor array, cos((t[j-1] + t[j])/2)
+    CUSTOMREAL *cos_t_loc_p0p5;        // precomputed temporary factor array, cos((t[j] + t[j+1])/2)
 private:
     // arrays for inversion
     // TODO: check if those arrays can use shm

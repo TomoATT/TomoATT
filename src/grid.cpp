@@ -12,7 +12,7 @@ Grid::Grid(InputParams& IP, IO_utils& io) {
                    &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
                    &win_Tadj_loc, &win_Tadj_density_loc,
                    &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
-                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_tmpt1, &win_tmpt2});
+                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
     // initialize grid parameters are done by only the main process of each subdomain
     if (subdom_main) {
         // domain decomposition
@@ -376,8 +376,8 @@ void Grid::memory_allocation() {
         one_over_cos_t_loc       = allocateMemory<CUSTOMREAL>(loc_J, 9003);
         one_over_cos_t_loc_sq    = allocateMemory<CUSTOMREAL>(loc_J, 9004);
         sin_t_loc                = allocateMemory<CUSTOMREAL>(loc_J, 9005);
-        tmpt1                    = allocateMemory<CUSTOMREAL>(loc_J, 9006);
-        tmpt2                    = allocateMemory<CUSTOMREAL>(loc_J, 9007);
+        cos_t_loc_m0p5           = allocateMemory<CUSTOMREAL>(loc_J, 9006);
+        cos_t_loc_p0p5           = allocateMemory<CUSTOMREAL>(loc_J, 9007);
     }
 
     if (if_test)

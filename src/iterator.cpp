@@ -2227,8 +2227,8 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     CUSTOMREAL sin_t_loc_jjt = grid.sin_t_loc[jjt];
     CUSTOMREAL one_over_r_loc_cos_t_loc_sq = one_over_r_loc_1d_kkr_sq*grid.one_over_cos_t_loc_sq[jjt];
 
-    CUSTOMREAL tmpt1_jjt = grid.tmpt1[jjt];
-    CUSTOMREAL tmpt2_jjt = grid.tmpt2[jjt];
+    CUSTOMREAL cos_t_loc_m0p5_jjt = grid.cos_t_loc_m0p5[jjt];
+    CUSTOMREAL cos_t_loc_p0p5_jjt = grid.cos_t_loc_p0p5[jjt];
     CUSTOMREAL tmp_T_ip = grid.T_loc[ii_pp]-grid.T_loc[ii_mp];
     CUSTOMREAL tmp_T_jt = grid.T_loc[ii_pt]-grid.T_loc[ii_mt];
 
@@ -2241,14 +2241,14 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     CUSTOMREAL a2p = (a2 + std::abs(a2));
 
     CUSTOMREAL b1  = - (_1_CR-grid.xi_loc[ii_mt]-grid.xi_loc[ii]) * one_over_r_loc_1d_kkr_sq * (grid.T_loc[ii]-grid.T_loc[ii_mt]) * dt_inv \
-                     - (      grid.eta_loc[ii_mt]+grid.eta_loc[ii]) * one_over_r_loc_1d_kkr_sq * tmpt1_jjt * 0.25 * dp_inv \
+                     - (      grid.eta_loc[ii_mt]+grid.eta_loc[ii]) * one_over_r_loc_1d_kkr_sq * cos_t_loc_m0p5_jjt * 0.25 * dp_inv \
                      * ((grid.T_loc[ii_pp_mt]-grid.T_loc[ii_mp_mt]) \
                      + (grid.T_loc[ii_pp]  -grid.T_loc[ii_mp]));
     CUSTOMREAL b1m = (b1 - std::abs(b1));
     CUSTOMREAL b1p = (b1 + std::abs(b1));
 
     CUSTOMREAL b2  = - (_1_CR-grid.xi_loc[ ii]-grid.xi_loc[ ii_pt]) * one_over_r_loc_1d_kkr_sq * (grid.T_loc[ii_pt]-grid.T_loc[ii]) * dt_inv \
-                     - (      grid.eta_loc[ii]+grid.eta_loc[ii_pt]) * one_over_r_loc_1d_kkr_sq * tmpt2_jjt * 0.25 * dp_inv \
+                     - (      grid.eta_loc[ii]+grid.eta_loc[ii_pt]) * one_over_r_loc_1d_kkr_sq * cos_t_loc_p0p5_jjt * 0.25 * dp_inv \
                      * (tmp_T_ip \
                      + (grid.T_loc[ii_pp_pt]-grid.T_loc[ii_mp_pt]));
     CUSTOMREAL b2m = (b2 - std::abs(b2));
