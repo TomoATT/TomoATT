@@ -400,6 +400,8 @@ void Optimizer::check_kernel_value_range(Grid& grid) {
                 for (int j = 0; j < loc_J; j++) {
                     for (int i = 0; i < loc_I; i++) {
                         max_kernel = std::max(max_kernel, std::abs(grid.Ks_loc[I2V(i,j,k)]));
+                        max_kernel = std::max(max_kernel, std::abs(grid.Kxi_loc[I2V(i,j,k)]));
+                        max_kernel = std::max(max_kernel, std::abs(grid.Keta_loc[I2V(i,j,k)]));
                     }
                 }
             }
