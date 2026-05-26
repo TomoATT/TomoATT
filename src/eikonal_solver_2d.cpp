@@ -1029,12 +1029,20 @@ void load_2d_traveltime(InputParams& IP, Source& src, Grid& grid, IO_utils& io) 
                 // North boundary
                 if (grid.j_last()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(loc_J-1-l), grid.get_lon_by_index(i), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(i, loc_J-1-l, k)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(k));
                     grid.is_changed[I2V(i, loc_J-1-l, k)] = false;
                 }
                 // South boundary
                 if (grid.j_first()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(l), grid.get_lon_by_index(i), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(i, l, k)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(k));
                     grid.is_changed[I2V(i, l, k)] = false;
                 }
@@ -1046,12 +1054,20 @@ void load_2d_traveltime(InputParams& IP, Source& src, Grid& grid, IO_utils& io) 
                 // East boundary
                 if (grid.i_last()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(j), grid.get_lon_by_index(loc_I-1-l), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(loc_I-1-l, j, k)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(k));
                     grid.is_changed[I2V(loc_I-1-l, j, k)] = false;
                 }
                 // West boundary
                 if (grid.i_first()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(j), grid.get_lon_by_index(l), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(l, j, k)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(k));
                     grid.is_changed[I2V(l, j, k)] = false;
                 }
@@ -1063,6 +1079,10 @@ void load_2d_traveltime(InputParams& IP, Source& src, Grid& grid, IO_utils& io) 
                 // Bottom boundary
                 if (grid.k_first()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(j), grid.get_lon_by_index(i), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(i, j, l)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(l));
                     grid.is_changed[I2V(i, j, l)] = false;
                 }
