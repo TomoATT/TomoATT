@@ -58,13 +58,13 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         io.write_eta(grid, 0);
         //io.write_zeta(grid, i_inv); // TODO
 
-        if (IP.get_verbose_output_level()){
-            io.write_a(grid,   0);
-            io.write_b(grid,   0);
-            io.write_c(grid,   0);
-            io.write_f(grid,   0);
-            io.write_fun(grid, 0);
-        }
+        // if (IP.get_verbose_output_level()){
+        //     io.write_a(grid,   0);
+        //     io.write_b(grid,   0);
+        //     io.write_c(grid,   0);
+        //     io.write_f(grid,   0);
+        //     io.write_fun(grid, 0);
+        // }
 
         // // output model_parameters_inv_0000.dat
         // if (IP.get_if_output_model_dat())
@@ -356,13 +356,13 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
         io.write_eta(grid, 0);
         //io.write_zeta(grid, i_inv); // TODO
 
-        if (IP.get_verbose_output_level()){
-            io.write_a(grid,   0);
-            io.write_b(grid,   0);
-            io.write_c(grid,   0);
-            io.write_f(grid,   0);
-            io.write_fun(grid, 0);
-        }
+        // if (IP.get_verbose_output_level()){
+        //     io.write_a(grid,   0);
+        //     io.write_b(grid,   0);
+        //     io.write_c(grid,   0);
+        //     io.write_f(grid,   0);
+        //     io.write_fun(grid, 0);
+        // }
 
         // // output model_parameters_inv_0000.dat
         // if (IP.get_if_output_model_dat())

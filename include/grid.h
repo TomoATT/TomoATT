@@ -69,8 +69,8 @@ public:
     // check model discontinuity
     void check_velocity_discontinuity();
 
-    void reinitialize_abcf();   // reinitialize factors
-    void rejuvenate_abcf();     // reinitialize factors for earthquake relocation
+    // void reinitialize_abcf();   // reinitialize factors
+    // void rejuvenate_abcf();     // reinitialize factors for earthquake relocation
     void initialize_kernels();  // fill 0 to kernels
 
     //
@@ -110,10 +110,10 @@ public:
     CUSTOMREAL* get_fun()          {return get_array_for_vis(fun_loc,   false);}; //
     CUSTOMREAL* get_xi()           {return get_array_for_vis(xi_loc,    false);}; //
     CUSTOMREAL* get_eta()          {return get_array_for_vis(eta_loc,   false);}; //
-    CUSTOMREAL* get_a()            {return get_array_for_vis(fac_a_loc, false);}; //
-    CUSTOMREAL* get_b()            {return get_array_for_vis(fac_b_loc, false);}; //
-    CUSTOMREAL* get_c()            {return get_array_for_vis(fac_c_loc, false);}; //
-    CUSTOMREAL* get_f()            {return get_array_for_vis(fac_f_loc, false);}; //
+    // CUSTOMREAL* get_a()            {return get_array_for_vis(fac_a_loc, false);}; //
+    // CUSTOMREAL* get_b()            {return get_array_for_vis(fac_b_loc, false);}; //
+    // CUSTOMREAL* get_c()            {return get_array_for_vis(fac_c_loc, false);}; //
+    // CUSTOMREAL* get_f()            {return get_array_for_vis(fac_f_loc, false);}; //
     CUSTOMREAL* get_vel()          {return get_array_for_vis(fun_loc,   true);}; // true velocity field
     CUSTOMREAL* get_T0v()          {return get_array_for_vis(T0v_loc,   false);}; // initial T0
     CUSTOMREAL* get_u()            {return get_array_for_vis(u_loc,     false);}; // current solution
@@ -192,9 +192,11 @@ public:
     // copy tau to Tadj
     void update_Tadj_density();
     // back up fun xi eta
-    void back_up_fun_xi_eta_bcf();
+    // void back_up_fun_xi_eta_bcf();
+    void back_up_fun_xi_eta();
     // restore fun xi eta
-    void restore_fun_xi_eta_bcf();
+    // void restore_fun_xi_eta_bcf();
+    void restore_fun_xi_eta();
 
     // write out inversion grid file
     void write_inversion_grid_file();
@@ -253,10 +255,10 @@ public:
     CUSTOMREAL *xi_loc;    // local xi
     CUSTOMREAL *eta_loc;   // local eta
     CUSTOMREAL *zeta_loc;  // local zeta
-    CUSTOMREAL *fac_a_loc; // factor a
-    CUSTOMREAL *fac_b_loc; // factor b
-    CUSTOMREAL *fac_c_loc; // factor c
-    CUSTOMREAL *fac_f_loc; // factor f
+    // CUSTOMREAL *fac_a_loc; // factor a (20260608: removed, a = 1)
+    // CUSTOMREAL *fac_b_loc; // factor b (20260608: removed, b = (1 - 2xi)/r^2)
+    // CUSTOMREAL *fac_c_loc; // factor c (20260608: removed, c = (1 + 2xi)(r^2*cos^2))
+    // CUSTOMREAL *fac_f_loc; // factor f (20260608: removed, f = -2eta/(r^2*cos))
     CUSTOMREAL *fun_loc;
     CUSTOMREAL *T_loc;
     CUSTOMREAL *T0v_loc, *T0r_loc, *T0p_loc, *T0t_loc;
@@ -282,7 +284,7 @@ public:
 
 private:
     // windows for shm arrays
-    MPI_Win win_fac_a_loc, win_fac_b_loc, win_fac_c_loc, win_fac_f_loc;
+    // MPI_Win win_fac_a_loc, win_fac_b_loc, win_fac_c_loc, win_fac_f_loc;
     MPI_Win win_T0r_loc, win_T0p_loc, win_T0t_loc, win_T0v_loc;
     MPI_Win win_tau_loc, win_fun_loc;
     MPI_Win win_is_changed;
@@ -422,7 +424,8 @@ private:
     CUSTOMREAL *u_loc;    // true solution # TODO: erase for no testing
     //CUSTOMREAL *velo_loc; // velocity field, # TODO: use this for storing an intial model
     // anisotropic factors
-    CUSTOMREAL a0, b0, c0, f0, fun0;
+    // CUSTOMREAL a0, b0, c0, f0, fun0;
+    CUSTOMREAL xi0, eta0, fun0;
 
     CUSTOMREAL source_width;
     //

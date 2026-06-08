@@ -4,8 +4,16 @@ Grid::Grid(InputParams& IP, IO_utils& io) {
     stdout_by_main("--- grid object initialization starts. ---");
 
     // Initialize all MPI_Win variables to NULL to ensure proper cleanup
-    init_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
-                   &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    // init_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
+    //                &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    //                &win_tau_loc, &win_fun_loc, &win_is_changed,
+    //                &win_T_loc, &win_tau_old_loc,
+    //                &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+    //                &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
+    //                &win_Tadj_loc, &win_Tadj_density_loc,
+    //                &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
+    //                &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
+    init_mpi_wins({&win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
                    &win_tau_loc, &win_fun_loc, &win_is_changed,
                    &win_T_loc, &win_tau_old_loc,
                    &win_xi_loc, &win_eta_loc, &win_zeta_loc,
@@ -360,10 +368,10 @@ void Grid::memory_allocation() {
         T0t_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 8);
         T0p_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 9);
         T0v_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 10);
-        fac_a_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 11);
-        fac_b_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 12);
-        fac_c_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 13);
-        fac_f_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 14);
+        // fac_a_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 11);
+        // fac_b_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 12);
+        // fac_c_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 13);
+        // fac_f_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 14);
         fun_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 15);
         is_changed  = allocateMemory<bool>(n_total_loc_grid_points, 16);
 
@@ -649,10 +657,10 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(n_total_loc_grid_points, T0p_loc, win_T0p_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, T0v_loc, win_T0v_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, tau_loc, win_tau_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, fac_a_loc, win_fac_a_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, fac_b_loc, win_fac_b_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, fac_c_loc, win_fac_c_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, fac_f_loc, win_fac_f_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, fac_a_loc, win_fac_a_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, fac_b_loc, win_fac_b_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, fac_c_loc, win_fac_c_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, fac_f_loc, win_fac_f_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, fun_loc, win_fun_loc);
     prepare_shm_array_bool(n_total_loc_grid_points, is_changed, win_is_changed);
 
@@ -677,8 +685,16 @@ void Grid::shm_memory_allocation() {
 void Grid::shm_memory_deallocation() {
     // Free MPI shared memory windows before MPI_Finalize to avoid Intel OneAPI errors
     // These windows were allocated in shm_memory_allocation()
-    cleanup_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
-                      &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    // cleanup_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
+    //                   &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    //                   &win_tau_loc, &win_fun_loc, &win_is_changed,
+    //                   &win_T_loc, &win_tau_old_loc,
+    //                   &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+    //                   &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
+    //                   &win_Tadj_loc, &win_Tadj_density_loc,
+    //                   &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
+    //                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
+    cleanup_mpi_wins({&win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
                       &win_tau_loc, &win_fun_loc, &win_is_changed,
                       &win_T_loc, &win_tau_old_loc,
                       &win_xi_loc, &win_eta_loc, &win_zeta_loc,
@@ -711,10 +727,10 @@ void Grid::memory_deallocation() {
         delete[] T0t_loc;
         delete[] T0p_loc;
         delete[] T0v_loc;
-        delete[] fac_a_loc;
-        delete[] fac_b_loc;
-        delete[] fac_c_loc;
-        delete[] fac_f_loc;
+        // delete[] fac_a_loc;
+        // delete[] fac_b_loc;
+        // delete[] fac_c_loc;
+        // delete[] fac_f_loc;
         delete[] fun_loc;
         delete[] is_changed;
 
@@ -1070,10 +1086,10 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
                 fun_loc[I2V(i_lon, j_lat, k_r)] = _1_CR / fun_loc[I2V(i_lon, j_lat, k_r)];
 
                 // calculate fac_a_loc, fac_b_loc, fac_c_loc, fac_f_loc
-                fac_a_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR * zeta_loc[I2V(i_lon, j_lat, k_r)];
-                fac_b_loc[I2V(i_lon, j_lat, k_r)] = _1_CR - _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
-                fac_c_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
-                fac_f_loc[I2V(i_lon, j_lat, k_r)] =       - _2_CR *  eta_loc[I2V(i_lon, j_lat, k_r)];
+                // fac_a_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR * zeta_loc[I2V(i_lon, j_lat, k_r)];
+                // fac_b_loc[I2V(i_lon, j_lat, k_r)] = _1_CR - _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
+                // fac_c_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
+                // fac_f_loc[I2V(i_lon, j_lat, k_r)] =       - _2_CR *  eta_loc[I2V(i_lon, j_lat, k_r)];
 
                 // construct 3d coordinate arrays and node connectivity for visualization
                 // exclude the ghost nodes
@@ -1254,48 +1270,53 @@ void Grid::get_array_for_3d_output(const CUSTOMREAL *arr_in, CUSTOMREAL* arr_out
 }
 
 
-void Grid::reinitialize_abcf(){
-    if (subdom_main) {
-        for (int k_r = 0; k_r < loc_K; k_r++) {
-            for (int j_lat = 0; j_lat < loc_J; j_lat++) {
-                for (int i_lon = 0; i_lon < loc_I; i_lon++) {
-                    // initialize arrays
-                    fac_a_loc[I2V(i_lon,j_lat,k_r)] = fac_a_loc[I2V(i_lon,j_lat,k_r)];
-                    fac_b_loc[I2V(i_lon,j_lat,k_r)] = fac_b_loc[I2V(i_lon,j_lat,k_r)]/ my_square(r_loc_1d[k_r]);
-                    fac_c_loc[I2V(i_lon,j_lat,k_r)] = fac_c_loc[I2V(i_lon,j_lat,k_r)]/(my_square(r_loc_1d[k_r])*my_square(std::cos(t_loc_1d[j_lat])));
-                    fac_f_loc[I2V(i_lon,j_lat,k_r)] = fac_f_loc[I2V(i_lon,j_lat,k_r)]/(my_square(r_loc_1d[k_r])*          std::cos(t_loc_1d[j_lat]));
-                }
-            }
-        }
-    }
-}
+// void Grid::reinitialize_abcf(){
+//     if (subdom_main) {
+//         for (int k_r = 0; k_r < loc_K; k_r++) {
+//             for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+//                 for (int i_lon = 0; i_lon < loc_I; i_lon++) {
+//                     // initialize arrays
+//                     fac_a_loc[I2V(i_lon,j_lat,k_r)] = fac_a_loc[I2V(i_lon,j_lat,k_r)];
+//                     fac_b_loc[I2V(i_lon,j_lat,k_r)] = fac_b_loc[I2V(i_lon,j_lat,k_r)]/ my_square(r_loc_1d[k_r]);
+//                     fac_c_loc[I2V(i_lon,j_lat,k_r)] = fac_c_loc[I2V(i_lon,j_lat,k_r)]/(my_square(r_loc_1d[k_r])*my_square(std::cos(t_loc_1d[j_lat])));
+//                     fac_f_loc[I2V(i_lon,j_lat,k_r)] = fac_f_loc[I2V(i_lon,j_lat,k_r)]/(my_square(r_loc_1d[k_r])*          std::cos(t_loc_1d[j_lat]));
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
-void Grid::rejuvenate_abcf(){
-    if (subdom_main) {
-        for (int k_r = 0; k_r < loc_K; k_r++) {
-            for (int j_lat = 0; j_lat < loc_J; j_lat++) {
-                for (int i_lon = 0; i_lon < loc_I; i_lon++) {
-                    // initialize arrays
-                    fac_a_loc[I2V(i_lon,j_lat,k_r)] = fac_a_loc[I2V(i_lon,j_lat,k_r)];
-                    fac_b_loc[I2V(i_lon,j_lat,k_r)] = _1_CR - _2_CR * xi_loc[I2V(i_lon,j_lat,k_r)];
-                    fac_c_loc[I2V(i_lon,j_lat,k_r)] = _1_CR + _2_CR * xi_loc[I2V(i_lon,j_lat,k_r)];
-                    fac_f_loc[I2V(i_lon,j_lat,k_r)] =       - _2_CR * eta_loc[I2V(i_lon,j_lat,k_r)];
-                }
-            }
-        }
-    }
-}
+// void Grid::rejuvenate_abcf(){
+//     if (subdom_main) {
+//         for (int k_r = 0; k_r < loc_K; k_r++) {
+//             for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+//                 for (int i_lon = 0; i_lon < loc_I; i_lon++) {
+//                     // initialize arrays
+//                     fac_a_loc[I2V(i_lon,j_lat,k_r)] = fac_a_loc[I2V(i_lon,j_lat,k_r)];
+//                     fac_b_loc[I2V(i_lon,j_lat,k_r)] = _1_CR - _2_CR * xi_loc[I2V(i_lon,j_lat,k_r)];
+//                     fac_c_loc[I2V(i_lon,j_lat,k_r)] = _1_CR + _2_CR * xi_loc[I2V(i_lon,j_lat,k_r)];
+//                     fac_f_loc[I2V(i_lon,j_lat,k_r)] =       - _2_CR * eta_loc[I2V(i_lon,j_lat,k_r)];
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
 void Grid::setup_factors(Source &src){
 
     // calculate factors for the source
-    a0   = src.get_fac_at_source(fac_a_loc);
-    b0   = src.get_fac_at_source(fac_b_loc);
-    c0   = src.get_fac_at_source(fac_c_loc);
-    f0   = src.get_fac_at_source(fac_f_loc);
-    fun0 = src.get_fac_at_source(fun_loc, false); // true for debug
+    // a0   = src.get_fac_at_source(fac_a_loc);
+    // b0   = src.get_fac_at_source(fac_b_loc);
+    // c0   = src.get_fac_at_source(fac_c_loc);
+    // f0   = src.get_fac_at_source(fac_f_loc);
+    // fun0 = src.get_fac_at_source(fun_loc, false); // true for debug
+
+    xi0   = src.get_fac_at_source(xi_loc);
+    eta0  = src.get_fac_at_source(eta_loc);
+    // zeta0 = src.get_fac_at_source(zeta_loc);
+    fun0  = src.get_fac_at_source(fun_loc, false); // true for debug
 }
 
 
@@ -1307,6 +1328,11 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
     CUSTOMREAL src_p = src.get_src_p();
 
     // std out src positions
+    CUSTOMREAL a0 = _1_CR;
+    CUSTOMREAL b0 = (_1_CR - _2_CR * xi0) / my_square(src_r);
+    CUSTOMREAL c0 = (_1_CR + _2_CR * xi0) / my_square(src_r) / my_square(std::cos(src_t));
+    CUSTOMREAL f0 = (     - _2_CR * eta0) / my_square(src_r) / std::cos(src_t);
+
     CUSTOMREAL c0b0_minus_f0f0 = c0*b0 - f0*f0;
 
     // debug
@@ -1442,27 +1468,46 @@ void Grid::update_Tadj_density() {
     std::copy(tau_loc, tau_loc+loc_I*loc_J*loc_K, Tadj_density_loc);
 }
 
-void Grid::back_up_fun_xi_eta_bcf() {
+// void Grid::back_up_fun_xi_eta_bcf() {
+//     if (!subdom_main) return;
+
+//     std::copy(fun_loc, fun_loc+loc_I*loc_J*loc_K, fun_loc_back);
+//     std::copy(xi_loc,  xi_loc +loc_I*loc_J*loc_K, xi_loc_back);
+//     std::copy(eta_loc, eta_loc+loc_I*loc_J*loc_K, eta_loc_back);
+//     std::copy(fac_b_loc, fac_b_loc+loc_I*loc_J*loc_K, fac_b_loc_back);
+//     std::copy(fac_c_loc, fac_c_loc+loc_I*loc_J*loc_K, fac_c_loc_back);
+//     std::copy(fac_f_loc, fac_f_loc+loc_I*loc_J*loc_K, fac_f_loc_back);
+// }
+
+void Grid::back_up_fun_xi_eta() {
     if (!subdom_main) return;
 
     std::copy(fun_loc, fun_loc+loc_I*loc_J*loc_K, fun_loc_back);
     std::copy(xi_loc,  xi_loc +loc_I*loc_J*loc_K, xi_loc_back);
     std::copy(eta_loc, eta_loc+loc_I*loc_J*loc_K, eta_loc_back);
-    std::copy(fac_b_loc, fac_b_loc+loc_I*loc_J*loc_K, fac_b_loc_back);
-    std::copy(fac_c_loc, fac_c_loc+loc_I*loc_J*loc_K, fac_c_loc_back);
-    std::copy(fac_f_loc, fac_f_loc+loc_I*loc_J*loc_K, fac_f_loc_back);
+    // std::copy(fac_b_loc, fac_b_loc+loc_I*loc_J*loc_K, fac_b_loc_back);
+    // std::copy(fac_c_loc, fac_c_loc+loc_I*loc_J*loc_K, fac_c_loc_back);
+    // std::copy(fac_f_loc, fac_f_loc+loc_I*loc_J*loc_K, fac_f_loc_back);
 }
 
 
-void Grid::restore_fun_xi_eta_bcf() {
+// void Grid::restore_fun_xi_eta_bcf() {
+//     if (!subdom_main) return;
+
+//     std::copy(fun_loc_back, fun_loc_back+loc_I*loc_J*loc_K, fun_loc);
+//     std::copy(xi_loc_back,  xi_loc_back +loc_I*loc_J*loc_K, xi_loc);
+//     std::copy(eta_loc_back, eta_loc_back+loc_I*loc_J*loc_K, eta_loc);
+//     std::copy(fac_b_loc_back, fac_b_loc_back+loc_I*loc_J*loc_K, fac_b_loc);
+//     std::copy(fac_c_loc_back, fac_c_loc_back+loc_I*loc_J*loc_K, fac_c_loc);
+//     std::copy(fac_f_loc_back, fac_f_loc_back+loc_I*loc_J*loc_K, fac_f_loc);
+// }
+
+void Grid::restore_fun_xi_eta() {
     if (!subdom_main) return;
 
     std::copy(fun_loc_back, fun_loc_back+loc_I*loc_J*loc_K, fun_loc);
     std::copy(xi_loc_back,  xi_loc_back +loc_I*loc_J*loc_K, xi_loc);
     std::copy(eta_loc_back, eta_loc_back+loc_I*loc_J*loc_K, eta_loc);
-    std::copy(fac_b_loc_back, fac_b_loc_back+loc_I*loc_J*loc_K, fac_b_loc);
-    std::copy(fac_c_loc_back, fac_c_loc_back+loc_I*loc_J*loc_K, fac_c_loc);
-    std::copy(fac_f_loc_back, fac_f_loc_back+loc_I*loc_J*loc_K, fac_f_loc);
 }
 
 

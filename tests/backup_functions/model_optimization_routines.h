@@ -174,7 +174,9 @@ inline std::vector<CUSTOMREAL> model_optimize_halve_stepping(InputParams& IP, Gr
     smooth_kernels(grid, IP);
 
     // backup the initial model
-    grid.back_up_fun_xi_eta_bcf();
+    // grid.back_up_fun_xi_eta_bcf();
+    grid.back_up_fun_xi_eta();
+
 
     // update the model with the initial step size
     set_new_model(grid, step_length);
@@ -331,7 +333,8 @@ inline bool model_optimize_lbfgs(InputParams& IP, Grid& grid, IO_utils& io, int 
     }
 
     // backup the initial model
-    grid.back_up_fun_xi_eta_bcf();
+    // grid.back_up_fun_xi_eta_bcf();
+    grid.back_up_fun_xi_eta();
 
     // update the model with the initial step size
     if (IP.get_verbose_output_level() && id_sim==0) {

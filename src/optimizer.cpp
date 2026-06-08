@@ -337,13 +337,13 @@ void Optimizer::write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& 
         io.write_xi( grid, i_inv+1);
         io.write_eta(grid, i_inv+1);
 
-        if (IP.get_verbose_output_level()){
-            io.write_a(grid,   i_inv+1);
-            io.write_b(grid,   i_inv+1);
-            io.write_c(grid,   i_inv+1);
-            io.write_f(grid,   i_inv+1);
-            io.write_fun(grid, i_inv+1);
-        }
+        // if (IP.get_verbose_output_level()){
+        //     io.write_a(grid,   i_inv+1);
+        //     io.write_b(grid,   i_inv+1);
+        //     io.write_c(grid,   i_inv+1);
+        //     io.write_f(grid,   i_inv+1);
+        //     io.write_fun(grid, i_inv+1);
+        // }
     }
 }
 

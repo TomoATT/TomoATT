@@ -29,8 +29,8 @@ void calculate_traveltime_for_all_src_rec(InputParams& IP, Grid& grid, IO_utils&
     }
 
     // reinitialize factors
-    grid.rejuvenate_abcf();     // vel, xi, eta -> a, b, c, f
-    grid.reinitialize_abcf();   // a, b, c, f -> a, b/r^2, c/(r^2*cos^2), f/(r^2*cos)
+    // grid.rejuvenate_abcf();     // vel, xi, eta -> a, b, c, f
+    // grid.reinitialize_abcf();   // a, b, c, f -> a, b/r^2, c/(r^2*cos^2), f/(r^2*cos)
 
 
     // prepare inverstion iteration group in xdmf file

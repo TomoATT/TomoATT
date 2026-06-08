@@ -93,14 +93,14 @@ public:
     void write_xi(Grid&, int);
     // write eta
     void write_eta(Grid&, int);
-    // write a
-    void write_a(Grid&, int);
-    // write b
-    void write_b(Grid&, int);
-    // write c
-    void write_c(Grid&, int);
-    // write f
-    void write_f(Grid&, int);
+    // // write a
+    // void write_a(Grid&, int);
+    // // write b
+    // void write_b(Grid&, int);
+    // // write c
+    // void write_c(Grid&, int);
+    // // write f
+    // void write_f(Grid&, int);
     // Ks
     void write_Ks(Grid&, int);
     // Kxi
