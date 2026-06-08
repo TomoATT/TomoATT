@@ -223,7 +223,6 @@ InputParams::InputParams(std::string& input_file){
                 getNodeValue(config["model_update"], "optim_method", optim_method);
                 if (optim_method > 1) {
                     std::cout << "undefined optim_method. stop." << std::endl;
-                    //MPI_Finalize();
                     exit(1);
                 }
             }
@@ -2897,6 +2896,7 @@ void InputParams::check_contradictions(){
         max_iter_inv = 1;
     }
 
+    // eikonal equation solver
     if (n_subprocs > 1 && sweep_type != SWEEP_TYPE_LEVEL){
         if(myrank == 0){
             std::cout << "Warning: n_subprocs > 1 but do not use SWEEP_TYPE_LEVEL, sweep_type changes to SWEEP_TYPE_LEVEL" << std::endl;
@@ -2923,9 +2923,17 @@ void InputParams::check_contradictions(){
             use_cs = false;
             std::cout << "use_cr_time is set to be false" << std::endl;
             use_cr = false;
-        }
-        
+        }        
     }
+
+    // line search is mandatory for lbfgs 
+    if (optim_method == LBFGS_MODE && !line_search_mode){
+        if(myrank == 0){
+            std::cout << "Warning: line search is mandatory for lbfgs, line_search_mode is set to be true" << std::endl;
+        }
+        line_search_mode = true;
+    }
+
 
 #ifdef USE_CUDA
     if (use_gpu){
