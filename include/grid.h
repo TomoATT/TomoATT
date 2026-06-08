@@ -193,13 +193,13 @@ public:
     void update_Tadj_density();
     // back up fun xi eta
     // void back_up_fun_xi_eta_bcf();
-    void back_up_fun_xi_eta();
+    // void back_up_fun_xi_eta();
     // restore fun xi eta
     // void restore_fun_xi_eta_bcf();
-    void restore_fun_xi_eta();
+    // void restore_fun_xi_eta();
 
     // write out inversion grid file
-    void write_inversion_grid_file();
+    // void write_inversion_grid_file();
 
 private:
 
