@@ -133,6 +133,7 @@ protected:
     CUSTOMREAL at1, bt1, at2, bt2, at, bt;
     CUSTOMREAL ar1, br1, ar2, br2, ar, br;
 
+    CUSTOMREAL fac_a, fac_b, fac_c, fac_f;
     CUSTOMREAL bc_f2, eqn_a, eqn_b, eqn_c, eqn_Delta, eqn_Delta_sqrt, fun_loc_sq, fun_loc_sqrt, one_over_a;
     CUSTOMREAL tmp_tau, tmp_T, bc_over_b, bc_over_c;
     CUSTOMREAL T_r, T_t, T_p, charact_r, charact_t, charact_p;
