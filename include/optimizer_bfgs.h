@@ -17,12 +17,13 @@ private:
     std::vector<CUSTOMREAL> array_3d_backward;
 
     // vectors in bfgs
-    std::vector<CUSTOMREAL> sk_s;       // s_k = m_{k+1} - m_k, model difference
-    std::vector<CUSTOMREAL> sk_xi;
-    std::vector<CUSTOMREAL> sk_eta;
-    std::vector<CUSTOMREAL> yk_s;       // y_k = g_{k+1} - g_k, gradient difference
-    std::vector<CUSTOMREAL> yk_xi;
-    std::vector<CUSTOMREAL> yk_eta;
+    // 20260608:  move into loop to release memory immediately after use
+    // std::vector<CUSTOMREAL> sk_s;       // s_k = m_{k+1} - m_k, model difference
+    // std::vector<CUSTOMREAL> sk_xi;
+    // std::vector<CUSTOMREAL> sk_eta;
+    // std::vector<CUSTOMREAL> yk_s;       // y_k = g_{k+1} - g_k, gradient difference
+    // std::vector<CUSTOMREAL> yk_xi;
+    // std::vector<CUSTOMREAL> yk_eta;
 
     std::vector<CUSTOMREAL> Ks_bfgs_loc;      // backup of bfgs gradient
     std::vector<CUSTOMREAL> Kxi_bfgs_loc;
@@ -64,8 +65,13 @@ private:
     void backup_bfgs_gradient(Grid& grid);
 
     // read and write histrorical model and gradient
-    void get_model_dif(Grid& grid, IO_utils& io, int& i_inv);
-    void get_gradient_dif(Grid& grid, IO_utils& io, int& i_inv);
+    void get_model_dif_slowness(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& sk_s);
+    void get_model_dif_xi(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& sk_xi);
+    void get_model_dif_eta(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& sk_eta);
+    
+    void get_gradient_dif_slowness(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& yk_s);
+    void get_gradient_dif_xi(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& yk_xi);
+    void get_gradient_dif_eta(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& yk_eta);
 
 
     // evaluate line search performance
