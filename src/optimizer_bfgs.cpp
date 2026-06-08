@@ -128,7 +128,7 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             Keta_bfgs_loc.resize(n_total_loc_grid_points);
 
             // read bfgs gradient at current model = g_k, that is, grad_f(x_k)
-            read_bfgs_gradient(grid, io, i_inv, Ks_bfgs_loc, Keta_bfgs_loc, Kxi_bfgs_loc);
+            read_bfgs_gradient(grid, io, i_inv, Ks_bfgs_loc, Kxi_bfgs_loc, Keta_bfgs_loc);
 
             // Ks_update_loc is -p = - alpha * (m_k+1 - m_k)
             // Ks_bfgs_loc is the backup of gradient at current model = g_k, that is, grad_f(x_k)
@@ -418,10 +418,12 @@ void Optimizer_bfgs::read_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv, st
         // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
         io.read_Ks_bfgs(grid, i_inv);
         grid.set_array_from_vis(Ks_bfgs_loc.data());
-        io.read_Keta_bfgs(grid, i_inv);
-        grid.set_array_from_vis(Keta_bfgs_loc.data());
+        
         io.read_Kxi_bfgs(grid, i_inv);
         grid.set_array_from_vis(Kxi_bfgs_loc.data());
+
+        io.read_Keta_bfgs(grid, i_inv);
+        grid.set_array_from_vis(Keta_bfgs_loc.data());
     }
 }
 
