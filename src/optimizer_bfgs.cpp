@@ -20,9 +20,12 @@ Optimizer_bfgs::Optimizer_bfgs(InputParams& IP) : Optimizer(IP) {
     // yk_xi.resize(n_total_loc_grid_points);
     // yk_eta.resize(n_total_loc_grid_points);
 
-    Ks_bfgs_loc.resize(n_total_loc_grid_points);
-    Kxi_bfgs_loc.resize(n_total_loc_grid_points);
-    Keta_bfgs_loc.resize(n_total_loc_grid_points);
+    // backup of bfgs gradient
+    // 20260608:  move to backup_bfgs_gradient to load array
+    //        and move to 
+    // Ks_bfgs_loc.resize(n_total_loc_grid_points);
+    // Kxi_bfgs_loc.resize(n_total_loc_grid_points);
+    // Keta_bfgs_loc.resize(n_total_loc_grid_points);
 
     // scalars in bfgs
     alpha_bfgs.resize(10000);
@@ -49,8 +52,8 @@ Optimizer_bfgs::~Optimizer_bfgs() {
 // smooth kernels (multigrid) + kernel normalization (kernel density normalization)
 void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) {
     
-    // initialize and backup modified kernels
-    initialize_and_backup_modified_kernels(grid);
+    // initialize and backup model_update (perturbation)
+    initialize_and_backup_model_update(grid);
 
     // check kernel value range
     check_kernel_value_range(grid);
@@ -61,10 +64,11 @@ void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& i
     // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
     Kernel_postprocessing::process_kernels(IP, grid); 
 
-    // write bfgs gradient
+    // write bfgs gradient (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
     write_bfgs_gradient(grid, io, i_inv);
 
-    // backup bfgs gradient
+    // backup bfgs gradient (backup the gradient at k-th model)
+    // backup bfgs gradient (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc) to Ks_bfgs_loc, Keta_bfgs_loc, Kxi_bfgs_loc
     backup_bfgs_gradient(grid);
     
     // calculate bfgs descent direction
@@ -73,11 +77,11 @@ void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& i
     // normalize kernels to -1 ~ 1
     Kernel_postprocessing::normalize_kernels(grid);
     
-    // assign processing kernels to modified kernels for model update
+    // assign processing kernels to model_update (perturbation)
     // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
     // -->
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
-    Kernel_postprocessing::assign_to_modified_kernels(grid);
+    Kernel_postprocessing::assign_to_model_update(grid);
 }
 
 
@@ -382,7 +386,7 @@ void Optimizer_bfgs::write_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv){
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
 
-        // write descent direction
+        // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
         io.write_Ks_bfgs(grid, i_inv);
         io.write_Keta_bfgs(grid, i_inv);
         io.write_Kxi_bfgs(grid, i_inv);

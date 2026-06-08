@@ -344,7 +344,7 @@ public:
     std::vector<CUSTOMREAL> Kxi_density_processing_loc;
     std::vector<CUSTOMREAL> Keta_density_processing_loc;
     // model update para
-    CUSTOMREAL *Ks_update_loc;              // desceent direction (modified kernel)
+    CUSTOMREAL *Ks_update_loc;              // model update (perturbation)
     CUSTOMREAL *Kxi_update_loc;
     CUSTOMREAL *Keta_update_loc;
     CUSTOMREAL *Ks_density_update_loc;

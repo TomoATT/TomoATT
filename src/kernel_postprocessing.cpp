@@ -58,11 +58,11 @@ namespace Kernel_postprocessing {
     }
     
 
-    // assign processing kernels to modified kernels for model update
-    void assign_to_modified_kernels(Grid& grid){
+    // assign processing kernels to model_update for model update
+    void assign_to_model_update(Grid& grid){
         if (subdom_main){ // parallel level 3
             if (id_sim==0){ // parallel level 1
-                // assign processing kernels to modified kernels for model update
+                // assign processing kernels to model update (perturbation)
                 std::copy(grid.Ks_processing_loc.begin(), grid.Ks_processing_loc.end(), grid.Ks_update_loc);
                 std::copy(grid.Kxi_processing_loc.begin(), grid.Kxi_processing_loc.end(), grid.Kxi_update_loc);
                 std::copy(grid.Keta_processing_loc.begin(), grid.Keta_processing_loc.end(), grid.Keta_update_loc);
@@ -71,7 +71,7 @@ namespace Kernel_postprocessing {
                 std::copy(grid.Kxi_density_processing_loc.begin(), grid.Kxi_density_processing_loc.end(), grid.Kxi_density_update_loc);
                 std::copy(grid.Keta_density_processing_loc.begin(), grid.Keta_density_processing_loc.end(), grid.Keta_density_update_loc);
             }
-            // boardcast modified kernels to all simultaneous runs
+            // boardcast model_update to all simultaneous runs
             broadcast_cr_inter_sim(grid.Ks_update_loc, loc_I*loc_J*loc_K, 0);
             broadcast_cr_inter_sim(grid.Kxi_update_loc, loc_I*loc_J*loc_K, 0);
             broadcast_cr_inter_sim(grid.Keta_update_loc, loc_I*loc_J*loc_K, 0);

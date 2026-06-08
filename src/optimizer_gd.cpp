@@ -25,8 +25,8 @@ Optimizer_gd::~Optimizer_gd() {
 // smooth kernels (multigrid) + kernel normalization (kernel density normalization)
 void Optimizer_gd::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) {
     
-    // initialize and backup modified kernels
-    initialize_and_backup_modified_kernels(grid);
+    // initialize and backup model_update (perturbation)
+    initialize_and_backup_model_update(grid);
 
     // check kernel value range
     check_kernel_value_range(grid);
@@ -40,11 +40,11 @@ void Optimizer_gd::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io,
     // 2. normalize kernels to -1 ~ 1
     Kernel_postprocessing::normalize_kernels(grid);
 
-    // assign to modified kernels
+    // assign to model_update
     // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
     // -->
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
-    Kernel_postprocessing::assign_to_modified_kernels(grid);
+    Kernel_postprocessing::assign_to_model_update(grid);
 }
 
 

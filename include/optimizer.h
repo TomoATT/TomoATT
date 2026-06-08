@@ -46,8 +46,8 @@ protected:
     // smooth kernels (multigrid) + kernel normalization (kernel density normalization)
     virtual void processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
-    // write out modified kernels (descent direction)
-    void write_modified_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
+    // write out model_update (Ks_update_loc, Kxi_update_loc, Keta_update_loc)
+    void write_model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);
 
     // determine step length (original method step-size controlled)
     void determine_step_length_controlled(InputParams& IP, Grid& grid, int i_inv, CUSTOMREAL& v_obj_inout, CUSTOMREAL& old_v_obj);
@@ -65,8 +65,8 @@ protected:
     // ------------------ sub functions ------------------
     // ---------------------------------------------------
 
-    // initialize and backup modified kernels
-    void initialize_and_backup_modified_kernels(Grid& grid);
+    // initialize and backup model update (perturbation)
+    void initialize_and_backup_model_update(Grid& grid);
 
     // check kernel value range
     void check_kernel_value_range(Grid& grid);

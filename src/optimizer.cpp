@@ -31,9 +31,9 @@ std::vector<CUSTOMREAL> Optimizer::model_update(InputParams& IP, Grid& grid, IO_
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
     processing_kernels(IP, grid, io, i_inv);    // kernels have been broadcasted to all simultaneous groups 
 
-    // write out modified kernels (descent direction)
+    // write out model_update (perturbation)
     // Ks_update, Kxi_update, Keta_update, Ks_density_update, Kxi_density_update, Keta_density_update
-    write_modified_kernels(IP, grid, io, i_inv);
+    write_model_update(IP, grid, io, i_inv);
 
 
     // determine step length, and set new model
@@ -92,13 +92,13 @@ void Optimizer::write_original_kernels(InputParams& IP, Grid& grid, IO_utils& io
 void Optimizer::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){}
 
 
-// write out modified kernels (descent direction)
-void Optimizer::write_modified_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){
+// write out model_update (perturbation)
+void Optimizer::write_model_update(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv){
     if (is_write_kernel(IP, i_inv)) {
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
 
-        // write descent direction
+        // write model_update (perturbation)
         io.write_Ks_update(grid, i_inv);
         io.write_Keta_update(grid, i_inv);
         io.write_Kxi_update(grid, i_inv);
@@ -353,22 +353,22 @@ void Optimizer::write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& 
 // ---------------------------------------------------
 
 
-// initialize and backup modified kernels
-void Optimizer::initialize_and_backup_modified_kernels(Grid& grid) {
+// initialize and backup model_update (perturbation)
+void Optimizer::initialize_and_backup_model_update(Grid& grid) {
     if (subdom_main){ // parallel level 3
         if (id_sim==0){ // parallel level 1
 
-            // initiaize and backup modified kernel (XX_update_loc) params
+            // initiaize and backup model_update (perturbation) params
             for (int k = 0; k < loc_K; k++) {
                 for (int j = 0; j < loc_J; j++) {
                     for (int i = 0; i < loc_I; i++) {
 
-                        // backup previous smoothed kernel
+                        // backup previous model_update (perturbation)
                         grid.Ks_update_loc_previous[I2V(i,j,k)]   = grid.Ks_update_loc[I2V(i,j,k)];
                         grid.Keta_update_loc_previous[I2V(i,j,k)] = grid.Keta_update_loc[I2V(i,j,k)];
                         grid.Kxi_update_loc_previous[I2V(i,j,k)]  = grid.Kxi_update_loc[I2V(i,j,k)];
 
-                        // initialize modified kernel
+                        // initialize model_update (perturbation)
                         grid.Ks_update_loc[I2V(i,j,k)]   = _0_CR;
                         grid.Keta_update_loc[I2V(i,j,k)] = _0_CR;
                         grid.Kxi_update_loc[I2V(i,j,k)]  = _0_CR;
