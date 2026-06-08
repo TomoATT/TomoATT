@@ -13,8 +13,8 @@ private:
     const int Mbfgs = 5; // number of previous steps to store
 
     // historical model and gradient
-    std::vector<CUSTOMREAL> array_3d_forward;
-    std::vector<CUSTOMREAL> array_3d_backward;
+    // std::vector<CUSTOMREAL> array_3d_forward;
+    // std::vector<CUSTOMREAL> array_3d_backward;
 
     // vectors in bfgs
     // 20260608:  move into loop to release memory immediately after use
