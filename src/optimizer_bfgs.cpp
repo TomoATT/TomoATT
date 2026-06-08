@@ -128,7 +128,10 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             Keta_bfgs_loc.resize(n_total_loc_grid_points);
 
             // read bfgs gradient at current model = g_k, that is, grad_f(x_k)
-            read_bfgs_gradient(grid, io, i_inv, Ks_bfgs_loc, Kxi_bfgs_loc, Keta_bfgs_loc);
+            read_bfgs_gradient_slowness(grid, io, i_inv, Ks_bfgs_loc);
+            read_bfgs_gradient_xi(grid, io, i_inv, Kxi_bfgs_loc);
+            read_bfgs_gradient_eta(grid, io, i_inv, Keta_bfgs_loc);
+            
 
             // Ks_update_loc is -p = - alpha * (m_k+1 - m_k)
             // Ks_bfgs_loc is the backup of gradient at current model = g_k, that is, grad_f(x_k)
@@ -410,7 +413,7 @@ void Optimizer_bfgs::write_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv){
     }
 }
 
-void Optimizer_bfgs::read_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Ks_bfgs_loc, std::vector<CUSTOMREAL>& Kxi_bfgs_loc, std::vector<CUSTOMREAL>& Keta_bfgs_loc){
+void Optimizer_bfgs::read_bfgs_gradient_slowness(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Ks_bfgs_loc){
     if (id_sim == 0 && subdom_main){
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
@@ -418,10 +421,26 @@ void Optimizer_bfgs::read_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv, st
         // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
         io.read_Ks_bfgs(grid, i_inv);
         grid.set_array_from_vis(Ks_bfgs_loc.data());
-        
+    }
+}
+
+void Optimizer_bfgs::read_bfgs_gradient_xi(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Kxi_bfgs_loc){
+    if (id_sim == 0 && subdom_main){
+        // store kernel only in the first src datafile
+        io.change_group_name_for_model();
+
+        // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
         io.read_Kxi_bfgs(grid, i_inv);
         grid.set_array_from_vis(Kxi_bfgs_loc.data());
+    }
+}
 
+void Optimizer_bfgs::read_bfgs_gradient_eta(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Keta_bfgs_loc){
+    if (id_sim == 0 && subdom_main){
+        // store kernel only in the first src datafile
+        io.change_group_name_for_model();
+
+        // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
         io.read_Keta_bfgs(grid, i_inv);
         grid.set_array_from_vis(Keta_bfgs_loc.data());
     }

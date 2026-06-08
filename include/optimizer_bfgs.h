@@ -59,7 +59,11 @@ private:
     void write_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv);
 
     // read bfgs gradient ()
-    void read_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Ks_loc, std::vector<CUSTOMREAL>& Kxi_loc, std::vector<CUSTOMREAL>& Keta_loc);
+    void read_bfgs_gradient_slowness(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Ks_loc);
+    void read_bfgs_gradient_xi(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Kxi_loc);
+    void read_bfgs_gradient_eta(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Keta_loc);
+
+
 
     // calculate bfgs descent direction
     void calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, int& i_inv);
