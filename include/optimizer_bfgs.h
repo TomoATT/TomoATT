@@ -25,9 +25,9 @@ private:
     // std::vector<CUSTOMREAL> yk_xi;
     // std::vector<CUSTOMREAL> yk_eta;
 
-    std::vector<CUSTOMREAL> Ks_bfgs_loc;      // backup of bfgs gradient
-    std::vector<CUSTOMREAL> Kxi_bfgs_loc;
-    std::vector<CUSTOMREAL> Keta_bfgs_loc;
+    // std::vector<CUSTOMREAL> Ks_bfgs_loc;      // backup of bfgs gradient
+    // std::vector<CUSTOMREAL> Kxi_bfgs_loc;
+    // std::vector<CUSTOMREAL> Keta_bfgs_loc;
 
     // scalars in bfgs
     std::vector<CUSTOMREAL> alpha_bfgs;  // store alpha_i in two-loop recursion
@@ -58,11 +58,14 @@ private:
     // write bfgs gradient ()
     void write_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv);
 
+    // read bfgs gradient ()
+    void read_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Ks_loc, std::vector<CUSTOMREAL>& Keta_loc, std::vector<CUSTOMREAL>& Kxi_loc);
+
     // calculate bfgs descent direction
     void calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, int& i_inv);
 
     // backup bfgs gradient
-    void backup_bfgs_gradient(Grid& grid);
+    // void backup_bfgs_gradient(Grid& grid);
 
     // read and write histrorical model and gradient
     void get_model_dif_slowness(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& sk_s);
@@ -75,7 +78,7 @@ private:
 
 
     // evaluate line search performance
-    bool check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try) override;
+    bool check_conditions_for_line_search(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try) override;
 
 
 };

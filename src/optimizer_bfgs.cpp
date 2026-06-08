@@ -67,9 +67,10 @@ void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& i
     // write bfgs gradient (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
     write_bfgs_gradient(grid, io, i_inv);
 
+    // 20260608: no need to backup, choose to read
     // backup bfgs gradient (backup the gradient at k-th model)
     // backup bfgs gradient (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc) to Ks_bfgs_loc, Keta_bfgs_loc, Kxi_bfgs_loc
-    backup_bfgs_gradient(grid);
+    // backup_bfgs_gradient(grid);
     
     // calculate bfgs descent direction
     calculate_bfgs_descent_direction(grid, io, i_inv);
@@ -87,7 +88,7 @@ void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& i
 
 // evaluate line search performance
 // (to do) allow users to adjust the step length change
-bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
+bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
     bool exit_flag = false;
 
     // --------------- Armijo condition, sufficient decrease condition (modified) ---------------
@@ -116,23 +117,38 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
     bool cond_curvature = false;
     CUSTOMREAL proj_current = _0_CR;   // grad_f(x_k)^T * p_k, projection of gradient on descent direction at current model
     CUSTOMREAL proj_tried = _0_CR;   // grad_f(x_k+1)^T * p_k, projection of gradient on descent direction at tried model
-    if (subdom_main){    // check condition only for main of level 3
-        // Ks_update_loc is -p = - alpha * (m_k+1 - m_k)
-        // Ks_bfgs_loc is the backup of gradient at current model = g_k, that is, grad_f(x_k)
-        proj_current -= grid_value_dot_product(grid.Ks_update_loc, Ks_bfgs_loc.data(), n_total_loc_grid_points);
-        proj_current -= grid_value_dot_product(grid.Kxi_update_loc, Kxi_bfgs_loc.data(), n_total_loc_grid_points);
-        proj_current -= grid_value_dot_product(grid.Keta_update_loc, Keta_bfgs_loc.data(), n_total_loc_grid_points);
+    if (subdom_main){    // check condition only for main of level 3 
+        if (id_sim == 0){  // only check by the first simul group
+            // Ks_bfgs_loc is the backup of gradient at current model = g_k, that is, grad_f(x_k)
+            std::vector<CUSTOMREAL> Ks_bfgs_loc;      
+            std::vector<CUSTOMREAL> Kxi_bfgs_loc;
+            std::vector<CUSTOMREAL> Keta_bfgs_loc;
+            Ks_bfgs_loc.resize(n_total_loc_grid_points);
+            Kxi_bfgs_loc.resize(n_total_loc_grid_points);
+            Keta_bfgs_loc.resize(n_total_loc_grid_points);
 
-        // Ks_processing_loc is gradient at tried model = g_k+1 = grad_f(x_k+1)
-        proj_tried -= grid_value_dot_product(grid.Ks_update_loc, grid.Ks_processing_loc.data(), n_total_loc_grid_points);
-        proj_tried -= grid_value_dot_product(grid.Kxi_update_loc, grid.Kxi_processing_loc.data(), n_total_loc_grid_points);
-        proj_tried -= grid_value_dot_product(grid.Keta_update_loc, grid.Keta_processing_loc.data(), n_total_loc_grid_points);
+            // read bfgs gradient at current model = g_k, that is, grad_f(x_k)
+            read_bfgs_gradient(grid, io, i_inv, Ks_bfgs_loc, Keta_bfgs_loc, Kxi_bfgs_loc);
 
-        if (proj_tried >= proj_current){
-            cond_curvature = true;
+            // Ks_update_loc is -p = - alpha * (m_k+1 - m_k)
+            // Ks_bfgs_loc is the backup of gradient at current model = g_k, that is, grad_f(x_k)
+            proj_current -= grid_value_dot_product(grid.Ks_update_loc, Ks_bfgs_loc.data(), n_total_loc_grid_points);
+            proj_current -= grid_value_dot_product(grid.Kxi_update_loc, Kxi_bfgs_loc.data(), n_total_loc_grid_points);
+            proj_current -= grid_value_dot_product(grid.Keta_update_loc, Keta_bfgs_loc.data(), n_total_loc_grid_points);
+
+            // Ks_processing_loc is gradient at tried model = g_k+1 = grad_f(x_k+1)
+            proj_tried -= grid_value_dot_product(grid.Ks_update_loc, grid.Ks_processing_loc.data(), n_total_loc_grid_points);
+            proj_tried -= grid_value_dot_product(grid.Kxi_update_loc, grid.Kxi_processing_loc.data(), n_total_loc_grid_points);
+            proj_tried -= grid_value_dot_product(grid.Keta_update_loc, grid.Keta_processing_loc.data(), n_total_loc_grid_points);
+
+            if (proj_tried >= proj_current){
+                cond_curvature = true;
+            }
         }
+        // level 1 commun
+        broadcast_bool_single_inter_sim(cond_curvature, 0);       
     }
-    //  broadcast the condition result to all processes within one subdomain
+    //  (level 3, within one subdomain (the main subdomain)) broadcast the condition result to all processes within one subdomain
     broadcast_bool_single_sub(cond_curvature, 0);       // '_sub' means within one subdomain, subdom_main tell others
 
 
@@ -371,6 +387,7 @@ void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, 
             }
         }
 
+        // level 1, communication
         broadcast_cr_inter_sim(grid.Ks_processing_loc.data(), loc_I*loc_J*loc_K, 0);
         broadcast_cr_inter_sim(grid.Kxi_processing_loc.data(), loc_I*loc_J*loc_K, 0);
         broadcast_cr_inter_sim(grid.Keta_processing_loc.data(), loc_I*loc_J*loc_K, 0);
@@ -393,17 +410,33 @@ void Optimizer_bfgs::write_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv){
     }
 }
 
+void Optimizer_bfgs::read_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Ks_bfgs_loc, std::vector<CUSTOMREAL>& Kxi_bfgs_loc, std::vector<CUSTOMREAL>& Keta_bfgs_loc){
+    if (id_sim == 0 && subdom_main){
+        // store kernel only in the first src datafile
+        io.change_group_name_for_model();
+
+        // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
+        io.read_Ks_bfgs(grid, i_inv);
+        grid.set_array_from_vis(Ks_bfgs_loc.data());
+        io.read_Keta_bfgs(grid, i_inv);
+        grid.set_array_from_vis(Keta_bfgs_loc.data());
+        io.read_Kxi_bfgs(grid, i_inv);
+        grid.set_array_from_vis(Kxi_bfgs_loc.data());
+    }
+}
+
+
 
 // backup bfgs gradient
-void Optimizer_bfgs::backup_bfgs_gradient(Grid& grid){
-    if (subdom_main){
-        // backup bfgs gradient
-        Ks_bfgs_loc = grid.Ks_processing_loc;
-        Kxi_bfgs_loc = grid.Kxi_processing_loc;
-        Keta_bfgs_loc = grid.Keta_processing_loc;
-    }
-    synchronize_all_world();
-}
+// void Optimizer_bfgs::backup_bfgs_gradient(Grid& grid){
+//     if (subdom_main){
+//         // backup bfgs gradient
+//         Ks_bfgs_loc = grid.Ks_processing_loc;
+//         Kxi_bfgs_loc = grid.Kxi_processing_loc;
+//         Keta_bfgs_loc = grid.Keta_processing_loc;
+//     }
+//     synchronize_all_world();
+// }
 
 
 // read histrorical model difference

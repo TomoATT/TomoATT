@@ -271,7 +271,7 @@ std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams
         Kernel_postprocessing::process_kernels(IP, grid); 
 
         // substep 5, --------- evaluate the update performance ---------     
-        exit_flag = check_conditions_for_line_search(IP, grid, sub_iter, quit_sub_iter, v_obj_inout, v_obj_try);
+        exit_flag = check_conditions_for_line_search(IP, grid, io, i_inv, sub_iter, quit_sub_iter, v_obj_inout, v_obj_try);
         if(exit_flag){
             break;
         }
@@ -447,7 +447,7 @@ bool Optimizer::is_write_kernel(InputParams& IP, int& i_inv){
 CUSTOMREAL Optimizer::grid_value_dot_product(CUSTOMREAL* vec1, CUSTOMREAL* vec2, int n){
     CUSTOMREAL local_sum = dot_product(vec1, vec2, n);
     CUSTOMREAL global_sum;
-    allreduce_cr_single(local_sum, global_sum);
+    allreduce_cr_single(local_sum, global_sum);  // reduce among level 2 (multiple subdomains)
     return global_sum;
 }
 

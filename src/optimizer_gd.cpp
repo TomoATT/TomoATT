@@ -49,7 +49,7 @@ void Optimizer_gd::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io,
 
 
 // evaluate line search performance
-bool Optimizer_gd::check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
+bool Optimizer_gd::check_conditions_for_line_search(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
     // There are 8 ways to adjust step:
     // The current model: (step, obj) = (0, v_obj_inout)
     // The first try: (alpha, v1)
