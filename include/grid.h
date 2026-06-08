@@ -254,7 +254,7 @@ public:
     // 3d arrays
     CUSTOMREAL *xi_loc;    // local xi
     CUSTOMREAL *eta_loc;   // local eta
-    CUSTOMREAL *zeta_loc;  // local zeta
+    // CUSTOMREAL *zeta_loc;  // local zeta
     // CUSTOMREAL *fac_a_loc; // factor a (20260608: removed, a = 1)
     // CUSTOMREAL *fac_b_loc; // factor b (20260608: removed, b = (1 - 2xi)/r^2)
     // CUSTOMREAL *fac_c_loc; // factor c (20260608: removed, c = (1 + 2xi)(r^2*cos^2))
@@ -269,9 +269,9 @@ public:
     CUSTOMREAL *fun_loc_back;
     CUSTOMREAL *xi_loc_back;
     CUSTOMREAL *eta_loc_back;
-    CUSTOMREAL *fac_b_loc_back;
-    CUSTOMREAL *fac_c_loc_back;
-    CUSTOMREAL *fac_f_loc_back;
+    // CUSTOMREAL *fac_b_loc_back;
+    // CUSTOMREAL *fac_c_loc_back;
+    // CUSTOMREAL *fac_f_loc_back;
     // for lbfgs
     // CUSTOMREAL *Ks_grad_store_loc, *Keta_grad_store_loc, *Kxi_grad_store_loc;
     // CUSTOMREAL *Ks_model_store_loc, *Keta_model_store_loc, *Kxi_model_store_loc;
@@ -289,7 +289,8 @@ private:
     MPI_Win win_tau_loc, win_fun_loc;
     MPI_Win win_is_changed;
     MPI_Win win_T_loc, win_tau_old_loc;
-    MPI_Win win_xi_loc, win_eta_loc, win_zeta_loc;
+    // MPI_Win win_xi_loc, win_eta_loc, win_zeta_loc;
+    MPI_Win win_xi_loc, win_eta_loc;
     MPI_Win win_r_loc_1d, win_t_loc_1d, win_p_loc_1d;
     MPI_Win win_one_over_r_loc_1d, win_one_over_r_loc_1d_sq, win_one_over_cos_t_loc;
     MPI_Win win_one_over_cos_t_loc_sq, win_sin_t_loc, win_cos_t_loc_m0p5, win_cos_t_loc_p0p5;

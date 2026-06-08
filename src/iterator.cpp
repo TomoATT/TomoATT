@@ -2301,12 +2301,14 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     CUSTOMREAL tmp_T_jt = grid.T_loc[ii_pt]-grid.T_loc[ii_mt];
 
     // a1(-0.5r) = - (1 + 2*zeta) & T_r 
-    CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[ii_mr]+grid.zeta_loc[ii]) * (grid.T_loc[ii]-grid.T_loc[ii_mr]) * dr_inv;
+    // CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[ii_mr]+grid.zeta_loc[ii]) * (grid.T_loc[ii]-grid.T_loc[ii_mr]) * dr_inv;
+    CUSTOMREAL a1  = - (grid.T_loc[ii]-grid.T_loc[ii_mr]) * dr_inv;
     CUSTOMREAL a1m = (a1 - std::abs(a1));   // in fact, it should be a1m = (a1 - std::abs(a1))/2, 1/2 is included in the coe and Hadj for high efficiency
     CUSTOMREAL a1p = (a1 + std::abs(a1));   // similar for a1p, a2m, a2p, b1m, b1p, b2m, b2p, c1m, c1p, c2m, c2p
 
     // a2(+0.5r) = - (1 + 2*zeta) & T_r
-    CUSTOMREAL a2  = - (_1_CR+grid.zeta_loc[ii]+grid.zeta_loc[ii_pr]) * (grid.T_loc[ii_pr]-grid.T_loc[ii]) * dr_inv;
+    // CUSTOMREAL a2  = - (_1_CR+grid.zeta_loc[ii]+grid.zeta_loc[ii_pr]) * (grid.T_loc[ii_pr]-grid.T_loc[ii]) * dr_inv;
+    CUSTOMREAL a2  = - (grid.T_loc[ii_pr]-grid.T_loc[ii]) * dr_inv;
     CUSTOMREAL a2m = (a2 - std::abs(a2));
     CUSTOMREAL a2p = (a2 + std::abs(a2));
 
@@ -2342,7 +2344,8 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
 
     // additional terms of divergence in spherical cooridinate
     // -2 (1+2*zeta) *(1/r) *T_r + (1-2xi) * sin(t) * (1/r^2cos(t)) * T_t + 2*eta * sin(t) * (1/(r*cos(t))^2) * T_p
-    CUSTOMREAL d   = - (_1_CR+_2_CR*grid.zeta_loc[ii]) * one_over_r_loc_1d_kkr \
+    // CUSTOMREAL d   = - (_1_CR+_2_CR*grid.zeta_loc[ii]) * one_over_r_loc_1d_kkr
+    CUSTOMREAL d   = - one_over_r_loc_1d_kkr \
                      * (grid.T_loc[ii_pr]-grid.T_loc[ii_mr]) * dr_inv \
                      + (_0_5_CR-grid.xi_loc[ii]) * sin_t_loc_jjt * one_over_r_loc_1d_kkr_sq * one_over_cos_t_loc_jjt \
                      * tmp_T_jt * dt_inv \

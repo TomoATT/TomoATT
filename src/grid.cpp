@@ -16,7 +16,7 @@ Grid::Grid(InputParams& IP, IO_utils& io) {
     init_mpi_wins({&win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
                    &win_tau_loc, &win_fun_loc, &win_is_changed,
                    &win_T_loc, &win_tau_old_loc,
-                   &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+                   &win_xi_loc, &win_eta_loc,
                    &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
                    &win_Tadj_loc, &win_Tadj_density_loc,
                    &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
@@ -360,7 +360,7 @@ void Grid::memory_allocation() {
 
         xi_loc      = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 2);
         eta_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 3);
-        zeta_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 4);
+        // zeta_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 4);
         T_loc       = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 5);
         tau_old_loc = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 6);
 
@@ -650,7 +650,7 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(n_total_loc_grid_points, tau_old_loc, win_tau_old_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, xi_loc, win_xi_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, eta_loc, win_eta_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, zeta_loc, win_zeta_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, zeta_loc, win_zeta_loc);
 
     prepare_shm_array_cr(n_total_loc_grid_points, T0r_loc, win_T0r_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, T0t_loc, win_T0t_loc);
@@ -697,7 +697,7 @@ void Grid::shm_memory_deallocation() {
     cleanup_mpi_wins({&win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
                       &win_tau_loc, &win_fun_loc, &win_is_changed,
                       &win_T_loc, &win_tau_old_loc,
-                      &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+                      &win_xi_loc, &win_eta_loc,
                       &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
                       &win_Tadj_loc, &win_Tadj_density_loc,
                       &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
@@ -719,7 +719,7 @@ void Grid::memory_deallocation() {
 #endif
         delete[] xi_loc;
         delete[] eta_loc;
-        delete[] zeta_loc;
+        // delete[] zeta_loc;
         delete[] T_loc;
         delete[] tau_old_loc;
 
@@ -1052,7 +1052,7 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         }
 
         // set zeta = 0 (optimization for zeta is not implemented yet)
-        std::fill(zeta_loc, zeta_loc + loc_I*loc_J*loc_K, _0_CR);
+        // std::fill(zeta_loc, zeta_loc + loc_I*loc_J*loc_K, _0_CR);
 
         // copy initial model to prior model arrays
         // if (optim_method==LBFGS_MODE){
@@ -1067,7 +1067,7 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
     int n_total_loc_grid_points = loc_I * loc_J * loc_K;
     broadcast_cr_inter_sim(xi_loc,    n_total_loc_grid_points, 0);
     broadcast_cr_inter_sim(eta_loc,   n_total_loc_grid_points, 0);
-    broadcast_cr_inter_sim(zeta_loc,  n_total_loc_grid_points, 0);
+    // broadcast_cr_inter_sim(zeta_loc,  n_total_loc_grid_points, 0);
     broadcast_cr_inter_sim(fun_loc,   n_total_loc_grid_points, 0); // here passing velocity array
     if(if_test) {
         broadcast_cr_inter_sim(u_loc, n_total_loc_grid_points, 0);
