@@ -1034,10 +1034,29 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
     int ii_mr   = I2V(iip  , jjt,   kkr-1);
     int ii_pr   = I2V(iip  , jjt,   kkr+1);
 
+    // coefficients, from xi, eta to a,b,c,f
+    // matrix:
+    // a 0  0
+    // 0 b -f
+    // 0 -f c
     fac_a   = _1_CR;
     fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
     fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
     fac_f   = -_2_CR * grid.eta_loc[ii] * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc[jjt];
+
+    // calculate T0p, T0t, T0r
+    // T0r = coe_r_loc_T0r[k_r] / T0v
+    // T0t = (coe_t_loc_T0t[j_lat] + coe_p_loc_T0t[i_lon]) / T0v
+    // T0p = (coe_t_loc_T0p[j_lat] + coe_p_loc_T0p[i_lon]) / T0v
+
+    if (isZero(grid.T0v_loc[ii])){
+        one_over_T0v = _0_CR;
+    } else {
+        one_over_T0v = _1_CR/grid.T0v_loc[ii];
+    }
+    T0r = grid.coe_r_loc_T0r[kkr] * one_over_T0v;
+    T0t = (grid.coe_t_loc_T0t[jjt] + grid.coe_p_loc_T0t[iip]) * one_over_T0v;
+    T0p = (grid.coe_t_loc_T0p[jjt] + grid.coe_p_loc_T0p[iip]) * one_over_T0v;
 
 
     count_cand = 0;
@@ -1046,29 +1065,35 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
     //  T_t = (T0*tau)_t = T0t*tau + T0v*tau_t = at*tau(iip, jjt, kkr)+bt;
     //  T_r = (T0*tau)_r = T0r*tau + T0v*tau_r = ar*tau(iip, jjt, kkr)+br;
     if (iip > 0){
-        ap1 =  grid.T0p_loc[ii] +  grid.T0v_loc[ii]/dp;
+        // ap1 =  grid.T0p_loc[ii] +  grid.T0v_loc[ii]/dp;
+        ap1 =  T0p +  grid.T0v_loc[ii]/dp;
         bp1 = -grid.T0v_loc[ii]/dp*grid.tau_loc[ii_mp];
     }
     if (iip < np-1){
-        ap2 =  grid.T0p_loc[ii] -  grid.T0v_loc[ii]/dp;
+        // ap2 =  grid.T0p_loc[ii] -  grid.T0v_loc[ii]/dp;
+        ap2 =  T0p -  grid.T0v_loc[ii]/dp;
         bp2 =  grid.T0v_loc[ii]/dp*grid.tau_loc[ii_pp];
     }
 
     if (jjt > 0){
-        at1 =  grid.T0t_loc[ii] + grid.T0v_loc[ii]/dt;
+        // at1 =  grid.T0t_loc[ii] + grid.T0v_loc[ii]/dt;
+        at1 =  T0t + grid.T0v_loc[ii]/dt;
         bt1 = -grid.T0v_loc[ii]/dt*grid.tau_loc[ii_mt];
     }
     if (jjt < nt-1){
-        at2 =  grid.T0t_loc[ii] - grid.T0v_loc[ii]/dt;
+        // at2 =  grid.T0t_loc[ii] - grid.T0v_loc[ii]/dt;
+        at2 =  T0t - grid.T0v_loc[ii]/dt;
         bt2 =  grid.T0v_loc[ii]/dt*grid.tau_loc[ii_pt];
     }
 
     if (kkr > 0){
-        ar1 =  grid.T0r_loc[ii] + grid.T0v_loc[ii]/dr;
+        // ar1 =  grid.T0r_loc[ii] + grid.T0v_loc[ii]/dr;
+        ar1 =  T0r + grid.T0v_loc[ii]/dr;
         br1 = -grid.T0v_loc[ii]/dr*grid.tau_loc[ii_mr];
     }
     if (kkr < nr-1){
-        ar2 =  grid.T0r_loc[ii] - grid.T0v_loc[ii]/dr;
+        // ar2 =  grid.T0r_loc[ii] - grid.T0v_loc[ii]/dr;
+        ar2 =  T0r - grid.T0v_loc[ii]/dr;
         br2 =  grid.T0v_loc[ii]/dr*grid.tau_loc[ii_pr];
     }
     // bc_f2 = grid.fac_b_loc[ii]*grid.fac_c_loc[ii] - grid.fac_f_loc[ii]*grid.fac_f_loc[ii];
@@ -1965,10 +1990,12 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                         std::cout << "grid.dp: " << grid.dp << std::endl;
                         std::cout << "tau : " << tmp_tau << std::endl;
                         std::cout << "tau_- : " << grid.tau_loc[I2V(iip-1, jjt, kkr)] << std::endl;
-                        std::cout << "T0p : " << grid.T0p_loc[I2V(iip,jjt,kkr)] << std::endl;
+                        // std::cout << "T0p : " << grid.T0p_loc[I2V(iip,jjt,kkr)] << std::endl;
+                        std::cout << "T0p : " << T0p << std::endl;
                         std::cout << "T_p_2 = "
                                     << grid.T0v_loc[I2V(iip,jjt,kkr)] * (tmp_tau - grid.tau_loc[I2V(iip-1, jjt, kkr)]) / grid.dp
-                                    + grid.T0t_loc[I2V(iip,jjt,kkr)] * tmp_tau << std::endl;
+                                    // + grid.T0t_loc[I2V(iip,jjt,kkr)] * tmp_tau << std::endl;
+                                    + T0t * tmp_tau << std::endl;
                                     break;
 
 
@@ -3424,12 +3451,22 @@ inline CUSTOMREAL Iterator::calc_LF_Hamiltonian(Grid& grid, \
     fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
     fac_f   = -_2_CR * grid.eta_loc[ii] * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc[jjt];
     
+    // calculate T0p, T0t, T0r
+    // T0r = coe_r_loc_T0r[k_r] / T0v
+    // T0t = (coe_t_loc_T0t[j_lat] + coe_p_loc_T0t[i_lon]) / T0v
+    // T0p = (coe_t_loc_T0p[j_lat] + coe_p_loc_T0p[i_lon]) / T0v
+    one_over_T0v = _1_CR/grid.T0v_loc[ii];
+    T0r = grid.coe_r_loc_T0r[kkr] * one_over_T0v;
+    T0t = (grid.coe_t_loc_T0t[jjt] + grid.coe_p_loc_T0t[iip]) * one_over_T0v;
+    T0p = (grid.coe_t_loc_T0p[jjt] + grid.coe_p_loc_T0p[iip]) * one_over_T0v;
+
+
     return sqrt(
-              fac_a * my_square(grid.T0r_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pr1+pr2)/_2_CR) \
-    +         fac_b * my_square(grid.T0t_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pt1+pt2)/_2_CR) \
-    +         fac_c * my_square(grid.T0p_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pp1+pp2)/_2_CR) \
-    -   _2_CR*fac_f * (grid.T0t_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pt1+pt2)/_2_CR) \
-                                               * (grid.T0p_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pp1+pp2)/_2_CR) \
+              fac_a * my_square(T0r * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pr1+pr2)/_2_CR) \
+    +         fac_b * my_square(T0t * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pt1+pt2)/_2_CR) \
+    +         fac_c * my_square(T0p * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pp1+pp2)/_2_CR) \
+    -   _2_CR*fac_f * (T0t * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pt1+pt2)/_2_CR) \
+                                               * (T0p * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pp1+pp2)/_2_CR) \
     );
 
 }

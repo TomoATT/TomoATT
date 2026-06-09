@@ -13,11 +13,12 @@ Grid::Grid(InputParams& IP, IO_utils& io) {
     //                &win_Tadj_loc, &win_Tadj_density_loc,
     //                &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
     //                &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
-    init_mpi_wins({&win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    init_mpi_wins({&win_T0v_loc,
                    &win_tau_loc, &win_fun_loc, &win_is_changed,
                    &win_T_loc, &win_tau_old_loc,
                    &win_xi_loc, &win_eta_loc,
                    &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
+                   &win_coe_r_loc_T0r, &win_coe_t_loc_T0t, &win_coe_t_loc_T0p, &win_coe_p_loc_T0t, &win_coe_p_loc_T0p,
                    &win_Tadj_loc, &win_Tadj_density_loc,
                    &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
                    &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
@@ -364,9 +365,9 @@ void Grid::memory_allocation() {
         T_loc       = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 5);
         tau_old_loc = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 6);
 
-        T0r_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 7);
-        T0t_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 8);
-        T0p_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 9);
+        // T0r_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 7);
+        // T0t_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 8);
+        // T0p_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 9);
         T0v_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 10);
         // fac_a_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 11);
         // fac_b_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 12);
@@ -379,6 +380,13 @@ void Grid::memory_allocation() {
         p_loc_1d    = allocateMemory<CUSTOMREAL>(loc_I, 17);
         t_loc_1d    = allocateMemory<CUSTOMREAL>(loc_J, 18);
         r_loc_1d    = allocateMemory<CUSTOMREAL>(loc_K, 19);
+
+        coe_r_loc_T0r = allocateMemory<CUSTOMREAL>(loc_K, 20);
+        coe_t_loc_T0t = allocateMemory<CUSTOMREAL>(loc_J, 21);
+        coe_t_loc_T0p = allocateMemory<CUSTOMREAL>(loc_J, 22);
+        coe_p_loc_T0t = allocateMemory<CUSTOMREAL>(loc_I, 23);
+        coe_p_loc_T0p = allocateMemory<CUSTOMREAL>(loc_I, 24);
+
         one_over_r_loc_1d        = allocateMemory<CUSTOMREAL>(loc_K, 9001);
         one_over_r_loc_1d_sq     = allocateMemory<CUSTOMREAL>(loc_K, 9002);
         one_over_cos_t_loc       = allocateMemory<CUSTOMREAL>(loc_J, 9003);
@@ -652,9 +660,9 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(n_total_loc_grid_points, eta_loc, win_eta_loc);
     // prepare_shm_array_cr(n_total_loc_grid_points, zeta_loc, win_zeta_loc);
 
-    prepare_shm_array_cr(n_total_loc_grid_points, T0r_loc, win_T0r_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, T0t_loc, win_T0t_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, T0p_loc, win_T0p_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, T0r_loc, win_T0r_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, T0t_loc, win_T0t_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, T0p_loc, win_T0p_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, T0v_loc, win_T0v_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, tau_loc, win_tau_loc);
     // prepare_shm_array_cr(n_total_loc_grid_points, fac_a_loc, win_fac_a_loc);
@@ -667,6 +675,12 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(loc_I, p_loc_1d, win_p_loc_1d);
     prepare_shm_array_cr(loc_J, t_loc_1d, win_t_loc_1d);
     prepare_shm_array_cr(loc_K, r_loc_1d, win_r_loc_1d);
+
+    prepare_shm_array_cr(loc_K, coe_r_loc_T0r, win_coe_r_loc_T0r);
+    prepare_shm_array_cr(loc_J, coe_t_loc_T0t, win_coe_t_loc_T0t);
+    prepare_shm_array_cr(loc_J, coe_t_loc_T0p, win_coe_t_loc_T0p);
+    prepare_shm_array_cr(loc_I, coe_p_loc_T0t, win_coe_p_loc_T0t);
+    prepare_shm_array_cr(loc_I, coe_p_loc_T0p, win_coe_p_loc_T0p);
 
     prepare_shm_array_cr(loc_J, one_over_cos_t_loc, win_one_over_cos_t_loc);
     prepare_shm_array_cr(loc_J, one_over_cos_t_loc_sq, win_one_over_cos_t_loc_sq);
@@ -694,11 +708,12 @@ void Grid::shm_memory_deallocation() {
     //                   &win_Tadj_loc, &win_Tadj_density_loc,
     //                   &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
     //                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
-    cleanup_mpi_wins({&win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    cleanup_mpi_wins({&win_T0v_loc,
                       &win_tau_loc, &win_fun_loc, &win_is_changed,
                       &win_T_loc, &win_tau_old_loc,
                       &win_xi_loc, &win_eta_loc,
                       &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
+                      &win_coe_r_loc_T0r, &win_coe_t_loc_T0t, &win_coe_t_loc_T0p, &win_coe_p_loc_T0t, &win_coe_p_loc_T0p,
                       &win_Tadj_loc, &win_Tadj_density_loc,
                       &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
                       &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
@@ -723,9 +738,9 @@ void Grid::memory_deallocation() {
         delete[] T_loc;
         delete[] tau_old_loc;
 
-        delete[] T0r_loc;
-        delete[] T0t_loc;
-        delete[] T0p_loc;
+        // delete[] T0r_loc;
+        // delete[] T0t_loc;
+        // delete[] T0p_loc;
         delete[] T0v_loc;
         // delete[] fac_a_loc;
         // delete[] fac_b_loc;
@@ -737,6 +752,12 @@ void Grid::memory_deallocation() {
         delete[] t_loc_1d;
         delete[] p_loc_1d;
         delete[] r_loc_1d;
+
+        delete[] coe_r_loc_T0r;
+        delete[] coe_t_loc_T0t;
+        delete[] coe_t_loc_T0p;
+        delete[] coe_p_loc_T0t;
+        delete[] coe_p_loc_T0p;
 
         delete[] one_over_r_loc_1d;
         delete[] one_over_r_loc_1d_sq;
@@ -1327,26 +1348,46 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
     CUSTOMREAL src_p = src.get_src_p();
 
     // std out src positions
-    CUSTOMREAL a0 = _1_CR;
-    CUSTOMREAL b0 = (_1_CR - _2_CR * xi0) / my_square(src_r);
-    CUSTOMREAL c0 = (_1_CR + _2_CR * xi0) / my_square(src_r) / my_square(std::cos(src_t));
-    CUSTOMREAL f0 = (     - _2_CR * eta0) / my_square(src_r) / std::cos(src_t);
+    a0 = _1_CR;
+    b0 = (_1_CR - _2_CR * xi0) / my_square(src_r);
+    c0 = (_1_CR + _2_CR * xi0) / my_square(src_r) / my_square(std::cos(src_t));
+    f0 = (     - _2_CR * eta0) / my_square(src_r) / std::cos(src_t);
 
     CUSTOMREAL c0b0_minus_f0f0 = c0*b0 - f0*f0;
+
+    // T0r = coe_r_loc_T0r[k_r] / T0v
+    // T0t = (coe_t_loc_T0t[j_lat] + coe_p_loc_T0t[i_lon]) / T0v
+    // T0p = (coe_t_loc_T0p[j_lat] + coe_p_loc_T0p[i_lon]) / T0v
+
+    CUSTOMREAL dr_from_src;
+    CUSTOMREAL dt_from_src;
+    CUSTOMREAL dp_from_src;
+
+    for (int k_r = 0; k_r < loc_K; k_r++) {
+        dr_from_src = r_loc_1d[k_r]   - src_r;
+        coe_r_loc_T0r[k_r] = my_square(fun0)*(_1_CR/a0*dr_from_src);
+    }
+    for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+        dt_from_src = t_loc_1d[j_lat] - src_t;
+        coe_t_loc_T0t[j_lat] = my_square(fun0)*(c0/(c0b0_minus_f0f0)*dt_from_src);
+        coe_t_loc_T0p[j_lat] = my_square(fun0)*(f0/(c0b0_minus_f0f0)*dt_from_src);
+    }
+    for (int i_lon = 0; i_lon < loc_I; i_lon++) {
+        dp_from_src = p_loc_1d[i_lon] - src_p;
+        coe_p_loc_T0t[i_lon] = my_square(fun0)*f0/(c0b0_minus_f0f0)*dp_from_src;
+        coe_p_loc_T0p[i_lon] = my_square(fun0)*b0/(c0b0_minus_f0f0)*dp_from_src;
+    }
+
 
     // debug
     int n_source_node = 0;
 
-    // std::cout << a0 << ' ' << b0 << ' ' << c0 << ' ' << f0 << ' ' << std::endl;
-
-
-
     for (int k_r = 0; k_r < loc_K; k_r++) {
         for (int j_lat = 0; j_lat < loc_J; j_lat++) {
             for (int i_lon = 0; i_lon < loc_I; i_lon++) {
-                CUSTOMREAL dr_from_src = r_loc_1d[k_r]   - src_r;
-                CUSTOMREAL dt_from_src = t_loc_1d[j_lat] - src_t;
-                CUSTOMREAL dp_from_src = p_loc_1d[i_lon] - src_p;
+                dr_from_src = r_loc_1d[k_r]   - src_r;
+                dt_from_src = t_loc_1d[j_lat] - src_t;
+                dp_from_src = p_loc_1d[i_lon] - src_p;
 
                 T0v_loc[I2V(i_lon,j_lat,k_r)] = fun0 * std::sqrt( _1_CR/a0                  *my_square(dr_from_src) \
                                                                 + c0/(c0b0_minus_f0f0)      *my_square(dt_from_src) \
@@ -1355,15 +1396,15 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
 
                 is_changed[I2V(i_lon,j_lat,k_r)] = true;
 
-                if (isZero(T0v_loc[I2V(i_lon,j_lat,k_r)])) {
-                    T0r_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
-                    T0t_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
-                    T0p_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
-                } else {
-                    T0r_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(_1_CR/a0*dr_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
-                    T0t_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(c0/(c0b0_minus_f0f0)*dt_from_src+f0/(c0b0_minus_f0f0)*dp_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
-                    T0p_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(b0/(c0b0_minus_f0f0)*dp_from_src+f0/(c0b0_minus_f0f0)*dt_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
-                }
+                // if (isZero(T0v_loc[I2V(i_lon,j_lat,k_r)])) {
+                //     T0r_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
+                //     T0t_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
+                //     T0p_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
+                // } else {
+                //     T0r_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(_1_CR/a0*dr_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
+                //     T0t_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(c0/(c0b0_minus_f0f0)*dt_from_src+f0/(c0b0_minus_f0f0)*dp_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
+                //     T0p_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(b0/(c0b0_minus_f0f0)*dp_from_src+f0/(c0b0_minus_f0f0)*dt_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
+                // }
 
                 if (IP.get_stencil_order() == 1){
                     source_width = _1_CR * 0.9;

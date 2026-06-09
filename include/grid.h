@@ -261,7 +261,7 @@ public:
     // CUSTOMREAL *fac_f_loc; // factor f (20260608: removed, f = -2eta/(r^2*cos))
     CUSTOMREAL *fun_loc;
     CUSTOMREAL *T_loc;
-    CUSTOMREAL *T0v_loc, *T0r_loc, *T0p_loc, *T0t_loc;
+    CUSTOMREAL *T0v_loc;
     CUSTOMREAL *tau_loc;
     CUSTOMREAL *tau_old_loc;
     bool       *is_changed;
@@ -285,13 +285,14 @@ public:
 private:
     // windows for shm arrays
     // MPI_Win win_fac_a_loc, win_fac_b_loc, win_fac_c_loc, win_fac_f_loc;
-    MPI_Win win_T0r_loc, win_T0p_loc, win_T0t_loc, win_T0v_loc;
+    MPI_Win win_T0v_loc;
     MPI_Win win_tau_loc, win_fun_loc;
     MPI_Win win_is_changed;
     MPI_Win win_T_loc, win_tau_old_loc;
     // MPI_Win win_xi_loc, win_eta_loc, win_zeta_loc;
     MPI_Win win_xi_loc, win_eta_loc;
     MPI_Win win_r_loc_1d, win_t_loc_1d, win_p_loc_1d;
+    MPI_Win win_coe_r_loc_T0r, win_coe_t_loc_T0t, win_coe_t_loc_T0p, win_coe_p_loc_T0t, win_coe_p_loc_T0p;
     MPI_Win win_one_over_r_loc_1d, win_one_over_r_loc_1d_sq, win_one_over_cos_t_loc;
     MPI_Win win_one_over_cos_t_loc_sq, win_sin_t_loc, win_cos_t_loc_m0p5, win_cos_t_loc_p0p5;
 
@@ -308,6 +309,14 @@ public:
     CUSTOMREAL *r_loc_1d; // radius z    in kilo meter
     CUSTOMREAL *t_loc_1d; // theta lat y in radian
     CUSTOMREAL *p_loc_1d; // phi lon x   in radian
+
+    // 1d arrays for calculating T0r, T0t, T0p.
+    CUSTOMREAL *coe_r_loc_T0r;
+    CUSTOMREAL *coe_t_loc_T0t;
+    CUSTOMREAL *coe_t_loc_T0p;
+    CUSTOMREAL *coe_p_loc_T0t;
+    CUSTOMREAL *coe_p_loc_T0p;
+
     // pre-calculated geometric factors (inverses, squares, and trigonometric values).
     CUSTOMREAL *one_over_r_loc_1d;     // inverse of radius z 
     CUSTOMREAL *one_over_r_loc_1d_sq;  // square of inverse of radius z
@@ -425,7 +434,7 @@ private:
     CUSTOMREAL *u_loc;    // true solution # TODO: erase for no testing
     //CUSTOMREAL *velo_loc; // velocity field, # TODO: use this for storing an intial model
     // anisotropic factors
-    // CUSTOMREAL a0, b0, c0, f0, fun0;
+    CUSTOMREAL a0, b0, c0, f0;
     CUSTOMREAL xi0, eta0, fun0;
 
     CUSTOMREAL source_width;
