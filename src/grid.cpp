@@ -980,6 +980,16 @@ void Grid::memory_deallocation_for_3D_grid() {
     y_loc_3d = nullptr;
     delete[] z_loc_3d;
     z_loc_3d = nullptr;
+    delete[] p_loc_3d;
+    p_loc_3d = nullptr;
+    delete[] t_loc_3d;
+    t_loc_3d = nullptr;
+    delete[] r_loc_3d;
+    r_loc_3d = nullptr;
+    delete[] elms_conn;
+    elms_conn = nullptr;
+    delete[] my_proc_dump;
+    my_proc_dump = nullptr;
 }
 
 
@@ -1572,7 +1582,6 @@ void Grid::calc_L1_and_Linf_diff(CUSTOMREAL& L1_diff, CUSTOMREAL& Linf_diff) {
                 for (int i_lon = i_start_loc; i_lon <= i_end_loc; i_lon++) {
                     L1_diff   +=                    std::abs(tau_loc[I2V(i_lon,j_lat,k_r)] - tau_old_loc[I2V(i_lon,j_lat,k_r)]) * T0v_loc[I2V(i_lon,j_lat,k_r)];
                     Linf_diff  = std::max(Linf_diff,std::abs(tau_loc[I2V(i_lon,j_lat,k_r)] - tau_old_loc[I2V(i_lon,j_lat,k_r)]) * T0v_loc[I2V(i_lon,j_lat,k_r)]);
-                    // std::cout << R_earth-r_loc_3d[k_r] << ' ' << t_loc_3d[j_lat] << ' ' << p_loc_3d[i_lon] << ' ' << T0v_loc[I2V(i_lon,j_lat,k_r)] << ' ' << std::endl;
                 }
             }
         }
