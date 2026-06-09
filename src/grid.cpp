@@ -1319,7 +1319,6 @@ void Grid::setup_factors(Source &src){
     fun0  = src.get_fac_at_source(fun_loc, false); // true for debug
 }
 
-
 void Grid::initialize_fields(Source& src, InputParams& IP){
 
     // get source position
