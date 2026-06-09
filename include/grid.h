@@ -454,6 +454,9 @@ public:
 
     // finalize the Time table
     void calc_T_plus_tau();
+
+    void memory_deallocation_for_3D_grid(); // deallocate memory for 3D grid (after writing out the grid file)
+
 private:
     // check difference between true solution and computed solution
     void calc_residual();

@@ -973,6 +973,15 @@ void Grid::memory_deallocation() {
     stdout_by_main("Memory deallocation done.");
 }
 
+void Grid::memory_deallocation_for_3D_grid() {
+    delete[] x_loc_3d;
+    x_loc_3d = nullptr;
+    delete[] y_loc_3d;
+    y_loc_3d = nullptr;
+    delete[] z_loc_3d;
+    z_loc_3d = nullptr;
+}
+
 
 // setput the grid parameters (material and source etc.)
 void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {

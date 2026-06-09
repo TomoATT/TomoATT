@@ -252,6 +252,9 @@ void IO_utils::write_grid(Grid& grid) {
        } // end if id_sim == 0
     } // end if output_format==OUTPUT_FORMAT_ASCII
 
+    // once written, x_loc_3d etc. will not be needed anymore, so we can free the memory
+    grid.memory_deallocation_for_3D_grid();
+
 }
 
 
