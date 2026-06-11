@@ -26,11 +26,8 @@ protected:
     bool need_write_original_kernel    = false;
 
     int n_total_loc_grid_points;    // number of local grid points
-    std::vector<CUSTOMREAL> fun_loc_backup;
-    std::vector<CUSTOMREAL> xi_loc_backup;
-    std::vector<CUSTOMREAL> eta_loc_backup;
-
     CUSTOMREAL alpha;            // step length tried in line search
+    CUSTOMREAL backup_alpha;     // backup of tried step length, used for reverse to original model in line search
 
     // line search bounds
     CUSTOMREAL alpha_R;                 // upper bound of step length
@@ -57,6 +54,9 @@ protected:
 
     // set new model
     void set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_length);
+
+    // reverse new model to the original model (for line search)
+    void reverse_to_original_model(InputParams& IP, Grid& grid, CUSTOMREAL step_length);
 
     // write new model
     void write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv);

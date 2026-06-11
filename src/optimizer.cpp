@@ -4,14 +4,6 @@ Optimizer::Optimizer(InputParams& IP){
 
     n_total_loc_grid_points = loc_I * loc_J * loc_K;
 
-    // only true if line search is applied
-    if(line_search_mode){    
-        fun_loc_backup.resize(n_total_loc_grid_points);
-        xi_loc_backup.resize(n_total_loc_grid_points);
-        eta_loc_backup.resize(n_total_loc_grid_points);
-    }
-
-
 }
 
 Optimizer::~Optimizer(){}
@@ -228,16 +220,11 @@ std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams
         std::cout << "Line search to determine step length starting ... " << std::endl;
     }
 
-    // ----------------------- step 1, backup current model -----------------------
-    if (subdom_main){   // main of level 3 can backup model
-        fun_loc_backup.assign(grid.fun_loc, grid.fun_loc + n_total_loc_grid_points);
-        xi_loc_backup.assign(grid.xi_loc, grid.xi_loc + n_total_loc_grid_points);
-        eta_loc_backup.assign(grid.eta_loc, grid.eta_loc + n_total_loc_grid_points);
-    }
 
     // ----------------------- step 2, do line search -----------------------
     bool exit_flag = false;
     alpha = step_length_init;   // tried step length
+    backup_alpha = alpha;       // backup of tried step length, used for reverse to original model
     int quit_sub_iter = 2;  // 2 mean maximum 3 sub-iterations; maximum sub-iteration number to quit (avoid too many sub-iterations) 
 
     alpha_L = _0_CR;    // lower bound of step length
@@ -251,23 +238,26 @@ std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams
         }
 
         // substep 1, --------- back to the original model ---------
-        if (subdom_main){
-            std::copy(fun_loc_backup.begin(), fun_loc_backup.end(), grid.fun_loc);
-            std::copy(xi_loc_backup.begin(), xi_loc_backup.end(), grid.xi_loc);
-            std::copy(eta_loc_backup.begin(), eta_loc_backup.end(), grid.eta_loc);
+        if (subdom_main && sub_iter != 0){   // for the first sub-iteration, we do not need to reverse to original model since the model has not been updated yet. For other sub-iterations, we need to reverse to original model before setting new model with new alpha.
+            reverse_to_original_model(IP, grid, backup_alpha);
         }
 
         // substep 2, --------- set new model with current alpha ---------
         if (subdom_main){
             set_new_model(IP, grid, alpha);
+            backup_alpha = alpha;   // backup of tried step length, used for reverse to original model
         }
         synchronize_all_world();
 
         // substep 3, --------- forward modeling + adjoint field + kernel  ---------
+        // -> Ks_loc; Ks_density_loc;
         v_obj_misfit_line_search = run_simulation_one_step(IP, grid, io, i_inv, true, false);
         CUSTOMREAL v_obj_try = v_obj_misfit_line_search[0];
 
         // substep 4, --------- process kernels ---------
+        // Ks_loc, Keta_loc, Kxi_loc
+        // --> 
+        // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
         Kernel_postprocessing::process_kernels(IP, grid); 
 
         // substep 5, --------- evaluate the update performance ---------     
@@ -297,6 +287,45 @@ void Optimizer::set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_lengt
                     grid.fun_loc[I2V(i,j,k)] *= (_1_CR - grid.Ks_update_loc[I2V(i,j,k)  ] * step_length);
                     grid.xi_loc[I2V(i,j,k)]  -=          grid.Kxi_update_loc[I2V(i,j,k) ] * step_length;
                     grid.eta_loc[I2V(i,j,k)] -=          grid.Keta_update_loc[I2V(i,j,k)] * step_length;
+
+                }
+            }
+        }
+
+        // grid.rejuvenate_abcf();
+
+        // shared values on the boundary
+        grid.send_recev_boundary_data(grid.fun_loc);
+        grid.send_recev_boundary_data(grid.xi_loc);
+        grid.send_recev_boundary_data(grid.eta_loc);
+        // grid.send_recev_boundary_data(grid.fac_a_loc);
+        // grid.send_recev_boundary_data(grid.fac_b_loc);
+        // grid.send_recev_boundary_data(grid.fac_c_loc);
+        // grid.send_recev_boundary_data(grid.fac_f_loc);
+
+    } // end if subdom_main
+
+    // since model is update. The written traveltime field should be discraded
+    // initialize is_T_written_into_file
+    for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+        const std::string name_sim_src = IP.get_src_name(i_src);
+
+        if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
+            IP.src_map[name_sim_src].is_T_written_into_file = false;
+    }
+}
+
+// reverse new model to the original model (for line search)
+void Optimizer::reverse_to_original_model(InputParams& IP, Grid& grid, CUSTOMREAL step_length){
+
+    if (subdom_main) {
+        for (int k = 0; k < loc_K; k++) {
+            for (int j = 0; j < loc_J; j++) {
+                for (int i = 0; i < loc_I; i++) {
+                    // update
+                    grid.fun_loc[I2V(i,j,k)] /= (_1_CR - grid.Ks_update_loc[I2V(i,j,k)  ] * step_length);
+                    grid.xi_loc[I2V(i,j,k)]  +=          grid.Kxi_update_loc[I2V(i,j,k) ] * step_length;
+                    grid.eta_loc[I2V(i,j,k)] +=          grid.Keta_update_loc[I2V(i,j,k)] * step_length;
 
                 }
             }

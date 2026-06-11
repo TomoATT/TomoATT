@@ -496,7 +496,7 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     // check kernel density and sum up kernels from all simulateous group (level 1)
     if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC){
         check_kernel_density(IP, grid);     // check kernel density
-        sumup_kernels(grid); // allreduce kernels from all simulateous group (level 1)
+        sumup_kernels(grid); // allreduce kernels from all simulateous group (level 1) Ks_loc, Ks_density_loc
     }
 
     // return current objective function value
