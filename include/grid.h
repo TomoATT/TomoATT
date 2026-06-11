@@ -259,14 +259,14 @@ public:
     // CUSTOMREAL *fac_b_loc; // factor b (20260608: removed, b = (1 - 2xi)/r^2)
     // CUSTOMREAL *fac_c_loc; // factor c (20260608: removed, c = (1 + 2xi)(r^2*cos^2))
     // CUSTOMREAL *fac_f_loc; // factor f (20260608: removed, f = -2eta/(r^2*cos))
-    CUSTOMREAL *fun_loc;
-    CUSTOMREAL *T_loc;
-    CUSTOMREAL *T0v_loc;
-    CUSTOMREAL *tau_loc;
-    CUSTOMREAL *tau_old_loc;
+    CUSTOMREAL *fun_loc;    // local slowness
+    CUSTOMREAL *T_loc;              // traveltime field. But it is temporarily used as tau in local forward solver.
+    CUSTOMREAL *T0v_loc;            // background time field. Retained.
+    CUSTOMREAL *tau_loc;        
+    CUSTOMREAL *tau_old_loc;        // previous tau for local forward solver, T for tele forward solver
     bool       *is_changed;
     // for inversion backup
-    CUSTOMREAL *fun_loc_back;
+    CUSTOMREAL *fun_loc_back;   
     CUSTOMREAL *xi_loc_back;
     CUSTOMREAL *eta_loc_back;
     // CUSTOMREAL *fac_b_loc_back;
@@ -296,14 +296,14 @@ private:
     MPI_Win win_one_over_r_loc_1d, win_one_over_r_loc_1d_sq, win_one_over_cos_t_loc;
     MPI_Win win_one_over_cos_t_loc_sq, win_sin_t_loc, win_cos_t_loc_m0p5, win_cos_t_loc_p0p5;
 
-    CUSTOMREAL *x_loc_3d;     // local (lon) x (global position)
-    CUSTOMREAL *y_loc_3d;     // local (lat) y (global position)
-    CUSTOMREAL *z_loc_3d;     // local (r  ) z (global position)
-    CUSTOMREAL *p_loc_3d;     // local lon (x) (global position)
-    CUSTOMREAL *t_loc_3d;     // local lat (y) (global position)
-    CUSTOMREAL *r_loc_3d;     // local r   (z) (global position)
-    int        *elms_conn;    // connectivity array
-    int        *my_proc_dump; // dump process id for each node  DEBUG
+    CUSTOMREAL *x_loc_3d;     // local (lon) x (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *y_loc_3d;     // local (lat) y (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *z_loc_3d;     // local (r  ) z (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *p_loc_3d;     // local lon (x) (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *t_loc_3d;     // local lat (y) (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *r_loc_3d;     // local r   (z) (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    int        *elms_conn;    // connectivity array                 (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    int        *my_proc_dump; // dump process id for each node  DEBUG   (released after io.write_grid. See memory_deallocation_for_3D_grid())
 public:
     // 1d arrays for coordinates, storing only subdomain's local coordinates
     CUSTOMREAL *r_loc_1d; // radius z    in kilo meter
