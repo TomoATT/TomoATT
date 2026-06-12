@@ -555,23 +555,27 @@ void Grid::memory_allocation() {
             Kxi_density_inv_loc      = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid_ani, 100);
             Keta_density_inv_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid_ani, 101);
 
-            Ks_update_loc            = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 99);
-            Kxi_update_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 100);
-            Keta_update_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 101);
-            Ks_density_update_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
-            Kxi_density_update_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
-            Keta_density_update_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
+        
+            if (id_sim == 0 && subdom_main){
+                Ks_update_loc            = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 99);
+                Kxi_update_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 100);
+                Keta_update_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 101);
+                Ks_density_update_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
+                Kxi_density_update_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
+                Keta_density_update_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
+                
+                Ks_update_loc_previous   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
+                Kxi_update_loc_previous  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
+                Keta_update_loc_previous = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
 
-            Ks_update_loc_previous   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
-            Kxi_update_loc_previous  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
-            Keta_update_loc_previous = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
 
-            Ks_processing_loc.resize(n_total_loc_grid_points);
-            Kxi_processing_loc.resize(n_total_loc_grid_points);
-            Keta_processing_loc.resize(n_total_loc_grid_points);
-            Ks_density_processing_loc.resize(n_total_loc_grid_points);
-            Kxi_density_processing_loc.resize(n_total_loc_grid_points);
-            Keta_density_processing_loc.resize(n_total_loc_grid_points);
+                Ks_processing_loc.resize(n_total_loc_grid_points);
+                Kxi_processing_loc.resize(n_total_loc_grid_points);
+                Keta_processing_loc.resize(n_total_loc_grid_points);
+                Ks_density_processing_loc.resize(n_total_loc_grid_points);
+                Kxi_density_processing_loc.resize(n_total_loc_grid_points);
+                Keta_density_processing_loc.resize(n_total_loc_grid_points);
+            }
         }
 
         if (sub_nprocs <= 1){
@@ -856,6 +860,9 @@ void Grid::memory_deallocation() {
             delete[] Ks_density_inv_loc;
             delete[] Kxi_density_inv_loc;
             delete[] Keta_density_inv_loc;
+        }
+
+        if (subdom_main && id_sim == 0){
             delete[] Ks_update_loc;
             delete[] Kxi_update_loc;
             delete[] Keta_update_loc;

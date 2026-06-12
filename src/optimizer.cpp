@@ -200,7 +200,8 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
     }
 
     // broadcast the step_length (level 1， level 2, level 3)
-    broadcast_cr_single_inter_and_intra_sim(step_length_init,0);
+    // no need to broadcast, because step_length is only used for model update by subdom_main and id_sim == 0,
+    // broadcast_cr_single_inter_and_intra_sim(step_length_init,0);
 
 
     std::cout << "id_sim " << id_sim << " process " << myrank << " set step length to " << step_length_init << std::endl;
@@ -241,7 +242,8 @@ std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams
         if (subdom_main && sub_iter != 0){   // for the first sub-iteration, we do not need to reverse to original model since the model has not been updated yet. For other sub-iterations, we need to reverse to original model before setting new model with new alpha.
             reverse_to_original_model(IP, grid, backup_alpha);
         }
-
+        synchronize_all_world();
+        
         // substep 2, --------- set new model with current alpha ---------
         if (subdom_main){
             set_new_model(IP, grid, alpha);
@@ -279,30 +281,29 @@ std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams
 // set new model
 void Optimizer::set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_length){
 
-    if (subdom_main) {
-        for (int k = 0; k < loc_K; k++) {
-            for (int j = 0; j < loc_J; j++) {
-                for (int i = 0; i < loc_I; i++) {
-                    // update
-                    grid.fun_loc[I2V(i,j,k)] *= (_1_CR - grid.Ks_update_loc[I2V(i,j,k)  ] * step_length);
-                    grid.xi_loc[I2V(i,j,k)]  -=          grid.Kxi_update_loc[I2V(i,j,k) ] * step_length;
-                    grid.eta_loc[I2V(i,j,k)] -=          grid.Keta_update_loc[I2V(i,j,k)] * step_length;
+    if (subdom_main) {  // done by main of level 3
+        if (id_sim == 0){   // update model by main of level 1, and then broadcast to other sim groups
+            for (int k = 0; k < loc_K; k++) {
+                for (int j = 0; j < loc_J; j++) {
+                    for (int i = 0; i < loc_I; i++) {
+                        // update
+                        grid.fun_loc[I2V(i,j,k)] *= (_1_CR - grid.Ks_update_loc[I2V(i,j,k)  ] * step_length);
+                        grid.xi_loc[I2V(i,j,k)]  -=          grid.Kxi_update_loc[I2V(i,j,k) ] * step_length;
+                        grid.eta_loc[I2V(i,j,k)] -=          grid.Keta_update_loc[I2V(i,j,k)] * step_length;
 
+                    }
                 }
             }
+            // shared values on the boundary
+            grid.send_recev_boundary_data(grid.fun_loc);
+            grid.send_recev_boundary_data(grid.xi_loc);
+            grid.send_recev_boundary_data(grid.eta_loc);
         }
-
-        // grid.rejuvenate_abcf();
-
-        // shared values on the boundary
-        grid.send_recev_boundary_data(grid.fun_loc);
-        grid.send_recev_boundary_data(grid.xi_loc);
-        grid.send_recev_boundary_data(grid.eta_loc);
-        // grid.send_recev_boundary_data(grid.fac_a_loc);
-        // grid.send_recev_boundary_data(grid.fac_b_loc);
-        // grid.send_recev_boundary_data(grid.fac_c_loc);
-        // grid.send_recev_boundary_data(grid.fac_f_loc);
-
+        
+        // broadcast new model among all simultaneous groups (level 1)
+        broadcast_cr_inter_sim(grid.fun_loc, loc_I*loc_J*loc_K, 0);
+        broadcast_cr_inter_sim(grid.xi_loc,  loc_I*loc_J*loc_K, 0);
+        broadcast_cr_inter_sim(grid.eta_loc, loc_I*loc_J*loc_K, 0);
     } // end if subdom_main
 
     // since model is update. The written traveltime field should be discraded
@@ -318,29 +319,30 @@ void Optimizer::set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_lengt
 // reverse new model to the original model (for line search)
 void Optimizer::reverse_to_original_model(InputParams& IP, Grid& grid, CUSTOMREAL step_length){
 
-    if (subdom_main) {
-        for (int k = 0; k < loc_K; k++) {
-            for (int j = 0; j < loc_J; j++) {
-                for (int i = 0; i < loc_I; i++) {
-                    // update
-                    grid.fun_loc[I2V(i,j,k)] /= (_1_CR - grid.Ks_update_loc[I2V(i,j,k)  ] * step_length);
-                    grid.xi_loc[I2V(i,j,k)]  +=          grid.Kxi_update_loc[I2V(i,j,k) ] * step_length;
-                    grid.eta_loc[I2V(i,j,k)] +=          grid.Keta_update_loc[I2V(i,j,k)] * step_length;
+    if (subdom_main) {  // done by main of level 3
+        if (id_sim == 0){   // update model by main of level 1, and then broadcast to other sim groups
+            for (int k = 0; k < loc_K; k++) {
+                for (int j = 0; j < loc_J; j++) {
+                    for (int i = 0; i < loc_I; i++) {
+                        // update
+                        grid.fun_loc[I2V(i,j,k)] /= (_1_CR - grid.Ks_update_loc[I2V(i,j,k)  ] * step_length);
+                        grid.xi_loc[I2V(i,j,k)]  +=          grid.Kxi_update_loc[I2V(i,j,k) ] * step_length;
+                        grid.eta_loc[I2V(i,j,k)] +=          grid.Keta_update_loc[I2V(i,j,k)] * step_length;
 
+                    }
                 }
             }
+
+            // shared values on the boundary
+            grid.send_recev_boundary_data(grid.fun_loc);
+            grid.send_recev_boundary_data(grid.xi_loc);
+            grid.send_recev_boundary_data(grid.eta_loc);
         }
 
-        // grid.rejuvenate_abcf();
-
-        // shared values on the boundary
-        grid.send_recev_boundary_data(grid.fun_loc);
-        grid.send_recev_boundary_data(grid.xi_loc);
-        grid.send_recev_boundary_data(grid.eta_loc);
-        // grid.send_recev_boundary_data(grid.fac_a_loc);
-        // grid.send_recev_boundary_data(grid.fac_b_loc);
-        // grid.send_recev_boundary_data(grid.fac_c_loc);
-        // grid.send_recev_boundary_data(grid.fac_f_loc);
+        // broadcast new model among all simultaneous groups (level 1)
+        broadcast_cr_inter_sim(grid.fun_loc, loc_I*loc_J*loc_K, 0);
+        broadcast_cr_inter_sim(grid.xi_loc,  loc_I*loc_J*loc_K, 0);
+        broadcast_cr_inter_sim(grid.eta_loc, loc_I*loc_J*loc_K, 0);
 
     } // end if subdom_main
 
@@ -384,34 +386,25 @@ void Optimizer::write_new_model(InputParams& IP, Grid& grid, IO_utils& io, int& 
 
 // initialize and backup model_update (perturbation)
 void Optimizer::initialize_and_backup_model_update(Grid& grid) {
-    if (subdom_main){ // parallel level 3
-        if (id_sim==0){ // parallel level 1
+    if (subdom_main && id_sim == 0){ // main of level 3 and main of level 1
+        // initiaize and backup model_update (perturbation) params
+        for (int k = 0; k < loc_K; k++) {
+            for (int j = 0; j < loc_J; j++) {
+                for (int i = 0; i < loc_I; i++) {
 
-            // initiaize and backup model_update (perturbation) params
-            for (int k = 0; k < loc_K; k++) {
-                for (int j = 0; j < loc_J; j++) {
-                    for (int i = 0; i < loc_I; i++) {
+                    // backup previous model_update (perturbation)
+                    grid.Ks_update_loc_previous[I2V(i,j,k)]   = grid.Ks_update_loc[I2V(i,j,k)];
+                    grid.Keta_update_loc_previous[I2V(i,j,k)] = grid.Keta_update_loc[I2V(i,j,k)];
+                    grid.Kxi_update_loc_previous[I2V(i,j,k)]  = grid.Kxi_update_loc[I2V(i,j,k)];
 
-                        // backup previous model_update (perturbation)
-                        grid.Ks_update_loc_previous[I2V(i,j,k)]   = grid.Ks_update_loc[I2V(i,j,k)];
-                        grid.Keta_update_loc_previous[I2V(i,j,k)] = grid.Keta_update_loc[I2V(i,j,k)];
-                        grid.Kxi_update_loc_previous[I2V(i,j,k)]  = grid.Kxi_update_loc[I2V(i,j,k)];
+                    // initialize model_update (perturbation)
+                    grid.Ks_update_loc[I2V(i,j,k)]   = _0_CR;
+                    grid.Keta_update_loc[I2V(i,j,k)] = _0_CR;
+                    grid.Kxi_update_loc[I2V(i,j,k)]  = _0_CR;
 
-                        // initialize model_update (perturbation)
-                        grid.Ks_update_loc[I2V(i,j,k)]   = _0_CR;
-                        grid.Keta_update_loc[I2V(i,j,k)] = _0_CR;
-                        grid.Kxi_update_loc[I2V(i,j,k)]  = _0_CR;
-
-                    }
                 }
             }
-
         }
-
-        // send the previous updated model to all the simultaneous run
-        broadcast_cr_inter_sim(grid.Ks_update_loc_previous, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Kxi_update_loc_previous, loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Keta_update_loc_previous, loc_I*loc_J*loc_K, 0);
     }
 
     // synchronize all processes
@@ -421,27 +414,27 @@ void Optimizer::initialize_and_backup_model_update(Grid& grid) {
 
 // check kernel value range
 void Optimizer::check_kernel_value_range(Grid& grid) {
-    if (subdom_main){ // parallel level 3
-        if (id_sim==0){ // parallel level 1
-            // check kernel
-            CUSTOMREAL max_kernel = _0_CR;
-            for (int k = 0; k < loc_K; k++) {
-                for (int j = 0; j < loc_J; j++) {
-                    for (int i = 0; i < loc_I; i++) {
-                        max_kernel = std::max(max_kernel, std::abs(grid.Ks_loc[I2V(i,j,k)]));
-                    }
+    if (subdom_main && id_sim==0){ // main of level 3 and level 1
+        // check kernel
+        CUSTOMREAL max_kernel = _0_CR;
+        for (int k = 0; k < loc_K; k++) {
+            for (int j = 0; j < loc_J; j++) {
+                for (int i = 0; i < loc_I; i++) {
+                    max_kernel = std::max(max_kernel, std::abs(grid.Ks_loc[I2V(i,j,k)]));
+                    max_kernel = std::max(max_kernel, std::abs(grid.Kxi_loc[I2V(i,j,k)]));
+                    max_kernel = std::max(max_kernel, std::abs(grid.Keta_loc[I2V(i,j,k)]));
                 }
             }
+        }
 
-            // gather max_kernel from all processes
-            CUSTOMREAL tmp;
-            allreduce_cr_single_max(max_kernel, tmp);
-            max_kernel = tmp;
+        // gather max_kernel from all processes
+        CUSTOMREAL tmp;
+        allreduce_cr_single_max(max_kernel, tmp);
+        max_kernel = tmp;
 
-            if (max_kernel <= eps) {    
-                std::cout << "Error: max_kernel is near zero (less than 10^-12), check data residual and whether no data is used" << std::endl;
-                exit(1);
-            }
+        if (max_kernel <= eps) {    
+            std::cout << "Error: max_kernel is near zero (less than 10^-12), check data residual and whether no data is used" << std::endl;
+            exit(1);
         }
     }
 }

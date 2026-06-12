@@ -183,7 +183,7 @@ inline int      sub_rank;         // mpi rank of this process within a subdomain
 inline int      inter_sub_rank;   // mpi rank of this process in the inter-subdomain communicator: 0 to (n_l2 - 1), but is only valid when subdom_main == true (it is the main proc of a subdomain)
 inline int      inter_sub_nprocs; // number of processes in the inter-subdomain communicator
 inline int      nprocs;           // = n subdomains
-inline int      myrank;           // = id subdomain if submain_main == true; else = -9999
+inline int      myrank;           // = id subdomain if submain_main == true; else = -9999. myrank == 0 means id_subdomain == 0 and subdom_main = True.
 inline MPI_Comm sim_comm, inter_sim_comm, sub_comm, inter_sub_comm; // mpi communicator for simulation, inter-simulation, subdomain, and inter subdomains
 inline int      n_sims           = 1; // number of mpi groups for simultaneous runs
 inline int      n_procs_each_sim = 1; // number of processes in each simulation group

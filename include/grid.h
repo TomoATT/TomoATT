@@ -319,37 +319,43 @@ private:
     //int n_inv_grids; // in config.h
     //int n_inv_I_loc, n_inv_J_loc, n_inv_K_loc; // in config.h
 public:
-    CUSTOMREAL *Ks_loc;             // original kernel
+    CUSTOMREAL *Tadj_loc; // timetable for adjoint source
+    CUSTOMREAL *Tadj_density_loc; // timetable for density of adjoint source
+
+    // original kernel, needed by level 1 and level 2    
+    // summed up among level 1 in sumup_kernels(Grid& grid), then needed only by level 2 (subdom_main = True and id_sim == 0)
+    CUSTOMREAL *Ks_loc;             
     CUSTOMREAL *Kxi_loc;
     CUSTOMREAL *Keta_loc;
     CUSTOMREAL *Ks_density_loc;
     CUSTOMREAL *Kxi_density_loc;
     CUSTOMREAL *Keta_density_loc;
 
-    CUSTOMREAL *Tadj_loc; // timetable for adjoint source
-    CUSTOMREAL *Tadj_density_loc; // timetable for density of adjoint source
-
-    CUSTOMREAL *Ks_inv_loc;             // kernel on coarse inversion grid
+    // kernels on coarse inversion grid
+    CUSTOMREAL *Ks_inv_loc;             
     CUSTOMREAL *Kxi_inv_loc;
     CUSTOMREAL *Keta_inv_loc;
     CUSTOMREAL *Ks_density_inv_loc;
     CUSTOMREAL *Kxi_density_inv_loc;
     CUSTOMREAL *Keta_density_inv_loc;
-    // kernel processing
-    std::vector<CUSTOMREAL> Ks_processing_loc;      // kernel during processing
+
+    // kernel during processing (can be only allocated for subdom_main = True and id_sim = 0, i.e., level 2)
+    std::vector<CUSTOMREAL> Ks_processing_loc;      
     std::vector<CUSTOMREAL> Kxi_processing_loc;
     std::vector<CUSTOMREAL> Keta_processing_loc;
     std::vector<CUSTOMREAL> Ks_density_processing_loc;      
     std::vector<CUSTOMREAL> Kxi_density_processing_loc;
     std::vector<CUSTOMREAL> Keta_density_processing_loc;
-    // model update para
+
+    // model update para    (can be only allocated for subdom_main = True and id_sim = 0, i.e., level 2)
     CUSTOMREAL *Ks_update_loc;              // model update (perturbation)
     CUSTOMREAL *Kxi_update_loc;
     CUSTOMREAL *Keta_update_loc;
     CUSTOMREAL *Ks_density_update_loc;
     CUSTOMREAL *Kxi_density_update_loc;
     CUSTOMREAL *Keta_density_update_loc;
-    // model update para of the previous step       // backup descent direction
+
+    // model update para of the previous step       // backup descent direction (can be only allocated for subdom_main = True and id_sim = 0, i.e., level 2)
     CUSTOMREAL *Ks_update_loc_previous;
     CUSTOMREAL *Kxi_update_loc_previous;
     CUSTOMREAL *Keta_update_loc_previous;
