@@ -745,9 +745,9 @@ void Receiver::calculate_T_gradient(InputParams& IP, Grid& grid, const std::stri
                         broadcast_str(name_rec, 0);
 
                         calculate_T_gradient_one_rec(grid, IP, name_rec, DTijk);
-                        data.DTi = DTijk[0];
-                        data.DTj = DTijk[1];
-                        data.DTk = DTijk[2];
+                        data.DTi_pair[0] = DTijk[0];
+                        data.DTj_pair[0] = DTijk[1];
+                        data.DTk_pair[0] = DTijk[2];
 
 
                     // case 2: common receiver (swapped source) double difference (double source, or double swapped receiver) for reloc
@@ -794,9 +794,9 @@ void Receiver::calculate_T_gradient(InputParams& IP, Grid& grid, const std::stri
                         // send reeiver name
                         broadcast_str(name_rec, 0);
                         calculate_T_gradient_one_rec(grid, IP, name_rec, DTijk);
-                        data.DTi  = DTijk[0];
-                        data.DTj  = DTijk[1];
-                        data.DTk  = DTijk[2];
+                        data.DTi_pair[0]  = DTijk[0];
+                        data.DTj_pair[0]  = DTijk[1];
+                        data.DTk_pair[0]  = DTijk[2];
                     } else {
                         // we have some other types of data or we have three above-mentioned data but we do not use them
                         continue;
@@ -1276,10 +1276,10 @@ void Receiver::calculate_grad_obj_src_reloc(InputParams& IP, const std::string& 
                     else                                        local_weight *= ((local_dis - dis_weight[0])/(dis_weight[1] - dis_weight[0]) * (dis_weight[3] - dis_weight[2]) + dis_weight[2]);
 
                     // assign kernel
-                    IP.rec_map[name_rec].grad_chi_k += (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.DTk * data.weight_reloc * local_weight;
-                    IP.rec_map[name_rec].grad_chi_j += (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.DTj * data.weight_reloc * local_weight;
-                    IP.rec_map[name_rec].grad_chi_i += (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.DTi * data.weight_reloc * local_weight;
-                    IP.rec_map[name_rec].grad_tau   += (syn_time - obs_time + IP.rec_map[name_rec].tau_opt)            * data.weight_reloc * local_weight;
+                    IP.rec_map[name_rec].grad_chi_k += (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.DTk_pair[0] * data.weight_reloc * local_weight;
+                    IP.rec_map[name_rec].grad_chi_j += (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.DTj_pair[0] * data.weight_reloc * local_weight;
+                    IP.rec_map[name_rec].grad_chi_i += (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.DTi_pair[0] * data.weight_reloc * local_weight;
+                    IP.rec_map[name_rec].grad_tau   += (syn_time - obs_time + IP.rec_map[name_rec].tau_opt)                    * data.weight_reloc * local_weight;
 
                     // count the data
                     IP.rec_map[name_rec].Ndata      += 1;
@@ -1371,9 +1371,9 @@ void Receiver::calculate_grad_obj_src_reloc(InputParams& IP, const std::string& 
                     else                                        local_weight *= ((local_azi - azi_weight[0])/(azi_weight[1] - azi_weight[0]) * (azi_weight[3] - azi_weight[2]) + azi_weight[2]);
 
                     // assign kernel (we only consider the DTijk of first source (swapped receiver), because only the DTijk of the first source is calculated)
-                    IP.rec_map[name_rec].grad_chi_k += (syn_dif_time - obs_dif_time) * data.DTk * data.weight_reloc * local_weight;
-                    IP.rec_map[name_rec].grad_chi_j += (syn_dif_time - obs_dif_time) * data.DTj * data.weight_reloc * local_weight;
-                    IP.rec_map[name_rec].grad_chi_i += (syn_dif_time - obs_dif_time) * data.DTi * data.weight_reloc * local_weight;
+                    IP.rec_map[name_rec].grad_chi_k += (syn_dif_time - obs_dif_time) * data.DTk_pair[0] * data.weight_reloc * local_weight;
+                    IP.rec_map[name_rec].grad_chi_j += (syn_dif_time - obs_dif_time) * data.DTj_pair[0] * data.weight_reloc * local_weight;
+                    IP.rec_map[name_rec].grad_chi_i += (syn_dif_time - obs_dif_time) * data.DTi_pair[0] * data.weight_reloc * local_weight;
                     IP.rec_map[name_rec].grad_tau   += 0;       // common swapped source, so ortime is cancelled.
                     IP.rec_map[name_rec].Ndata      += 1;
 

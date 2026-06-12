@@ -153,10 +153,11 @@ public:
     // CUSTOMREAL cr_dif_travel_time_obs = -999.0;
 
     // source relocation
-    CUSTOMREAL DTi          = 0.0;
-    CUSTOMREAL DTj          = 0.0;
-    CUSTOMREAL DTk          = 0.0;
+    // CUSTOMREAL DTi          = 0.0;
+    // CUSTOMREAL DTj          = 0.0;
+    // CUSTOMREAL DTk          = 0.0;
 
+    // DTi is stored in DTi_pair[0]
     std::vector<CUSTOMREAL> DTi_pair = {0.0, 0.0};
     std::vector<CUSTOMREAL> DTj_pair = {0.0, 0.0};
     std::vector<CUSTOMREAL> DTk_pair = {0.0, 0.0};
