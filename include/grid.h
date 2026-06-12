@@ -254,12 +254,13 @@ public:
     // 3d arrays
     CUSTOMREAL *xi_loc;    // local xi
     CUSTOMREAL *eta_loc;   // local eta
+    CUSTOMREAL *fun_loc;    // local slowness
     // CUSTOMREAL *zeta_loc;  // local zeta
     // CUSTOMREAL *fac_a_loc; // factor a (20260608: removed, a = 1)
     // CUSTOMREAL *fac_b_loc; // factor b (20260608: removed, b = (1 - 2xi)/r^2)
     // CUSTOMREAL *fac_c_loc; // factor c (20260608: removed, c = (1 + 2xi)(r^2*cos^2))
     // CUSTOMREAL *fac_f_loc; // factor f (20260608: removed, f = -2eta/(r^2*cos))
-    CUSTOMREAL *fun_loc;    // local slowness
+    
     CUSTOMREAL *T_loc;              // traveltime field. But it is temporarily used as tau in local forward solver.
     CUSTOMREAL *T0v_loc;            // background time field. Retained.
     CUSTOMREAL *tau_loc;        
@@ -424,7 +425,7 @@ private:
     //
     // members for test
     //
-    CUSTOMREAL *u_loc;    // true solution # TODO: erase for no testing
+    CUSTOMREAL *u_loc;    // true solution # TODO: erase for no testing // only is allocated when test = True
     //CUSTOMREAL *velo_loc; // velocity field, # TODO: use this for storing an intial model
     // anisotropic factors
     CUSTOMREAL a0, b0, c0, f0;
