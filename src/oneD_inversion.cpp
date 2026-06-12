@@ -681,7 +681,7 @@ void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParam
 
             ///////////////// calculate synthetic traveltime //////////////////
 
-            const std::string name_rec = data.name_rec;
+            const std::string name_rec = data.name_rec_pair[0];
             // get position of the receiver
             CUSTOMREAL rec_r = depth2radius(IP.rec_map[name_rec].dep);
             CUSTOMREAL rec_lon = IP.rec_map[name_rec].lon*DEG2RAD;   // in radian
@@ -696,7 +696,7 @@ void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParam
             data.travel_time = traveltime;
 
             // for common source differentail arrival time, calculate differential time in addition
-            if (data.is_rec_pair) {
+            if (data.data_type == DATA_TYPE_CSDIF) {
                 const std::string name_rec2 = data.name_rec_pair[1];
                 CUSTOMREAL rec_r2 = depth2radius(IP.rec_map[name_rec2].dep);
                 CUSTOMREAL rec_lon2 = IP.rec_map[name_rec2].lon*DEG2RAD;   // in radian
@@ -708,7 +708,7 @@ void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParam
 
                 // 2d interporlation, to find the traveltime at (distance, rec_r) on the field of T_1dinv on the mesh meshgrid(t_1dinv, r_1dinv)
                 CUSTOMREAL traveltime2 = interpolate_2d_traveltime(distance2, rec_r2);
-                data.cs_dif_travel_time = traveltime - traveltime2;
+                data.dif_travel_time = traveltime - traveltime2;
             }
 
 
@@ -716,9 +716,9 @@ void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParam
 
 
             // calculate adjoint source
-            if (data.is_src_rec){
+            if (data.data_type == DATA_TYPE_ABS) {
                 CUSTOMREAL syn_time       = data.travel_time;
-                CUSTOMREAL obs_time       = data.travel_time_obs;
+                CUSTOMREAL obs_time       = data.time_observation;
 
                 // assign local weight
                 CUSTOMREAL  local_weight = _1_CR;

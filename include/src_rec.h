@@ -75,45 +75,82 @@ public:
 class DataInfo {
 public:
 
+    // weight
     CUSTOMREAL data_weight  = 1.0;   // the weight in the src_rec file
     CUSTOMREAL weight       = 1.0;   // the actual weight in the inversion, equal   data_weight * weight about the data type;
     CUSTOMREAL weight_reloc = 1.0;   // the actual weight for relocation,   equal   data_weight * weight about the data type;
 
+    // phase
     std::string phase = "unknown";
+    // int phase_id = -1;
+    
+    // if true, this data is a dual data, used for generating kernel, but not for obj estimation (if true, data type = 2 or 3)
+    bool dual_data   = false;   
 
-    bool dual_data   = false;   // if true, this data is a dual data, used for generating kernel, but not for obj estimation (if true, data type = 2 or 3)
+    // three types of data, infomation is conbined together to reduce RAM:
 
-    bool is_src_rec = false; // absolute traveltime, single source - receiver
+    // data_type: replace 
+    // 0: absolute traveltime, single source - receiver
+    // 1: common source differential traveltime
+    // 2: common receiver differential traveltime
+    // replaces
+    // bool is_src_rec  (for case 1)
+    // bool is_src_pair (for case 2)
+    // bool is_rec_pair (for case 3)
+    int data_type = -1; 
 
     // source information
-    int         id_src   = -1;
-    std::string name_src = "unknown";
+    // for data_type = 0, id_srcs[0] is the source id; 
+    // for data_type = 1, id_srcs[0] is the source id;
+    // for data_type = 2, id_srcs[0] and id_srcs[1] are the source ids
+    std::vector<int>            id_src_pair = {-1, -1};
+    std::vector<std::string>    name_src_pair = {"unknown", "unknown"};
 
     // receiver information
-    int         id_rec   = -1;
-    std::string name_rec = "unknown";
+    // for data_type = 0, id_recs[0] is the receiver id;
+    // for data_type = 1, id_recs[0] and id_recs[1] are the receiver ids;
+    // for data_type = 2, id_recs[0] is the receiver id;
+    std::vector<int>            id_rec_pair = {-1, -1};
+    std::vector<std::string>    name_rec_pair = {"unknown", "unknown"};
 
     // traveltime
-    CUSTOMREAL travel_time     = -999.0;
-    CUSTOMREAL travel_time_obs = -999.0;
+    CUSTOMREAL travel_time     = -999.0;        // synthetic travel time from id_srcs[0] to id_recs[0]
+    CUSTOMREAL dif_travel_time = -999.0;        // synthetic differential travel time for specific data tpye. (type_type = 1 or 2)
+    // observed time
+    CUSTOMREAL time_observation = -999.0;        // observed travel time for data_type = 0; observed differential travel time for data_type = 1 or 2 
 
-    // receiver pair infomation
-    bool is_rec_pair                       = false;   // common source differential traveltime
-    std::vector<int>         id_rec_pair   = {-1,-1};
-    std::vector<std::string> name_rec_pair = {"unknown","unknown"};
 
-    // common source differential travel time
-    CUSTOMREAL cs_dif_travel_time     = -999.0;
-    CUSTOMREAL cs_dif_travel_time_obs = -999.0;
+    // bool is_src_rec = false; // absolute traveltime, single source - receiver
 
-    // source pair infomation
-    bool                     is_src_pair   = false;   // common receiver differential traveltime (for future)
-    std::vector<int>         id_src_pair   = {-1,-1};
-    std::vector<std::string> name_src_pair = {"unknown","unknown"};
+    // // source information
+    // int         id_src   = -1;
+    // std::string name_src = "unknown";
 
-    // common receiver differential travel time
-    CUSTOMREAL cr_dif_travel_time     = -999.0;
-    CUSTOMREAL cr_dif_travel_time_obs = -999.0;
+    // // receiver information
+    // int         id_rec   = -1;
+    // std::string name_rec = "unknown";
+
+    // // traveltime
+    // CUSTOMREAL travel_time     = -999.0;
+    // CUSTOMREAL travel_time_obs = -999.0;
+
+    // // receiver pair infomation
+    // bool is_rec_pair                       = false;   // common source differential traveltime
+    // std::vector<int>         id_rec_pair   = {-1,-1};
+    // std::vector<std::string> name_rec_pair = {"unknown","unknown"};
+
+    // // common source differential travel time
+    // CUSTOMREAL cs_dif_travel_time     = -999.0;
+    // CUSTOMREAL cs_dif_travel_time_obs = -999.0;
+
+    // // source pair infomation
+    // bool                     is_src_pair   = false;   // common receiver differential traveltime (for future)
+    // std::vector<int>         id_src_pair   = {-1,-1};
+    // std::vector<std::string> name_src_pair = {"unknown","unknown"};
+
+    // // common receiver differential travel time
+    // CUSTOMREAL cr_dif_travel_time     = -999.0;
+    // CUSTOMREAL cr_dif_travel_time_obs = -999.0;
 
     // source relocation
     CUSTOMREAL DTi          = 0.0;

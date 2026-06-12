@@ -204,14 +204,14 @@ void parse_src_rec_file(std::string& src_rec_file, \
                     data.weight_reloc= data.data_weight * abs_time_local_weight_reloc;
                     data.phase       = tokens[6];
 
-                    data.is_src_rec      = true;
-                    data.id_src          = src_id;
-                    data.name_src        = src_name;
-                    data.id_rec          = rec.id;
-                    data.name_rec        = rec.name;
-                    data.travel_time_obs = static_cast<CUSTOMREAL>(std::stod(tokens[7])); // store read data
+                    data.data_type          = DATA_TYPE_ABS;
+                    data.id_src_pair[0]     = src_id;
+                    data.name_src_pair[0]   = src_name;
+                    data.id_rec_pair[0]     = rec.id;
+                    data.name_rec_pair[0]   = rec.name;
+                    data.time_observation   = static_cast<CUSTOMREAL>(std::stod(tokens[7])); // store read data
 
-                    data_map[data.name_src][data.name_rec].push_back(data);
+                    data_map[data.name_src_pair[0]][data.name_rec_pair[0]].push_back(data);
 
                     // store receiver name of onle receiver line in src rec file
                     rec_name_list.push_back(rec_name_list_one_line);
@@ -252,12 +252,12 @@ void parse_src_rec_file(std::string& src_rec_file, \
                     //data.id_src_single          = src_id;
                     //data.name_src_single        = src_name;
                     // use common variables with src-rec data
-                    data.id_src          = src_id;
-                    data.name_src        = src_name;
+                    // data.id_src          = src_id;
+                    // data.name_src        = src_name;
 
                     // store the id and name of the first receiver (just used for key of the data_map)
-                    data.id_rec          = rec.id;
-                    data.name_rec        = rec.name;
+                    // data.id_rec          = rec.id;
+                    // data.name_rec        = rec.name;
 
                     // determine this data is cr_dif or cs_dif
                     bool is_cr_dif = tokens[11].find("cr")!=std::string::npos;
@@ -279,14 +279,16 @@ void parse_src_rec_file(std::string& src_rec_file, \
                         rec_name_list_one_line.push_back(src2.name);
                         rec_name_list_one_line.push_back("cr");
                         // common receiver differential traveltime data
-                        data.is_src_pair            = true;
+                        data.data_type              = DATA_TYPE_CRDIF;
                         data.id_src_pair            = {src_id, src2.id};
                         data.name_src_pair          = {src_name, src2.name};
-                        data.cr_dif_travel_time_obs = static_cast<CUSTOMREAL>(std::stod(tokens[12])); // store read data
+                        data.id_rec_pair            = {rec.id, -1}; 
+                        data.name_rec_pair          = {rec.name, "unknown"}; 
+                        data.time_observation       = static_cast<CUSTOMREAL>(std::stod(tokens[12])); // store read data
 
                         data.weight         = data.data_weight * cr_dif_time_local_weight;
                         data.weight_reloc   = data.data_weight * cr_dif_time_local_weight_reloc;
-                        data_map[data.name_src_pair[0]][data.name_rec].push_back(data); // USE ONE-DATAMAP-FOR-ONE-SRCREC-LINE
+                        data_map[data.name_src_pair[0]][data.name_rec_pair[0]].push_back(data); // USE ONE-DATAMAP-FOR-ONE-SRCREC-LINE
                     } else {
                         // cs_dif data
                         SrcRecInfo rec2;
@@ -305,14 +307,16 @@ void parse_src_rec_file(std::string& src_rec_file, \
                         rec_name_list_one_line.push_back("cs");
 
                         // common source differential traveltime data
-                        data.is_rec_pair            = true;
+                        data.data_type              = DATA_TYPE_CSDIF;
                         data.id_rec_pair            = {rec.id, rec2.id};
                         data.name_rec_pair          = {rec.name, rec2.name};
-                        data.cs_dif_travel_time_obs = static_cast<CUSTOMREAL>(std::stod(tokens[12])); // store read data
-
+                        data.id_src_pair            = {src_id, -1};
+                        data.name_src_pair          = {src_name, "unknown"};
+                        data.time_observation       = static_cast<CUSTOMREAL>(std::stod(tokens[12]));
+                        
                         data.weight       = data.data_weight * cs_dif_time_local_weight;
                         data.weight_reloc = data.data_weight * cs_dif_time_local_weight_reloc;
-                        data_map[data.name_src][data.name_rec_pair[0]].push_back(data); // USE ONE-DATAMAP-FOR-ONE-SRCREC-LINE
+                        data_map[data.name_src_pair[0]][data.name_rec_pair[0]].push_back(data); // USE ONE-DATAMAP-FOR-ONE-SRCREC-LINE
                     }
 
                     // store receiver name of one receiver line in src rec file
@@ -384,22 +388,22 @@ void parse_src_rec_file(std::string& src_rec_file, \
         for (auto iter = data_map.begin(); iter != data_map.end(); iter++){
             for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
                 for (const auto& data : iter2->second) {
-                    if (data.is_src_rec) {
-                        std::cout   << "source name: "     << data.name_src
-                                    << ", receiver name: " << data.name_rec
-                                    << ", traveltime: "    << data.travel_time_obs
+                    if (data.data_type == DATA_TYPE_ABS) {
+                        std::cout   << "source name: "     << data.name_src_pair[0]
+                                    << ", receiver name: " << data.name_rec_pair[0]
+                                    << ", traveltime: "    << data.time_observation
                                     << std::endl;
-                    } else if (data.is_rec_pair) {
-                        std::cout   << "source name: "          << data.name_src
+                    } else if (data.data_type == DATA_TYPE_CSDIF) {
+                        std::cout   << "source name: "          << data.name_src_pair[0]
                                     << ", receiver pair name: " << data.name_rec_pair[0]
                                     << ", "                     << data.name_rec_pair[1]
-                                    << ", traveltime: "         << data.cs_dif_travel_time_obs
+                                    << ", traveltime: "         << data.time_observation
                                     << std::endl;
-                    } else if (data.is_src_pair) {
+                    } else if (data.data_type == DATA_TYPE_CRDIF) {
                         std::cout   << "source pair name: "     << data.name_src_pair[0]
                                     << ", "                     << data.name_src_pair[1]
-                                    << ", receiver name: "      << data.name_rec
-                                    << ", traveltime: "         << data.cr_dif_travel_time_obs
+                                    << ", receiver name: "      << data.name_rec_pair[0]
+                                    << ", traveltime: "         << data.time_observation
                                     << std::endl;
                     } else {
                         std::cout   << "error type of data" << std::endl;
@@ -616,9 +620,9 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
             for (auto& data: it_rec->second){
 
                 // absolute traveltime
-                if(data.is_src_rec){
-                    std::string name_src = data.name_src;
-                    std::string name_rec = data.name_rec;
+                if(data.data_type == DATA_TYPE_ABS){
+                    std::string name_src = data.name_src_pair[0];
+                    std::string name_rec = data.name_rec_pair[0];
 
                     // if name_src is out of region
                     if(src_map_tele.find(name_src) != src_map_tele.end()){
@@ -641,10 +645,10 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
                     }
 
                 // common receiver differential traveltime
-                } else if (data.is_src_pair){
+                } else if (data.data_type == DATA_TYPE_CRDIF){
                     std::string name_src1 = data.name_src_pair[0];
                     std::string name_src2 = data.name_src_pair[1];
-                    std::string name_rec  = data.name_rec;
+                    std::string name_rec  = data.name_rec_pair[0];
 
                     // if both sources are out of region
                     if(src_map_tele.find(name_src1) != src_map_tele.end() \
@@ -673,8 +677,8 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
                     }
 
                 // common source differential traveltime
-                } else if (data.is_rec_pair){
-                    std::string name_src  = data.name_src;
+                } else if (data.data_type == DATA_TYPE_CSDIF){
+                    std::string name_src  = data.name_src_pair[0];
                     std::string name_rec1 = data.name_rec_pair[0];
                     std::string name_rec2 = data.name_rec_pair[1];
 
@@ -739,13 +743,13 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
             for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
                 for(auto& data: it_rec->second){
                     // absolute traveltime
-                   if(data.is_src_rec){
+                   if(data.data_type == DATA_TYPE_ABS){
                         data.weight = data.weight / total_abs_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
                    // common receiver differential traveltime
-                   } else if (data.is_src_pair){
+                   } else if (data.data_type == DATA_TYPE_CRDIF){
                         data.weight = data.weight / total_cr_dif_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
                    // common source differential traveltime
-                   } else if (data.is_rec_pair){
+                   } else if (data.data_type == DATA_TYPE_CSDIF){
                         data.weight = data.weight / total_cs_dif_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
                    }
                 }
@@ -767,15 +771,15 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
             for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
                 for(auto& data: it_rec->second){
                     // absolute traveltime
-                   if(data.is_src_rec){
+                   if(data.data_type == DATA_TYPE_ABS){
                        data.weight_reloc = data.weight_reloc / total_abs_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
 
                    // common receiver differential traveltime
-                   } else if (data.is_src_pair){
+                   } else if (data.data_type == DATA_TYPE_CRDIF){
                        data.weight_reloc = data.weight_reloc / total_cr_dif_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
 
                    // common source differential traveltime
-                   } else if (data.is_rec_pair){
+                   } else if (data.data_type == DATA_TYPE_CSDIF){
                        data.weight_reloc = data.weight_reloc / total_cs_dif_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
                    }
                 }
@@ -791,15 +795,15 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
         for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
             for (auto& data: it_rec->second){
                 // absolute traveltime
-                if(data.is_src_rec){
+                if(data.data_type == DATA_TYPE_ABS){
                     N_abs_local_data += 1;
 
                 // common receiver differential traveltime
-                } else if (data.is_src_pair){
+                } else if (data.data_type == DATA_TYPE_CRDIF){
                     N_cr_dif_local_data += 1;
 
                 // common source differential traveltime
-                } else if (data.is_rec_pair){
+                } else if (data.data_type == DATA_TYPE_CSDIF){
                     N_cs_dif_local_data += 1;
                 }
             }
@@ -836,22 +840,22 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
         for (auto iter = data_map.begin(); iter != data_map.end(); iter++){
             for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
                 for (const auto& data : iter2->second) {
-                    if (data.is_src_rec) {
-                        std::cout   << "source name: "     << data.name_src
-                                    << ", receiver name: " << data.name_rec
-                                    << ", traveltime: "    << data.travel_time_obs
+                    if (data.data_type == DATA_TYPE_ABS) {
+                        std::cout   << "source name: "     << data.name_src_pair[0]
+                                    << ", receiver name: " << data.name_rec_pair[0]
+                                    << ", traveltime: "    << data.time_observation
                                     << std::endl;
-                    } else if (data.is_rec_pair) {
-                        std::cout   << "source name: "          << data.name_src
+                    } else if (data.data_type == DATA_TYPE_CSDIF) {
+                        std::cout   << "source name: "          << data.name_src_pair[0]
                                     << ", receiver pair name: " << data.name_rec_pair[0]
                                     << ", "                     << data.name_rec_pair[1]
-                                    << ", traveltime: "         << data.cs_dif_travel_time_obs
+                                    << ", traveltime: "         << data.time_observation
                                     << std::endl;
-                    } else if (data.is_src_pair) {
+                    } else if (data.data_type == DATA_TYPE_CRDIF) {
                         std::cout   << "source pair name: "     << data.name_src_pair[0]
                                     << ", "                     << data.name_src_pair[1]
-                                    << ", receiver name: "      << data.name_rec
-                                    << ", traveltime: "         << data.cr_dif_travel_time_obs
+                                    << ", receiver name: "      << data.name_rec_pair[0]
+                                    << ", traveltime: "         << data.time_observation
                                     << std::endl;
                     } else {
                         std::cout   << "error type of data" << std::endl;
@@ -877,22 +881,22 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
         for (auto iter = data_map_tele.begin(); iter != data_map_tele.end(); iter++){
             for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
                 for (const auto& data : iter2->second) {
-                    if (data.is_src_rec) {
-                        std::cout   << "source name: "     << data.name_src
-                                    << ", receiver name: " << data.name_rec
-                                    << ", traveltime: "    << data.travel_time_obs
+                    if (data.data_type == DATA_TYPE_ABS) {
+                        std::cout   << "source name: "     << data.name_src_pair[0]
+                                    << ", receiver name: " << data.name_rec_pair[0]
+                                    << ", traveltime: "    << data.time_observation
                                     << std::endl;
-                    } else if (data.is_rec_pair) {
-                        std::cout   << "source name: "          << data.name_src
+                    } else if (data.data_type == DATA_TYPE_CSDIF) {
+                        std::cout   << "source name: "          << data.name_src_pair[0]
                                     << ", receiver pair name: " << data.name_rec_pair[0]
                                     << ", "                     << data.name_rec_pair[1]
-                                    << ", traveltime: "         << data.cs_dif_travel_time_obs
+                                    << ", traveltime: "         << data.time_observation
                                     << std::endl;
-                    } else if (data.is_src_pair) {
+                    } else if (data.data_type == DATA_TYPE_CRDIF) {
                         std::cout   << "source pair name: "     << data.name_src_pair[0]
                                     << ", "                     << data.name_src_pair[1]
-                                    << ", receiver name: "      << data.name_rec
-                                    << ", traveltime: "         << data.cr_dif_travel_time_obs
+                                    << ", receiver name: "      << data.name_rec_pair[0]
+                                    << ", traveltime: "         << data.time_observation
                                     << std::endl;
                     } else {
                         std::cout   << "error type of data" << std::endl;
@@ -931,85 +935,68 @@ void do_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
 
                 DataInfo tmp_data = data;
 
-                if (tmp_data.is_src_rec){
+                if (tmp_data.data_type == DATA_TYPE_ABS){
                     // absolute traveltime  ->  absolute traveltime
                     // |    abs     |               |    abs     |
                     // |  s0 - r0   |       ->      |  r0 - s0   |
                     // |            |               |            |
                     // |            |               |            |
 
-                    tmp_data.id_src   = data.id_rec;
-                    tmp_data.name_src = data.name_rec;
-                    tmp_data.id_rec   = data.id_src;
-                    tmp_data.name_rec = data.name_src;
+                    tmp_data.id_src_pair[0]   = data.id_rec_pair[0];
+                    tmp_data.name_src_pair[0] = data.name_rec_pair[0];
+                    tmp_data.id_rec_pair[0]   = data.id_src_pair[0];
+                    tmp_data.name_rec_pair[0] = data.name_src_pair[0];
                     tmp_data.dual_data = false; // is not a dual data. contribute both objective function and kernel
-                    tmp_data_map[tmp_data.name_src][tmp_data.name_rec].push_back(tmp_data);
+                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
 
 
-                } else if (tmp_data.is_rec_pair) {
+                } else if (tmp_data.data_type == DATA_TYPE_CSDIF){
                     // common source differential traveltime  ->  common receiver differential traveltime
                     // |    cs_dif     |            |          cr_dif           |
                     // |   s0 - r1     |    ->      |   r1 - s0     r2 - s0     |
                     // |   |           |            |        |           |      |
                     // |   r2          |            |        r2          r1     |
 
-                    tmp_data.is_rec_pair            = false;
-                    tmp_data.is_src_pair            = true;
+                    tmp_data.data_type              = DATA_TYPE_CRDIF;
 
                     tmp_data.id_src_pair            = data.id_rec_pair;
                     tmp_data.name_src_pair          = data.name_rec_pair;
 
-                    tmp_data.id_rec                 = data.id_src;
-                    tmp_data.name_rec               = data.name_src;
-
-                    tmp_data.cr_dif_travel_time_obs = data.cs_dif_travel_time_obs;
-
-                    tmp_data.id_rec_pair            = {-1, -1};
-                    tmp_data.name_rec_pair          = {"unknown", "unknown"};
+                    tmp_data.id_rec_pair            = data.id_src_pair;
+                    tmp_data.name_rec_pair          = data.name_src_pair;
 
                     // one data
                     tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
-                    tmp_data.name_src = tmp_data.name_src_pair[0];
-                    tmp_data.id_src   = tmp_data.id_src_pair[0];
-                    tmp_data_map[tmp_data.name_src][tmp_data.name_rec].push_back(tmp_data);
+                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
 
                     // the other data
                     // Note: name_src = cr_dif time always represent time(src, rec1) - time(src,rec2). Thus, -1.0 is necessary
                     // Meanwhile, name_src(key) must equal data.name_src_pair[0] and data.name_src
                     tmp_data.dual_data = true; // the other is a dual data. contribute kernel only
                     tmp_data.name_src_pair = {data.name_rec_pair[1],data.name_rec_pair[0]};
-                    tmp_data.cr_dif_travel_time_obs = -1.0 * data.cs_dif_travel_time_obs;
-                    tmp_data.name_src = tmp_data.name_src_pair[0];
-                    tmp_data.id_src   = tmp_data.id_src_pair[0];
-                    tmp_data_map[tmp_data.name_src][tmp_data.name_rec].push_back(tmp_data);
+                    tmp_data.id_src_pair   = {data.id_rec_pair[1], data.id_rec_pair[0]};
+                    tmp_data.time_observation = -1.0 * data.time_observation;
+                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
 
 
-                } else if (tmp_data.is_src_pair) {
+                } else if (tmp_data.data_type == DATA_TYPE_CRDIF){
                     // common receiver differential traveltime  ->  common source differential traveltime
                     // |    cr_dif     |        |    cs_dif     |
                     // |   s0 - r3     |    ->  |   r3 - s0     |
                     // |        |      |        |   |           |
                     // |        s1     |        |   s1          |
 
-                    tmp_data.is_src_pair            = false;
-                    tmp_data.is_rec_pair            = true;
+                    tmp_data.data_type              = DATA_TYPE_CSDIF;
+
+                    tmp_data.id_src_pair            = data.id_rec_pair;
+                    tmp_data.name_src_pair          = data.name_rec_pair;
 
                     tmp_data.id_rec_pair            = data.id_src_pair;
                     tmp_data.name_rec_pair          = data.name_src_pair;
 
-                    tmp_data.id_src                 = data.id_rec;
-                    tmp_data.name_src               = data.name_rec;
-
-                    tmp_data.cs_dif_travel_time_obs = data.cr_dif_travel_time_obs;
-
-                    tmp_data.id_src_pair            = {-1, -1};
-                    tmp_data.name_src_pair          = {"unknown", "unknown"};
-
                     // only need one data for common source dif
                     tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
-                    tmp_data.name_rec = tmp_data.name_rec_pair[0];
-                    tmp_data.id_rec   = tmp_data.id_rec_pair[0];
-                    tmp_data_map[tmp_data.name_src][tmp_data.name_rec].push_back(tmp_data);
+                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
 
                 }
 
@@ -1057,25 +1044,25 @@ void do_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
             for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
                 for(const auto& data: it_rec->second){
 
-                    if (data.is_src_rec){
+                    if (data.data_type == DATA_TYPE_ABS){
                         std::cout   << "key: it_src, it_rec: " << it_src->first << ", " << it_rec->first
-                                    << ", absolute traveltime: " << data.travel_time_obs
-                                    << ", source name: "       << data.name_src
-                                    << ", receiver name: "     << data.name_rec
+                                    << ", absolute traveltime: " << data.time_observation
+                                    << ", source name: "       << data.name_src_pair[0]
+                                    << ", receiver name: "     << data.name_rec_pair[0]
                                     << std::endl;
-                    } else if (data.is_rec_pair){
+                    } else if (data.data_type == DATA_TYPE_CSDIF){
                         std::cout   << "key: it_src, it_rec: "  << it_src->first << ", " << it_rec->first
-                                    << ", common source differential traveltime: " << data.cs_dif_travel_time_obs
-                                    << ", source name: "                         << data.name_src
+                                    << ", common source differential traveltime: " << data.time_observation
+                                    << ", source name: "                         << data.name_src_pair[0]
                                     << ", receiver pair name: "                  << data.name_rec_pair[0]
                                     << ", "                                      << data.name_rec_pair[1]
                                     << std::endl;
-                    } else if (data.is_src_pair){
+                    } else if (data.data_type == DATA_TYPE_CRDIF){
                         std::cout   << "key: it_src, it_rec: "    << it_src->first << ", " << it_rec->first
-                                    << ", common receiver differential traveltime: " << data.cr_dif_travel_time_obs
+                                    << ", common receiver differential traveltime: " << data.time_observation
                                     << ", source pair name: "                      << data.name_src_pair[0]
                                     << ", "                                        << data.name_src_pair[1]
-                                    << ", receiver name: "                         << data.name_rec
+                                    << ", receiver name: "                         << data.name_rec_pair[0]
                                     << std::endl;
                     }
                 }
@@ -1111,25 +1098,23 @@ void do_not_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
                 DataInfo tmp_data = data;
 
                 // common receiver differential traveltime
-                if (tmp_data.is_src_pair) {
+                if (tmp_data.data_type == DATA_TYPE_CRDIF){
                     // keep the original data, meanwhile, add cr_dif data with the other source
                     // |    cr_dif     |            |          cr_dif           |
                     // |   s0 - r3     |    ->      |   s0 - r3     s1 - r3     |
                     // |        |      |            |        |           |      |
                     // |        s1     |            |        s1          s0     |
                     tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
-                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec].push_back(tmp_data);     // original data
+                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);     // original data
 
                     // the other data with the other source.
                     // Note: name_src = cr_dif time always represent time(src1, rec) - time(src2,rec). Thus, -1 is necessary
                     // Meanwhile, name_src(key) must equal name_src_pair[0]
                     tmp_data.dual_data = true; // the other is a dual data. contribute kernel only
-                    tmp_data.name_src       = data.name_src_pair[1];
-                    tmp_data.id_src         = data.id_src_pair[1];
                     tmp_data.name_src_pair  = {data.name_src_pair[1],data.name_src_pair[0]};
                     tmp_data.id_src_pair    = {data.id_src_pair[1],data.id_src_pair[0]};
-                    tmp_data.cr_dif_travel_time_obs  = -1.0 * data.cr_dif_travel_time_obs;
-                    tmp_data_map[tmp_data.name_src][tmp_data.name_rec].push_back(tmp_data);
+                    tmp_data.time_observation  = -1.0 * data.time_observation;
+                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
 
                 } else {    // abs and cs_dif data does not change
                     // abs data and cs_dif data remain unchanged
@@ -1138,7 +1123,7 @@ void do_not_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
                     // |            |   |           |
                     // |            |   r2          |
                     tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
-                    tmp_data_map[tmp_data.name_src][tmp_data.name_rec].push_back(tmp_data);
+                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
                 }
 
            }
@@ -1176,25 +1161,25 @@ void do_not_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
             for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
                 for(const auto& data: it_rec->second){
 
-                    if (data.is_src_rec){
+                    if (data.data_type == DATA_TYPE_ABS){
                         std::cout   << "key: it_src, it_rec: " << it_src->first << ", " << it_rec->first
-                                    << ", absolute traveltime: " << data.travel_time_obs
-                                    << ", source name: "       << data.name_src
-                                    << ", receiver name: "     << data.name_rec
+                                    << ", absolute traveltime: " << data.time_observation
+                                    << ", source name: "       << data.name_src_pair[0]
+                                    << ", receiver name: "     << data.name_rec_pair[0]
                                     << std::endl;
-                    } else if (data.is_rec_pair){
+                    } else if (data.data_type == DATA_TYPE_CSDIF){
                         std::cout   << "key: it_src, it_rec: "  << it_src->first << ", " << it_rec->first
-                                    << ", common source differential traveltime: " << data.cs_dif_travel_time_obs
-                                    << ", source name: "                         << data.name_src
+                                    << ", common source differential traveltime: " << data.time_observation
+                                    << ", source name: "                         << data.name_src_pair[0]
                                     << ", receiver pair name: "                  << data.name_rec_pair[0]
                                     << ", "                                      << data.name_rec_pair[1]
                                     << std::endl;
-                    } else if (data.is_src_pair){
+                    } else if (data.data_type == DATA_TYPE_CRDIF){
                         std::cout   << "key: it_src, it_rec: "    << it_src->first << ", " << it_rec->first
-                                    << ", common receiver differential traveltime: " << data.cr_dif_travel_time_obs
+                                    << ", common receiver differential traveltime: " << data.time_observation
                                     << ", source pair name: "                      << data.name_src_pair[0]
                                     << ", "                                        << data.name_src_pair[1]
-                                    << ", receiver name: "                         << data.name_rec
+                                    << ", receiver name: "                         << data.name_rec_pair[0]
                                     << std::endl;
                     }
                 }
@@ -1282,25 +1267,25 @@ void merge_region_and_tele_src(std::map<std::string, SrcRecInfo> &src_map,
             for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
                 for(const auto& data: it_rec->second){
 
-                    if (data.is_src_rec){
+                    if (data.data_type == DATA_TYPE_ABS){
                         std::cout   << "key: it_src, it_rec: " << it_src->first << ", " << it_rec->first
-                                    << ", absolute traveltime: " << data.travel_time_obs
-                                    << ", source name: "       << data.name_src
-                                    << ", receiver name: "     << data.name_rec
+                                    << ", absolute traveltime: " << data.time_observation
+                                    << ", source name: "       << data.name_src_pair[0]
+                                    << ", receiver name: "     << data.name_rec_pair[0]
                                     << std::endl;
-                    } else if (data.is_rec_pair){
+                    } else if (data.data_type == DATA_TYPE_CSDIF){
                         std::cout   << "key: it_src, it_rec: "  << it_src->first << ", " << it_rec->first
-                                    << ", common source differential traveltime: " << data.cs_dif_travel_time_obs
-                                    << ", source name: "                         << data.name_src
+                                    << ", common source differential traveltime: " << data.time_observation
+                                    << ", source name: "                         << data.name_src_pair[0]
                                     << ", receiver pair name: "                  << data.name_rec_pair[0]
                                     << ", "                                      << data.name_rec_pair[1]
                                     << std::endl;
-                    } else if (data.is_src_pair){
+                    } else if (data.data_type == DATA_TYPE_CRDIF){
                         std::cout   << "key: it_src, it_rec: "    << it_src->first << ", " << it_rec->first
-                                    << ", common receiver differential traveltime: " << data.cr_dif_travel_time_obs
+                                    << ", common receiver differential traveltime: " << data.time_observation
                                     << ", source pair name: "                      << data.name_src_pair[0]
                                     << ", "                                        << data.name_src_pair[1]
-                                    << ", receiver name: "                         << data.name_rec
+                                    << ", receiver name: "                         << data.name_rec_pair[0]
                                     << std::endl;
                     }
                 }
@@ -1367,7 +1352,7 @@ void distribute_src_rec_data(std::map<std::string, SrcRecInfo>&                 
                             data_map_this_sim[src_name][iter->first].push_back(data);
 
                             // store the second receiver for rec_pair
-                            if (data.is_rec_pair){
+                            if (data.data_type == DATA_TYPE_CSDIF){
                                 rec_map_this_sim[data.name_rec_pair[1]] = rec_map[data.name_rec_pair[1]];
                                 rec_name_list_this_sim.push_back(data.name_rec_pair[1]);
                             }
@@ -1401,8 +1386,9 @@ void distribute_src_rec_data(std::map<std::string, SrcRecInfo>&                 
                                 send_data_info_inter_sim(data, dst_id_sim);
 
                                 // send the second receiver for rec_pair
-                                if (data.is_rec_pair)
+                                if (data.data_type == DATA_TYPE_CSDIF){
                                     send_rec_info_inter_sim(rec_map[data.name_rec_pair[1]], dst_id_sim);
+                                }
                             }
 
                         }
@@ -1445,10 +1431,10 @@ void distribute_src_rec_data(std::map<std::string, SrcRecInfo>&                 
                             // receive data_info from the main process of dst_id_sim
                             recv_data_info_inter_sim(tmp_DataInfo, 0);
                             // add the received data_info to the data_info
-                            data_map_this_sim[tmp_DataInfo.name_src][tmp_DataInfo.name_rec].push_back(tmp_DataInfo);
+                            data_map_this_sim[tmp_DataInfo.name_src_pair[0]][tmp_DataInfo.name_rec_pair[0]].push_back(tmp_DataInfo);
 
                             // store the second receiver for rec_pair
-                            if (tmp_DataInfo.is_rec_pair){
+                            if (tmp_DataInfo.data_type == DATA_TYPE_CSDIF){
                                 recv_rec_info_inter_sim(rec_map_this_sim[tmp_DataInfo.name_rec_pair[1]], 0);
                                 rec_name_list_this_sim.push_back(tmp_DataInfo.name_rec_pair[1]);
                             }
@@ -1669,39 +1655,18 @@ void send_data_info_inter_sim(DataInfo &data, int dest){
     send_cr_single_sim(&data.weight_reloc, dest);
     send_str_sim(data.phase, dest);
 
-    send_i_single_sim(&data.id_src, dest);
-    send_str_sim(data.name_src, dest);
-    send_i_single_sim(&data.id_rec, dest);
-    send_str_sim(data.name_rec, dest);
-
-    send_bool_single_sim(&data.is_src_rec,  dest);
-    send_bool_single_sim(&data.is_rec_pair, dest);
-    send_bool_single_sim(&data.is_src_pair, dest);
+    send_i_single_sim(&data.data_type, dest);
 
     send_bool_single_sim(&data.dual_data, dest);
 
-    if (data.is_src_rec){
-       send_cr_single_sim(&data.travel_time_obs, dest);
-    }
+    send_cr_single_sim(&data.time_observation, dest);
 
-    if (data.is_rec_pair){
-        //send_i_single_sim(&data.id_src_single, dest);
-        //send_str_sim(data.name_src_single, dest);
-        for (int ipair=0; ipair<2; ipair++){
-            send_i_single_sim(&data.id_rec_pair[ipair], dest);
-            send_str_sim(data.name_rec_pair[ipair], dest);
-        }
-        send_cr_single_sim(&data.cs_dif_travel_time_obs, dest);
-    }
+    for (int ipair=0; ipair<2; ipair++){
+        send_i_single_sim(&data.id_rec_pair[ipair], dest);
+        send_str_sim(data.name_rec_pair[ipair], dest);
 
-    if (data.is_src_pair){
-        send_i_single_sim(&data.id_rec, dest);
-        send_str_sim(data.name_rec, dest);
-        for (int ipair=0; ipair<2; ipair++){
-            send_i_single_sim(&data.id_src_pair[ipair], dest);
-            send_str_sim(data.name_src_pair[ipair], dest);
-        }
-        send_cr_single_sim(&data.cr_dif_travel_time_obs, dest);
+        send_i_single_sim(&data.id_src_pair[ipair], dest);
+        send_str_sim(data.name_src_pair[ipair], dest);
     }
 }
 
@@ -1713,39 +1678,17 @@ void recv_data_info_inter_sim(DataInfo &data, int orig){
     recv_cr_single_sim(&data.weight_reloc, orig);
     recv_str_sim(data.phase, orig);
 
-    recv_i_single_sim(&data.id_src, orig);
-    recv_str_sim(data.name_src, orig);
-    recv_i_single_sim(&data.id_rec, orig);
-    recv_str_sim(data.name_rec, orig);
-
-    recv_bool_single_sim(&data.is_src_rec, orig);
-    recv_bool_single_sim(&data.is_rec_pair, orig);
-    recv_bool_single_sim(&data.is_src_pair, orig);
+    recv_i_single_sim(&data.data_type, orig);
 
     recv_bool_single_sim(&data.dual_data, orig);
 
-    if (data.is_src_rec){
-       recv_cr_single_sim(&data.travel_time_obs, orig);
-    }
+    recv_cr_single_sim(&data.time_observation, orig);
+    
+    for (int ipair=0; ipair<2; ipair++){
+        recv_i_single_sim(&data.id_rec_pair[ipair], orig);
+        recv_str_sim(data.name_rec_pair[ipair], orig);
 
-    if (data.is_rec_pair){
-        //recv_i_single_sim(&data.id_src_single, orig);
-        //recv_str_sim(data.name_src_single, orig);
-        for (int ipair=0; ipair<2; ipair++){
-            recv_i_single_sim(&data.id_rec_pair[ipair], orig);
-            recv_str_sim(data.name_rec_pair[ipair], orig);
-        }
-        recv_cr_single_sim(&data.cs_dif_travel_time_obs, orig);
+        recv_i_single_sim(&data.id_src_pair[ipair], orig);
+        recv_str_sim(data.name_src_pair[ipair], orig);
     }
-
-    if (data.is_src_pair){
-        recv_i_single_sim(&data.id_rec, orig);
-        recv_str_sim(data.name_rec, orig);
-        for (int ipair=0; ipair<2; ipair++){
-            recv_i_single_sim(&data.id_src_pair[ipair], orig);
-            recv_str_sim(data.name_src_pair[ipair], orig);
-        }
-        recv_cr_single_sim(&data.cr_dif_travel_time_obs, orig);
-    }
-
 }

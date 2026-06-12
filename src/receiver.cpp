@@ -27,17 +27,17 @@ void Receiver::interpolate_and_store_arrival_times_at_rec_position(InputParams& 
             for (auto it_rec = IP.data_map[name_sim_src].begin(); it_rec != IP.data_map[name_sim_src].end(); ++it_rec) {
                 for (auto& data: it_rec->second){
 
-                    if (data.is_src_rec){   // absolute traveltime
+                    if (data.data_type == DATA_TYPE_ABS){   // absolute traveltime
                         // send receivr name as a starting signal for interpolation
 
                         // send dummy integer with key
                         broadcast_i_single(mykey_send, 0);
-                        broadcast_str(data.name_rec, 0);
+                        broadcast_str(data.name_rec_pair[0], 0);
 
                         // store travel time on single receiver and double receivers (what is double receivers? by CHEN Jing)
                         // store travel time from name_sim_src(src_name) to it_rec->first(rec_name)
                         data.travel_time = interpolate_travel_time(grid, IP, name_sim_src, it_rec->first);
-                    } else if (data.is_rec_pair) {
+                    } else if (data.data_type == DATA_TYPE_CSDIF) {     // common source differential traveltime
                         // store travel time from name_sim_src(src_name) to rec1_name and rec2_name
                         // calculate travel times for two receivers
                         broadcast_i_single(mykey_send, 0);
@@ -53,11 +53,11 @@ void Receiver::interpolate_and_store_arrival_times_at_rec_position(InputParams& 
                         data.travel_time = travel_time;
 
                         // calculate and store travel time difference
-                        data.cs_dif_travel_time = travel_time - travel_time_2;
-                    } else if (data.is_src_pair) {
+                        data.dif_travel_time = travel_time - travel_time_2;
+                    } else if (data.data_type == DATA_TYPE_CRDIF) {     // common receiver differential traveltime
                         // store travel time from name_sim_src(src1_name) to it_rec->first(rec_name)
                         broadcast_i_single(mykey_send, 0);
-                        broadcast_str(data.name_rec, 0);
+                        broadcast_str(data.name_rec_pair[0], 0);
                         data.travel_time = interpolate_travel_time(grid, IP, name_sim_src, it_rec->first);
 
                     } else {
@@ -117,16 +117,16 @@ void Receiver::calculate_adjoint_source(InputParams& IP, const std::string& name
                 //
                 // absolute traveltime
                 //
-                if (data.is_src_rec){
+                if (data.data_type == DATA_TYPE_ABS) {
                     if (!IP.get_use_abs()){ // if we do not use abs data, ignore to consider the total obj and adjoint source
                         continue;
                     }
 
 
-                    std::string name_src      = data.name_src;
-                    std::string name_rec      = data.name_rec;
+                    std::string name_src      = data.name_src_pair[0];
+                    std::string name_rec      = data.name_rec_pair[0];
                     CUSTOMREAL syn_time       = data.travel_time;
-                    CUSTOMREAL obs_time       = data.travel_time_obs;
+                    CUSTOMREAL obs_time       = data.time_observation;
 
                     // assign local weight
                     CUSTOMREAL  local_weight = _1_CR;
@@ -161,17 +161,17 @@ void Receiver::calculate_adjoint_source(InputParams& IP, const std::string& name
                 //
                 // common receiver differential traveltime && we use this data
                 //
-                } else if (data.is_src_pair) {
+                } else if (data.data_type == DATA_TYPE_CRDIF) {
                     if (!((IP.get_use_cr() && !IP.get_is_srcrec_swap()) ||
                           (IP.get_use_cs() &&  IP.get_is_srcrec_swap())))
                         continue;   // if we do not use this data (cr + not swap) or (cs + swap) or (cs + tele), ignore to consider the adjoint source
 
                     std::string name_src1 = data.name_src_pair[0];
                     std::string name_src2 = data.name_src_pair[1];
-                    std::string name_rec  = data.name_rec;
+                    std::string name_rec  = data.name_rec_pair[0];
 
-                    CUSTOMREAL syn_dif_time   = data.cr_dif_travel_time;
-                    CUSTOMREAL obs_dif_time   = data.cr_dif_travel_time_obs;
+                    CUSTOMREAL syn_dif_time   = data.dif_travel_time;
+                    CUSTOMREAL obs_dif_time   = data.time_observation;
 
                     // assign local weight
                     CUSTOMREAL  local_weight = _1_CR;
@@ -220,8 +220,8 @@ void Receiver::calculate_adjoint_source(InputParams& IP, const std::string& name
                     } else if (name_sim_src == name_src2) { // after modification, this case does not occur. since  name_sim_src = data.name_src = data.name_src_pair[0]
                         // thus, this part indicate an error.
                         std::cout   << "cs_dif data strcuture error occur. name_sim_src: " << name_sim_src
-                                    << ", data.name_src: " << data.name_src
                                     << ", data.name_src_pair[0]: " << data.name_src_pair[0]
+                                    << ", data.name_src_pair[1]: " << data.name_src_pair[1]
                                     << std::endl;
                     } else {
                         std::cout << "error match of data in function: calculate_adjoint_source() " << std::endl;
@@ -230,18 +230,18 @@ void Receiver::calculate_adjoint_source(InputParams& IP, const std::string& name
                 //
                 // common source differential traveltime
                 //
-                } else if (data.is_rec_pair) {
+                } else if (data.data_type == DATA_TYPE_CSDIF) {
                     if (!((IP.get_use_cs() && !IP.get_is_srcrec_swap()) ||
                           (IP.get_use_cr() &&  IP.get_is_srcrec_swap()) ||
                           (IP.get_use_cs() &&  is_tele                )))
                         continue; // if we do not use this data (cs + not swap) or (cr + swap), ignore to consider the total obj and adjoint source
 
-                    std::string name_src  = data.name_src;
+                    std::string name_src  = data.name_src_pair[0];
                     std::string name_rec1 = data.name_rec_pair[0];
                     std::string name_rec2 = data.name_rec_pair[1];
 
-                    CUSTOMREAL syn_dif_time = data.cs_dif_travel_time;
-                    CUSTOMREAL obs_dif_time = data.cs_dif_travel_time_obs;
+                    CUSTOMREAL syn_dif_time = data.dif_travel_time;
+                    CUSTOMREAL obs_dif_time = data.time_observation;
 
                     if(is_tele){    // station correction for teleseismic data
                         syn_dif_time = syn_dif_time + IP.rec_map[name_rec1].sta_correct - IP.rec_map[name_rec2].sta_correct;
@@ -341,15 +341,15 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
                     //
                     // absolute traveltime
                     //
-                    if (data.is_src_rec){
+                    if (data.data_type == DATA_TYPE_ABS) {
 
-                        // error check (data.name_src_pair must be equal to name_sim1 and name_sim2)
-                        if (data.name_src != name_sim_src) continue;
+                        // error check (data.name_src_pair[0] must be equal to name_sim_src)
+                        if (data.name_src_pair[0] != name_sim_src) continue;
 
-                        std::string name_src      = data.name_src;
-                        std::string name_rec      = data.name_rec;
+                        std::string name_src      = data.name_src_pair[0];
+                        std::string name_rec      = data.name_rec_pair[0];
                         CUSTOMREAL syn_time       = data.travel_time;
-                        CUSTOMREAL obs_time       = data.travel_time_obs;
+                        CUSTOMREAL obs_time       = data.time_observation;
 
                         bool is_tele = (IP.get_src_point(name_src).is_out_of_region || IP.get_rec_point(name_rec).is_out_of_region);
                         if (is_tele){
@@ -380,17 +380,17 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
 
 
 
-                    } else if (data.is_src_pair) {
+                    } else if (data.data_type == DATA_TYPE_CRDIF) {  // common receiver differential traveltime
 
                         std::string name_src1 = data.name_src_pair[0];
                         std::string name_src2 = data.name_src_pair[1];
-                        std::string name_rec  = data.name_rec;
+                        std::string name_rec  = data.name_rec_pair[0];
 
                         // error check (data.name_src_pair must be equal to name_sim1 and name_sim2)
                         if (name_sim_src != name_src1 && name_sim_src != name_src2) continue;
 
-                        CUSTOMREAL syn_dif_time   = data.cr_dif_travel_time;
-                        CUSTOMREAL obs_dif_time   = data.cr_dif_travel_time_obs;
+                        CUSTOMREAL syn_dif_time   = data.dif_travel_time;
+                        CUSTOMREAL obs_dif_time   = data.time_observation;
 
                         bool is_tele = (IP.get_src_point(name_src1).is_out_of_region || \
                                         IP.get_src_point(name_src2).is_out_of_region || \
@@ -418,14 +418,14 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
                             obj     += 1.0 * my_square(syn_dif_time - obs_dif_time)*data.weight;
                         }
 
-                    } else if (data.is_rec_pair) {
+                    } else if (data.data_type == DATA_TYPE_CSDIF) {   // common source differential traveltime
 
-                        std::string name_src  = data.name_src;
+                        std::string name_src  = data.name_src_pair[0];
                         std::string name_rec1 = data.name_rec_pair[0];
                         std::string name_rec2 = data.name_rec_pair[1];
 
-                        CUSTOMREAL syn_dif_time = data.cs_dif_travel_time;
-                        CUSTOMREAL obs_dif_time = data.cs_dif_travel_time_obs;
+                        CUSTOMREAL syn_dif_time = data.dif_travel_time;
+                        CUSTOMREAL obs_dif_time = data.time_observation;
 
                         bool is_tele = (IP.get_src_point(name_src).is_out_of_region || \
                                         IP.get_rec_point(name_rec1).is_out_of_region || \
@@ -731,8 +731,8 @@ void Receiver::calculate_T_gradient(InputParams& IP, Grid& grid, const std::stri
             for (auto iter = IP.data_map[name_sim_src].begin(); iter != IP.data_map[name_sim_src].end(); iter++){
                 for (auto& data: iter->second) {
                     // case 1: absolute traveltime for reloc
-                    if (data.is_src_rec && IP.get_use_abs_reloc()){   // abs data && we use it
-                        std::string name_rec = data.name_rec;
+                    if (data.data_type == DATA_TYPE_ABS && IP.get_use_abs_reloc()){   // abs data && we use it
+                        std::string name_rec = data.name_rec_pair[0];
 
                         if(IP.rec_map[name_rec].is_stop) continue;  // if this receiver (swapped source) is already located
 
@@ -751,7 +751,8 @@ void Receiver::calculate_T_gradient(InputParams& IP, Grid& grid, const std::stri
 
 
                     // case 2: common receiver (swapped source) double difference (double source, or double swapped receiver) for reloc
-                    } else if (data.is_rec_pair && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
+                    // in reloc, must swapped. thus, use cr mean sc here
+                    } else if (data.data_type == DATA_TYPE_CSDIF && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
                         std::string name_rec1 = data.name_rec_pair[0];
                         std::string name_rec2 = data.name_rec_pair[1];
 
@@ -778,10 +779,10 @@ void Receiver::calculate_T_gradient(InputParams& IP, Grid& grid, const std::stri
                         data.DTj_pair[1]  = DTijk[1];
                         data.DTk_pair[1]  = DTijk[2];
 
-                    } else if (data.is_src_pair && IP.get_use_cs_reloc()) {    // common source data (swapped common receiver) and we use it.
+                    } else if (data.data_type == DATA_TYPE_CRDIF && IP.get_use_cs_reloc()) {    // common source data (swapped common receiver) and we use it.
                         std::string name_src1 = data.name_src_pair[0];
                         std::string name_src2 = data.name_src_pair[1];
-                        std::string name_rec  = data.name_rec;
+                        std::string name_rec  = data.name_rec_pair[0];
 
                         if(IP.rec_map[name_rec].is_stop) continue;  // if this receiver (swapped source) is already located
 
@@ -1088,71 +1089,81 @@ std::vector<CUSTOMREAL> Receiver::calculate_obj_reloc(InputParams& IP, int i_ite
                     if (data.dual_data) continue; // dual data is not used for calculating obj and residual
 
                     // case 1: absolute traveltime for reloc
-                    if (data.is_src_rec){     // abs data && we use it
-                        std::string name_rec = data.name_rec;
+                    if (data.data_type == DATA_TYPE_ABS){     // abs data && we use it
+                        std::string name_rec = data.name_rec_pair[0];
+
+                        CUSTOMREAL travel_time     = data.travel_time;
+                        CUSTOMREAL travel_time_obs = data.time_observation;
 
                         // assign obj
                         if (IP.get_use_abs_reloc()){
-                            IP.rec_map[name_rec].vobj_src_reloc     += data.weight_reloc * my_square(data.travel_time - data.travel_time_obs + IP.rec_map[name_rec].tau_opt);
-                            obj                                     += data.weight_reloc * my_square(data.travel_time - data.travel_time_obs + IP.rec_map[name_rec].tau_opt);
+                            IP.rec_map[name_rec].vobj_src_reloc     += data.weight_reloc * my_square(travel_time - travel_time_obs + IP.rec_map[name_rec].tau_opt);
+                            obj                                     += data.weight_reloc * my_square(travel_time - travel_time_obs + IP.rec_map[name_rec].tau_opt);
                         }
                         // assign obj
-                        obj_abs                                     += data.weight_reloc * my_square(data.travel_time - data.travel_time_obs + IP.rec_map[name_rec].tau_opt);
+                        obj_abs                                     += data.weight_reloc * my_square(travel_time - travel_time_obs + IP.rec_map[name_rec].tau_opt);
 
                         // assign residual
-                        res                                         +=          (data.travel_time - data.travel_time_obs + IP.rec_map[name_rec].tau_opt);
-                        res_sq                                      += my_square(data.travel_time - data.travel_time_obs + IP.rec_map[name_rec].tau_opt);
+                        res                                         +=          (travel_time - travel_time_obs + IP.rec_map[name_rec].tau_opt);
+                        res_sq                                      += my_square(travel_time - travel_time_obs + IP.rec_map[name_rec].tau_opt);
 
-                        res_abs                                     +=          (data.travel_time - data.travel_time_obs + IP.rec_map[name_rec].tau_opt);
-                        res_abs_sq                                  += my_square(data.travel_time - data.travel_time_obs + IP.rec_map[name_rec].tau_opt);
+                        res_abs                                     +=          (travel_time - travel_time_obs + IP.rec_map[name_rec].tau_opt);
+                        res_abs_sq                                  += my_square(travel_time - travel_time_obs + IP.rec_map[name_rec].tau_opt);
 
                     // case 2: common receiver (swapped source) double difference (double source, or double swapped receiver) for reloc
-                    } else if (data.is_rec_pair ) {  // common receiver data (swapped common source)
+                    } else if (data.data_type == DATA_TYPE_CSDIF ) {  // common receiver data (swapped common source)
 
                         std::string name_rec1 = data.name_rec_pair[0];
                         std::string name_rec2 = data.name_rec_pair[1];
 
                         // if(IP.rec_map[name_rec1].is_stop && IP.rec_map[name_rec2].is_stop) continue;
 
+                        CUSTOMREAL cs_dif_travel_time     = data.dif_travel_time;
+                        CUSTOMREAL cs_dif_travel_time_obs = data.time_observation;
+
                         // assign obj (for EQ1, obj+1, for EQ2, obj+1, and for total obj also +1)
                         if (IP.get_use_cr_reloc()){
-                            IP.rec_map[name_rec1].vobj_src_reloc+= 1.0 * data.weight_reloc * my_square(data.cs_dif_travel_time - data.cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
-                            IP.rec_map[name_rec2].vobj_src_reloc+= 1.0 * data.weight_reloc * my_square(data.cs_dif_travel_time - data.cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
-                            obj                                 += 1.0 * data.weight_reloc * my_square(data.cs_dif_travel_time - data.cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
+                            IP.rec_map[name_rec1].vobj_src_reloc+= 1.0 * data.weight_reloc * my_square(cs_dif_travel_time - cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
+                            IP.rec_map[name_rec2].vobj_src_reloc+= 1.0 * data.weight_reloc * my_square(cs_dif_travel_time - cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
+                            obj                                 += 1.0 * data.weight_reloc * my_square(cs_dif_travel_time - cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
                         }
 
                         // assign obj
-                        obj_cs_dif                              += 1.0 * data.weight_reloc * my_square(data.cs_dif_travel_time - data.cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
+                        obj_cs_dif                              += 1.0 * data.weight_reloc * my_square(cs_dif_travel_time - cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
 
                         // assign residual
-                        res                                     += 1.0 *          (data.cs_dif_travel_time - data.cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
-                        res_sq                                  += 1.0 * my_square(data.cs_dif_travel_time - data.cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
+                        res                                     += 1.0 *          (cs_dif_travel_time - cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
+                        res_sq                                  += 1.0 * my_square(cs_dif_travel_time - cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
 
-                        res_cs_dif                              += 1.0 *          (data.cs_dif_travel_time - data.cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
-                        res_cs_dif_sq                           += 1.0 * my_square(data.cs_dif_travel_time - data.cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
+                        res_cs_dif                              += 1.0 *          (cs_dif_travel_time - cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
+                        res_cs_dif_sq                           += 1.0 * my_square(cs_dif_travel_time - cs_dif_travel_time_obs + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
 
                         // }
 
-                    } else if (data.is_src_pair) {  // we only record the obj of this kind of data
-                        std::string name_rec = data.name_rec;
+                    } else if (data.data_type == DATA_TYPE_CRDIF) {  // we only record the obj of this kind of data
+                        std::string name_rec = data.name_rec_pair[0];
 
                         // if(IP.rec_map[name_rec].is_stop) continue;
 
+                        CUSTOMREAL cr_dif_travel_time     = data.dif_travel_time;
+                        CUSTOMREAL cr_dif_travel_time_obs = data.time_observation;
+
+
                         // assign obj
                         if (IP.get_use_cs_reloc()){
-                            IP.rec_map[name_rec].vobj_src_reloc     += 1.0 * data.weight_reloc * my_square(data.cr_dif_travel_time - data.cr_dif_travel_time_obs);
-                            obj                                     += 1.0 * data.weight_reloc * my_square(data.cr_dif_travel_time - data.cr_dif_travel_time_obs);
+                            IP.rec_map[name_rec].vobj_src_reloc     += 1.0 * data.weight_reloc * my_square(cr_dif_travel_time - cr_dif_travel_time_obs);
+                            obj                                     += 1.0 * data.weight_reloc * my_square(cr_dif_travel_time - cr_dif_travel_time_obs);
                         }
 
                         // assign obj
-                        obj_cr_dif                                  += 1.0 * data.weight_reloc * my_square(data.cr_dif_travel_time - data.cr_dif_travel_time_obs);
+                        obj_cr_dif                                  += 1.0 * data.weight_reloc * my_square(cr_dif_travel_time - cr_dif_travel_time_obs);
 
                         // assign residual
-                        res                                         += 1.0 *          (data.cr_dif_travel_time - data.cr_dif_travel_time_obs);
-                        res_sq                                      += 1.0 * my_square(data.cr_dif_travel_time - data.cr_dif_travel_time_obs);
+                        res                                         += 1.0 *          (cr_dif_travel_time - cr_dif_travel_time_obs);
+                        res_sq                                      += 1.0 * my_square(cr_dif_travel_time - cr_dif_travel_time_obs);
 
-                        res_cr_dif                                  += 1.0 *          (data.cr_dif_travel_time - data.cr_dif_travel_time_obs);
-                        res_cr_dif_sq                               += 1.0 * my_square(data.cr_dif_travel_time - data.cr_dif_travel_time_obs);
+                        res_cr_dif                                  += 1.0 *          (cr_dif_travel_time - cr_dif_travel_time_obs);
+                        res_cr_dif_sq                               += 1.0 * my_square(cr_dif_travel_time - cr_dif_travel_time_obs);
 
                     } else {    // unsupported data (swapped common receiver, or others)
                         continue;
@@ -1235,13 +1246,13 @@ void Receiver::calculate_grad_obj_src_reloc(InputParams& IP, const std::string& 
         for (auto iter = IP.data_map[name_sim_src].begin(); iter != IP.data_map[name_sim_src].end(); iter++){
             for (const auto& data: iter->second) {
                 // case 1: absolute traveltime for reloc
-                if (data.is_src_rec && IP.get_use_abs_reloc()){   // abs data && we use it
-                    std::string name_rec = data.name_rec;
+                if (data.data_type == DATA_TYPE_ABS && IP.get_use_abs_reloc()){   // abs data && we use it
+                    std::string name_rec = data.name_rec_pair[0];
 
                     if(IP.rec_map[name_rec].is_stop) continue;  // if this receiver (swapped source) is already located
 
                     CUSTOMREAL syn_time       = data.travel_time;
-                    CUSTOMREAL obs_time       = data.travel_time_obs;
+                    CUSTOMREAL obs_time       = data.time_observation;
 
                     // local weight
                     CUSTOMREAL local_weight = 1.0;
@@ -1273,14 +1284,14 @@ void Receiver::calculate_grad_obj_src_reloc(InputParams& IP, const std::string& 
                     // count the data
                     IP.rec_map[name_rec].Ndata      += 1;
                 // case 2: common receiver (swapped source) double difference (double source, or double swapped receiver) for reloc
-                } else if (data.is_rec_pair && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
+                } else if (data.data_type == DATA_TYPE_CSDIF && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
                     std::string name_rec1 = data.name_rec_pair[0];
                     std::string name_rec2 = data.name_rec_pair[1];
 
                     if(IP.rec_map[name_rec1].is_stop && IP.rec_map[name_rec2].is_stop) continue;  // if both receivers (swapped sources) are already located
 
-                    CUSTOMREAL syn_dif_time       = data.cs_dif_travel_time;
-                    CUSTOMREAL obs_dif_time       = data.cs_dif_travel_time_obs;
+                    CUSTOMREAL syn_dif_time       = data.dif_travel_time;
+                    CUSTOMREAL obs_dif_time       = data.time_observation;
 
                     // assign local weight
                     CUSTOMREAL  local_weight = 1.0;
@@ -1324,15 +1335,15 @@ void Receiver::calculate_grad_obj_src_reloc(InputParams& IP, const std::string& 
                     }
 
                 // case 3: common source (swapped receiver) double difference (double receiver, or double swapped source) for reloc
-                } else if (data.is_src_pair && IP.get_use_cs_reloc()) {  // common receiver data (swapped common source) and we use it.
+                } else if (data.data_type == DATA_TYPE_CRDIF && IP.get_use_cs_reloc()) {  // common receiver data (swapped common source) and we use it.
                     std::string name_src1 = data.name_src_pair[0];
                     std::string name_src2 = data.name_src_pair[1];
-                    std::string name_rec  = data.name_rec;
+                    std::string name_rec  = data.name_rec_pair[0];
 
                     if(IP.rec_map[name_rec].is_stop) continue;  // if both receivers (swapped sources) are already located
 
-                    CUSTOMREAL syn_dif_time       = data.cr_dif_travel_time;
-                    CUSTOMREAL obs_dif_time       = data.cr_dif_travel_time_obs;
+                    CUSTOMREAL syn_dif_time       = data.dif_travel_time;
+                    CUSTOMREAL obs_dif_time       = data.time_observation;
 
                     // assign local weight
                     CUSTOMREAL  local_weight = 1.0;

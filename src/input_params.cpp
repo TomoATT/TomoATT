@@ -2044,7 +2044,7 @@ void InputParams::generate_src_map_with_common_receiver(std::map<std::string, st
         for(auto iter = data_map_tmp.begin(); iter != data_map_tmp.end(); iter++){
             for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
                 for (auto& data: iter2->second){
-                    if (data.is_src_pair){
+                    if (data.data_type == DATA_TYPE_CRDIF) {
                         // add this source and turn to the next source
                         src_map_comm_rec_tmp[iter->first] = src_map[iter->first];
                         // add this source to the list of sources that will be looped in each iteration
@@ -2142,7 +2142,7 @@ void InputParams::gather_all_arrival_times_to_main(){
                             // store travel time in all datainfo element of each src-rec pair
                             data_map_all[name_src][iter->first].at(i_data).travel_time = iter->second.at(i_data).travel_time;
                             // common source double difference traveltime
-                            data_map_all[name_src][iter->first].at(i_data).cs_dif_travel_time = iter->second.at(i_data).cs_dif_travel_time;
+                            data_map_all[name_src][iter->first].at(i_data).dif_travel_time = iter->second.at(i_data).dif_travel_time;
                         }
                     }
                 } else {
@@ -2177,7 +2177,7 @@ void InputParams::gather_all_arrival_times_to_main(){
                         // then receive travel time (and common source double difference traveltime)
                         for (auto& data: data_map_all[name_src][name_rec]) {
                             recv_cr_single_sim(&(data.travel_time), id_sim_group);
-                            recv_cr_single_sim(&(data.cs_dif_travel_time), id_sim_group);
+                            recv_cr_single_sim(&(data.dif_travel_time), id_sim_group);
                         }
                     }
 
@@ -2198,7 +2198,7 @@ void InputParams::gather_all_arrival_times_to_main(){
                         // then send travel time (and common source double difference traveltime)
                         for (auto& data: iter->second){
                             send_cr_single_sim(&(data.travel_time), 0);
-                            send_cr_single_sim(&(data.cs_dif_travel_time), 0);
+                            send_cr_single_sim(&(data.dif_travel_time), 0);
                         }
                     }
                 } else {
@@ -2305,9 +2305,9 @@ void InputParams::gather_traveltimes_and_calc_syn_diff(){
             for (auto iter = data_map_all.begin(); iter != data_map_all.end(); iter++){
                 for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
                     for (auto& data: iter2->second){
-                        if (data.is_src_pair){
-                            data.cr_dif_travel_time = data_map_all[data.name_src_pair[0]][data.name_rec].at(0).travel_time \
-                                                    - data_map_all[data.name_src_pair[1]][data.name_rec].at(0).travel_time;
+                        if (data.data_type == DATA_TYPE_CRDIF) {
+                            data.dif_travel_time = data_map_all[data.name_src_pair[0]][data.name_rec_pair[0]].at(0).travel_time \
+                                                    - data_map_all[data.name_src_pair[1]][data.name_rec_pair[0]].at(0).travel_time;
                             // n_total_src_pair++;
                        }
                     }
@@ -2330,7 +2330,7 @@ void InputParams::gather_traveltimes_and_calc_syn_diff(){
                     for (int i_data = 0; i_data < (int)iter->second.size(); i_data++){
                         auto& data = iter->second.at(i_data);
 
-                        if (data.is_src_pair){
+                        if (data.data_type == DATA_TYPE_CRDIF) {
                             std::string name_src1 = data.name_src_pair[0];
                             std::string name_src2 = data.name_src_pair[1];
                             // name_src1 should be the same as name_src for set_cr_dif_to_src_pair (replace otherwise)
@@ -2342,7 +2342,7 @@ void InputParams::gather_traveltimes_and_calc_syn_diff(){
 
                             if (id_sim_group == 0) {
                                 // this source is calculated in the main simultaneous run group
-                                set_cr_dif_to_src_pair(data_map, name_src1, name_src2, name_rec, data.cr_dif_travel_time);
+                                set_cr_dif_to_src_pair(data_map, name_src1, name_src2, name_rec, data.dif_travel_time);
                             } else {
                                 // send signal with dummy int
                                 int dummy = 0;
@@ -2357,7 +2357,7 @@ void InputParams::gather_traveltimes_and_calc_syn_diff(){
                                 // send index of data
                                 send_i_single_sim(&i_data, id_sim_group);
                                 // send travel time difference
-                                send_cr_single_sim(&(data.cr_dif_travel_time), id_sim_group);
+                                send_cr_single_sim(&(data.dif_travel_time), id_sim_group);
                             }
                         }
                     }
@@ -2640,11 +2640,12 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                         // common source differential traveltime data
                         CUSTOMREAL  cs_dif_travel_time;
 
-                        if (get_is_srcrec_swap() && !is_tele){ // reverse swap src and rec
-                            cs_dif_travel_time = data.cr_dif_travel_time;
-                        } else {// do not swap
-                            cs_dif_travel_time = data.cs_dif_travel_time;
-                        }
+                        // if (get_is_srcrec_swap() && !is_tele){ // reverse swap src and rec
+                        //     cs_dif_travel_time = data.dif_travel_time;
+                        // } else {// do not swap
+                        //     cs_dif_travel_time = data.dif_travel_time;
+                        // }
+                        cs_dif_travel_time = data.dif_travel_time;
 
                         SrcRecInfo& rec1 = rec_map_back[name_rec1];
                         SrcRecInfo& rec2 = rec_map_back[name_rec2];
@@ -2671,11 +2672,12 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                         // common receiver differential traveltime data
                         CUSTOMREAL  cr_dif_travel_time;
 
-                        if (get_is_srcrec_swap() && !is_tele){ // reverse swap src and rec
-                            cr_dif_travel_time = data.cs_dif_travel_time;
-                        } else {// do not swap
-                            cr_dif_travel_time = data.cr_dif_travel_time;
-                        }
+                        // if (get_is_srcrec_swap() && !is_tele){ // reverse swap src and rec
+                        //     cr_dif_travel_time = data.cs_dif_travel_time;
+                        // } else {// do not swap
+                        //     cr_dif_travel_time = data.cr_dif_travel_time;
+                        // }
+                        cr_dif_travel_time = data.dif_travel_time;
 
                         SrcRecInfo& rec1 = rec_map_back[name_rec1];
                         SrcRecInfo& src2 = src_map_back[name_src2];
@@ -2790,7 +2792,7 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                             }
 
                             SrcRecInfo rec             = rec_map_back[name_rec1];
-                            CUSTOMREAL travel_time_obs = data.travel_time_obs - rec_map_all[name_src].tau_opt;
+                            CUSTOMREAL travel_time_obs = data.time_observation - rec_map_all[name_src].tau_opt;
 
                             // receiver line : id_src id_rec name_rec lat lon elevation_m phase epicentral_distance_km arival_time
                             ofs << std::setw(7) << std::right << std::setfill(' ') << src.id << " "
@@ -2816,7 +2818,7 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                             // common source differential traveltime data
                             SrcRecInfo& rec1 = rec_map_back[name_rec1];
                             SrcRecInfo& rec2 = rec_map_back[name_rec2];
-                            CUSTOMREAL  cs_dif_travel_time_obs = data.cr_dif_travel_time_obs;
+                            CUSTOMREAL  cs_dif_travel_time_obs = data.time_observation;
 
                             // receiver pair line : id_src id_rec1 name_rec1 lat1 lon1 elevation_m1 id_rec2 name_rec2 lat2 lon2 elevation_m2 phase differential_arival_time
                             ofs << std::setw(7) << std::right << std::setfill(' ') <<  src.id << " "
@@ -2846,7 +2848,7 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                             // common receiver differential traveltime data
                             SrcRecInfo& rec1 = rec_map_back[name_rec1];
                             SrcRecInfo& src2 = src_map_back[name_src2];
-                            CUSTOMREAL  cr_dif_travel_time_obs = data.cs_dif_travel_time_obs - rec_map_all[name_src].tau_opt + rec_map_all[name_src2].tau_opt;
+                            CUSTOMREAL  cr_dif_travel_time_obs = data.time_observation - rec_map_all[name_src].tau_opt + rec_map_all[name_src2].tau_opt;
 
 
                             // receiver pair line : id_src id_rec1 name_rec1 lat1 lon1 elevation_m1 id_rec2 name_rec2 lat2 lon2 elevation_m2 phase differential_arival_time
@@ -2990,21 +2992,21 @@ void InputParams::station_correction_update(CUSTOMREAL stepsize){
                 for (const auto& data : it_rec->second){
 
                     // absolute traveltime
-                    if (data.is_src_rec){
+                    if (data.data_type == DATA_TYPE_ABS){
                         std::cout << "teleseismic data, absolute traveltime is not supported now" << std::endl;
 
                     // common receiver differential traveltime
-                    } else if (data.is_src_pair) {
+                    } else if (data.data_type == DATA_TYPE_CRDIF) {
                         std::cout << "teleseismic data, common receiver differential traveltime is not supported now" << std::endl;
 
                     // common source differential traveltime
-                    } else if (data.is_rec_pair) { // here is for checking the flag (if data is swapped, is_rec_pair was originally is_src_pair)
-                        std::string name_src   = data.name_src;
+                    } else if (data.data_type == DATA_TYPE_CSDIF) { // here is for checking the flag (if data is swapped, is_rec_pair was originally is_src_pair)
+                        std::string name_src   = data.name_src_pair[0];
                         std::string name_rec1  = data.name_rec_pair[0];
                         std::string name_rec2  = data.name_rec_pair[1];
 
-                        CUSTOMREAL syn_dif_time = data.cs_dif_travel_time;
-                        CUSTOMREAL obs_dif_time = data.cs_dif_travel_time_obs;
+                        CUSTOMREAL syn_dif_time = data.dif_travel_time;
+                        CUSTOMREAL obs_dif_time = data.time_observation;
                         rec_map_all[name_rec1].sta_correct_kernel += _2_CR *(syn_dif_time - obs_dif_time \
                                     + rec_map_all[name_rec1].sta_correct - rec_map_all[name_rec2].sta_correct)*data.weight;
                         rec_map_all[name_rec2].sta_correct_kernel -= _2_CR *(syn_dif_time - obs_dif_time \

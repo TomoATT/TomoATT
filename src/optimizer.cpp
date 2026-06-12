@@ -204,7 +204,7 @@ void Optimizer::determine_step_length_controlled(InputParams& IP, Grid& grid, in
     // broadcast_cr_single_inter_and_intra_sim(step_length_init,0);
 
 
-    std::cout << "id_sim " << id_sim << " process " << myrank << " set step length to " << step_length_init << std::endl;
+    // std::cout << "id_sim " << id_sim << " process " << myrank << " set step length to " << step_length_init << std::endl;
 
     // set new model
     set_new_model(IP, grid, step_length_init);
