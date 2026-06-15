@@ -754,13 +754,13 @@ InputParams::InputParams(std::string& input_file){
         src.lat    = src_lat;
         src.lon    = src_lon;
         src.dep    = src_dep;
-        src_map[src.name] = src;
+        src_map[0] = src;
         SrcRecInfo rec;
         rec.id = 0;
         rec.name = "r0";
-        rec_map[rec.name] = rec;
+        rec_map[0] = rec;
         DataInfo data;
-        data_map[src.name][rec.name].push_back(data);
+        data_map[0][0].push_back(data);
     }
 
     broadcast_str(src_rec_file, 0);
