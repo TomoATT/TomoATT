@@ -1847,7 +1847,7 @@ bool InputParams::get_is_T_written_into_file(const std::string& src_name) {
 }
 
 
-void InputParams::prepare_src_map(){
+void InputParams:: (){
     //
     // only the
     // - subdom_main process of the
