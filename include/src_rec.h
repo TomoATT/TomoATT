@@ -243,10 +243,13 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
 void generate_src_map_with_common_receiver(std::vector<DataInfo>&       data_map,
                                            std::map<int, SrcRecInfo>&   src_map_comm_recp);
 
-void prepare_src_map_for_2d_solver(std::map<std::string, SrcRecInfo>&,
-                                   std::map<std::string, SrcRecInfo>&,
-                                   std::vector<std::string>&,
-                                   std::map<std::string, SrcRecInfo>&);
+void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
+                                   std::map<int, SrcRecInfo>& src_map,
+                                   std::map<int, SrcRecInfo>& src_map_2d);
+
+
+std::vector<int> src_id_2_id_att(std::map<int, SrcRecInfo>& src_map);
+
 
 void send_src_info_inter_sim(SrcRecInfo&, int);
 void recv_src_info_inter_sim(SrcRecInfo&, int);

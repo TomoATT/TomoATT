@@ -140,14 +140,14 @@ void parse_src_rec_file(std::string& src_rec_file,
                 src.name   = tokens[12];
 
                 if (src_name2id_att.find(src.name) == src_name2id_att.end()){   // if this is a new source, assign id.
-                    src.id_src_att = 1+static_cast<int>(src_name2id_att.size()); // positive id for source
-                    src_name2id_att[src.name] = src.id_src_att; // assign id_att based on the current size of src_name2id_att,
+                    src.id_att = 1+static_cast<int>(src_name2id_att.size()); // positive id for source
+                    src_name2id_att[src.name] = src.id_att; // assign id_att based on the current size of src_name2id_att,
                 } else {
-                    src.id_src_att = src_name2id_att[src.name]; // if the source already exists, use the existing id_src_att
+                    src.id_att = src_name2id_att[src.name]; // if the source already exists, use the existing id_att
                 }
 
                 // whether the src.name exists or not, overwrite it. (it can overwrite the src_info in the cr_dif data, whose source infomation (e.g., ortime, Ndata) is incomplete.)
-                src_map[src.id_src_att] = src; // store the source info in src_map with id_src_att as key
+                src_map[src.id_att] = src; // store the source info in src_map with id_att as key
 
                 cc++;
 
@@ -1303,14 +1303,15 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
         // store the total number of sources
         nsrc_total = n_src;
 
-        // assign sources to each simulutaneous run group
+        
+
+        // detemine id_src corresponding to which id_src_att in src_map_all 
         std::vector<int> id_src_att_vector;
         if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
-            for (auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++) {
-                id_src_att_vector.push_back(iter->first); // store the source id
-            }
+            id_src_att_vector = src_id_2_id_att(src_map_all);
         }
 
+        // assign sources to each simulutaneous run group
         for (int i_src = 0; i_src < n_src; i_src++) {
             // id of simulutaneous run group to which the i_src-th source belongs
             int dst_id_sim = select_id_sim_for_src(i_src, n_sims);
@@ -1509,9 +1510,7 @@ void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
 
         std::vector<int> id_src_att_vector;
         if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
-            for (auto iter = tmp_src_map_unique.begin(); iter != tmp_src_map_unique.end(); iter++) {
-                id_src_att_vector.push_back(iter->first); // store the source id
-            }
+            id_src_att_vector = src_id_2_id_att(tmp_src_map_unique);
         }
 
         // iterate over all the unique sources
@@ -1550,6 +1549,14 @@ void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
 
 }
 
+
+std::vector<int> src_id_2_id_att(std::map<int, SrcRecInfo>& src_map){
+    std::vector<int> id_src_att_vector;
+    for (auto iter = src_map.begin(); iter != src_map.end(); iter++) {
+        id_src_att_vector.push_back(iter->first); // store the source id
+    }
+    return id_src_att_vector;
+}
 
 //
 // Belows are the function for send/receiving SrcRecInfo, DataInfo object
@@ -1694,3 +1701,5 @@ void recv_data_info_inter_sim(DataInfo &data, int orig){
         recv_str_sim(data.name_src_pair[ipair], orig);
     }
 }
+
+

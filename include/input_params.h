@@ -486,11 +486,16 @@ private:
 //
 // utils
 //
-inline DataInfo& get_data_src_rec(std::vector<DataInfo>& v){
+
+// find ads data in data_vec_all for id_src_att and id_rec_att 
+inline DataInfo& get_data_src_rec(const int id_src_att, const int id_rec_att){
     // return the first element in the vector with data_type == DATA_TYPE_ABS
-    for (auto it = v.begin(); it != v.end(); it++){
-        if (it->data_type == DATA_TYPE_ABS)
-            return *it;
+    int data_begin = src_map_all[id_src_att].data_begin;
+    int data_end   = src_map_all[id_src_att].data_end;
+
+    for (int i = data_begin; i < data_end; i++){
+        if (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].data_type == DATA_TYPE_ABS)
+            return data_vec_all[i];
     }
 
     // error if no rec pair is found
@@ -498,26 +503,22 @@ inline DataInfo& get_data_src_rec(std::vector<DataInfo>& v){
     exit(1);
 
     // return the first element in the vector as a dummy
-    return v[0];
+    return data_vec_all[data_begin];
 }
 
-
-inline DataInfo& get_data_rec_pair(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>& v,
-                                   const std::string& name_src,
-                                   const std::string& name_rec1,
-                                   const std::string& name_rec2){
+// find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att
+inline DataInfo& get_data_rec_pair(const int id_src_att,
+                                   const int id_rec1_att,
+                                   const int id_rec2_att){
     // return the first element in the vector with data_type == DATA_TYPE_CSDIF
-    auto& map1 = v[name_src][name_rec1];
-    auto& map2 = v[name_src][name_rec2];
+    int data_begin = src_map_all[id_src_att].data_begin;
+    int data_end   = src_map_all[id_src_att].data_end;
 
-    for (auto it = map1.begin(); it != map1.end(); it++){
-        if (it->data_type == DATA_TYPE_CSDIF && it->name_rec_pair[0] == name_rec1 && it->name_rec_pair[1] == name_rec2)
-            return *it;
-    }
-
-    for (auto it = map2.begin(); it != map2.end(); it++){
-        if (it->data_type == DATA_TYPE_CSDIF && it->name_rec_pair[0] == name_rec2 && it->name_rec_pair[1] == name_rec1)
-            return *it;
+    for (int i = data_begin; i < data_end; i++){
+        if (data_vec_all[i].data_type == DATA_TYPE_CSDIF
+        && ( (data_vec_all[i].id_rec_att == id_rec1_att && data_vec_all[i].id_pair_att == id_rec2_att)
+         ||  (data_vec_all[i].id_rec_att == id_rec2_att && data_vec_all[i].id_pair_att == id_rec1_att) ))
+            return data_vec_all[i];
     }
 
     // error if no rec pair is found
@@ -525,27 +526,32 @@ inline DataInfo& get_data_rec_pair(std::map<std::string, std::map<std::string, s
     exit(1);
 
     // return the first element in the vector as a dummy
-    return v[name_src][name_rec1][0];
+    return data_vec_all[data_begin];
 }
 
+// find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att
+inline DataInfo& get_data_src_pair(const int id_src1_att,
+                                   const int id_src2_att,
+                                   const int id_rec_att){
 
-inline DataInfo& get_data_src_pair(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>& v,
-                                   const std::string& name_src1,
-                                   const std::string& name_src2,
-                                   const std::string& name_rec){
+    // first source 
+    int data_begin = src_map_all[id_src1_att].data_begin;
+    int data_end   = src_map_all[id_src1_att].data_end;
 
     // return the first element in the vector with data_type == DATA_TYPE_CRDIF
-    auto& map1 = v[name_src1][name_rec];
-    auto& map2 = v[name_src2][name_rec];
-
-    for (auto it = map1.begin(); it != map1.end(); it++){
-        if (it->data_type == DATA_TYPE_CRDIF && it->name_src_pair[0] == name_src1 && it->name_src_pair[1] == name_src2)
-            return *it;
+    for (int i = data_begin; i < data_end; i++){
+        if (data_vec_all[i].data_type == DATA_TYPE_CRDIF
+        && ( (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].id_pair_att == id_src2_att))
+            return data_vec_all[i];
     }
 
-    for (auto it = map2.begin(); it != map2.end(); it++){
-        if (it->data_type == DATA_TYPE_CRDIF && it->name_src_pair[0] == name_src2 && it->name_src_pair[1] == name_src1)
-            return *it;
+    int data_begin = src_map_all[id_src2_att].data_begin;
+    int data_end   = src_map_all[id_src2_att].data_end;
+
+    for (int i = data_begin; i < data_end; i++){
+        if (data_vec_all[i].data_type == DATA_TYPE_CRDIF
+        && (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].id_pair_att == id_src1_att))
+            return data_vec_all[i];
     }
 
     // error if no src pair is found
@@ -553,7 +559,7 @@ inline DataInfo& get_data_src_pair(std::map<std::string, std::map<std::string, s
     exit(1);
 
     // return the first element in the vector as a dummy
-    return v[name_src1][name_rec][0];
+    return data_vec_all[data_begin];
 }
 
 
