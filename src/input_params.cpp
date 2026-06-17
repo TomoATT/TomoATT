@@ -1930,10 +1930,8 @@ void InputParams::prepare_src_map(){
             // |            |        |           |      |   |           |
             // |            |        r2          r1     |   s1          |
             stdout_by_main("Swapping src and rec. This may take few minutes for a large dataset (only regional events will be processed)\n");
-            do_swap_src_rec(src_map_all, rec_map_all, data_map_all, src_id2name_all);
-            int tmp = N_cr_dif_local_data;
-            N_cr_dif_local_data = N_cs_dif_local_data;
-            N_cs_dif_local_data = tmp;
+            do_swap_src_rec(src_map_all, rec_map_all, data_vec_all);
+            
         } else {
             // if we do not swap source and receiver, we need to process cr_dif to include the other source. After that, we have new data structure:
             // Before:
@@ -1959,7 +1957,7 @@ void InputParams::prepare_src_map(){
 
         std::cout << std::endl << "merge regional and teleseismic src/rec points" << std::endl;
 
-        merge_region_and_tele_src(src_map_all,  rec_map_all,  data_map_all, src_id2name_all,
+        merge_region_and_tele_src(src_map_all,  rec_map_all,  data_map_all,
                                   src_map_tele, rec_map_tele, data_map_tele);
 
         // abort if number of src_points are less than n_sims
@@ -1968,6 +1966,13 @@ void InputParams::prepare_src_map(){
             std::cout << "Error: number of sources in src_rec_file is less than n_sims. Abort." << std::endl;
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
+
+        // reorder data vector in the order of id_src_att, id_rec_att, id_pair_att.
+        //
+        // src_map_all:  data_begin, data_end, n_data are updated
+        // data_vec_all:  data are reordered in the order of id_src_att, id_rec_att, id_pair_att
+        reorder_data_vector(src_map_all, data_vec_all);
+
 
     } // end of if (src_rec_file_exist && proc_read_srcrec)
 
@@ -1982,45 +1987,37 @@ void InputParams::prepare_src_map(){
             std::cout << "\nsource assign to simultaneous run groups\n" <<std::endl;
 
         // divide and distribute the data below to each simultaneous run group:
-        //  src_map,     this will be used for checking global id in source iteration
+        //  src_map,     (in each simultaneous run group, only the src/rec points that are used in this group are stored)
         //  rec_map,
         //  data_map,
-        //  src_id2name, this will be used for source iteration
-        //  rec_id2name, this will be used for adjoint source iteration
         distribute_src_rec_data(src_map_all,
                                 rec_map_all,
                                 data_map_all,
-                                src_id2name_all,
                                 src_map,
                                 rec_map,
-                                data_map,
-                                src_id2name,
-                                rec_id2name);
-
-        // now src_id2name_all  includes  all src names of after swapping src and rec
-        //     src_id2name      includes only src names of this simultaneous run group
-        //     src_id2name_back includes only src names of this simultaneous run group before swapping src and rec
+                                data_map);
 
         if (world_rank==0)
             std::cout << "\ngenerate src map with common receiver\n" <<std::endl;
 
         // create source list for common receiver double difference traveltime
-        generate_src_map_with_common_receiver(data_map, src_map_comm_rec, src_id2name_comm_rec);
+        // cr data need to calculate time field and write them into file first. need to be processed indivitually.
+        generate_src_map_with_common_receiver(data_map, src_map_comm_rec);
 
         if (world_rank==0)
             std::cout << "\nprepare src map for 2d solver\n" <<std::endl;
 
         // prepare source list for teleseismic source
-        prepare_src_map_for_2d_solver(src_map_all, src_map, src_id2name_2d, src_map_2d);
+        prepare_src_map_for_2d_solver(src_map_all, src_map, src_map_2d);
 
         synchronize_all_world();
 
         // count the number of sources in this simultaneous run group
         if (proc_store_srcrec) {
-            n_src_this_sim_group          = (int) src_id2name.size();
-            n_src_comm_rec_this_sim_group = (int) src_id2name_comm_rec.size();
-            n_src_2d_this_sim_group       = (int) src_id2name_2d.size();
-            n_rec_this_sim_group          = (int) rec_id2name.size();
+            n_src_this_sim_group          = (int) src_map.size();
+            n_src_comm_rec_this_sim_group = (int) src_map_comm_rec.size();
+            n_src_2d_this_sim_group       = (int) src_map_2d.size();
+            n_rec_this_sim_group          = (int) rec_map.size();
         }
         // broadcast the number of sources to all the processes in this simultaneous run group
         broadcast_i_single_intra_sim(n_src_this_sim_group, 0);
@@ -2035,44 +2032,7 @@ void InputParams::prepare_src_map(){
 }
 
 
-// generate a list of events which involve common receiver double difference traveltime
-void InputParams::generate_src_map_with_common_receiver(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>& data_map_tmp,
-                                                        std::map<std::string, SrcRecInfo>&                                   src_map_comm_rec_tmp,
-                                                        std::vector<std::string>&                                            src_id2name_comm_rec_tmp){
 
-    if (proc_store_srcrec) {
-
-        // for earthquake having common receiver differential traveltime, the synthetic traveltime should be computed first at each iteration
-        for(auto iter = data_map_tmp.begin(); iter != data_map_tmp.end(); iter++){
-            for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
-                for (auto& data: iter2->second){
-                    if (data.data_type == DATA_TYPE_CRDIF) {
-                        // add this source and turn to the next source
-                        src_map_comm_rec_tmp[iter->first] = src_map[iter->first];
-                        // add this source to the list of sources that will be looped in each iteration
-                        // if the source is not in the list, the synthetic traveltime will not be computed
-                        if (std::find(src_id2name_comm_rec_tmp.begin(), src_id2name_comm_rec_tmp.end(), iter->first) == src_id2name_comm_rec_tmp.end())
-                            src_id2name_comm_rec_tmp.push_back(iter->first);
-
-                        break;
-                    }
-                }
-            }
-        }
-
-        // check if this sim group has common source double difference traveltime
-        if (src_map_comm_rec_tmp.size() > 0){
-            src_pair_exists = true;
-        }
-
-    } // end of if (proc_store_srcrec)
-
-    // flag if any src_pair exists
-    allreduce_bool_inplace_inter_sim(&src_pair_exists, 1); // inter-sim
-    allreduce_bool_inplace(&src_pair_exists, 1); // intra-sim / inter subdom
-    allreduce_bool_inplace_sub(&src_pair_exists, 1); // intra-subdom
-
-}
 
 void InputParams::initialize_adjoint_source(){
     // this funtion should be called by proc_store_srcrec
@@ -3316,17 +3276,4 @@ void InputParams::check_upper_bound(CUSTOMREAL*& arr, int& n_grid, CUSTOMREAL up
         arr = new_arr;
         n_grid += 1;
     }
-}
-
-// sort data_vec_in by id_src_att, id_rec_att, and id_pair_att
-void InputParams::data_vec_sort(std::vector<DataInfo> &data_vec_in){
-    std::sort(
-        data_vec_in.begin(),
-        data_vec_in.end(),
-        // sort by id_src_att, id_rec_att, and id_pair_att
-        [](const DataInfo& a, const DataInfo& b) {
-            return std::tie(a.id_src_att, a.id_rec_att, a.id_pair_att)
-                 < std::tie(b.id_src_att, b.id_rec_att, b.id_pair_att);
-        }
-    );
 }

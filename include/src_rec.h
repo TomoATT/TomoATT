@@ -38,16 +38,17 @@ public:
     int n_data = 0;
 
     // unique id for TomoATT, used to identify the source or receiver in TomoATT. 
-    int id_att = -1;    // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att.
+    int id_att = 0;    // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att.
 
     // arrays for storing arrival times on boundary surfaces, calculated by 2D Eikonal solver
     bool        is_out_of_region    = false;   // is the source or receiver in the region; false: in the refion; true: teleseismic
-    //CUSTOMREAL* arr_times_bound_N   = nullptr; // arrival time of the receiver at the north boundary of the subdomain
-    //CUSTOMREAL* arr_times_bound_E   = nullptr; // arrival time of the receiver at the east boundary of the subdomain
-    //CUSTOMREAL* arr_times_bound_W   = nullptr; // arrival time of the receiver at the west boundary of the subdomain
-    //CUSTOMREAL* arr_times_bound_S   = nullptr; // arrival time of the receiver at the south boundary of the subdomain
-    //CUSTOMREAL* arr_times_bound_Bot = nullptr; // arrival time of the receiver at the bottom boundary of the subdomain
-    //bool*       is_bound_src;                  // true if the source is on the boundary surface
+
+    // data vector id (the id of data associated with the source)
+    // data id from data_begin to data_end-1 (inclusive)
+    int data_begin;  
+    int data_end;
+
+
 
     // kernel
     CUSTOMREAL sta_correct = 0.0;
@@ -102,9 +103,10 @@ public:
     // bool is_rec_pair (for case 3)
     int data_type = -1; 
 
-    int id_src_att = -1;    // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att.
-    int id_rec_att = -1;    // the index of receivers in TomoATT, used to identify this receiver. Each receiver has a unique id_rec_att.
-    int id_pair_att = -1; // the index of the second source or receiver in TomoATT. valid only for data_type = 1 or 2. For data_type = 0, id_pari_att = -1.
+    // before swap, source id is positive int; receiver id is negative id.
+    int id_src_att = 0;    // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att.
+    int id_rec_att = 0;    // the index of receivers in TomoATT, used to identify this receiver. Each receiver has a unique id_rec_att.
+    int id_pair_att = 0; // the index of the second source or receiver in TomoATT. valid only for data_type = 1 or 2. For data_type = 0, id_pari_att = -1.
 
     // source information
     // for data_type = 0, id_srcs[0] is the source id; 
@@ -176,72 +178,74 @@ public:
 // methods for managing SrcRec objects/lists
 
 // parse src_rec_file
-void parse_src_rec_file(std::string&                      , \
-                        std::map<std::string, SrcRecInfo>&, \
-                        std::map<std::string, SrcRecInfo>&, \
-                        std::map<std::string, std::map<std::string,std::vector<DataInfo>>>&, \
-                        std::vector<std::string>&, \
-                        std::vector<std::vector<std::vector<std::string>>>&);
+void parse_src_rec_file(std::string& src_rec_file,
+                        std::map<int, SrcRecInfo>& src_map,
+                        std::map<int, SrcRecInfo>& rec_map,
+                        std::vector<DataInfo>& data_vec,
+                        std::vector<int>& src_id_in_file,
+                        std::vector<std::vector<std::vector<int>>>& rec_id_in_file);
 
 // parse sta_correctoion_file
-void parse_sta_correction_file(std::string&, \
-                               std::map<std::string, SrcRecInfo>&);
+void parse_sta_correction_file(std::string& sta_correction_file,
+                               std::map<std::string, SrcRecInfo>& rec_map);
 
 // swap the sources and receivers
-void do_swap_src_rec(std::map<std::string, SrcRecInfo> &, \
-                     std::map<std::string, SrcRecInfo> &, \
-                     std::map<std::string, std::map<std::string, std::vector<DataInfo>>> &, \
-                     std::vector<std::string>&);
+void do_swap_src_rec(std::map<int, SrcRecInfo> &src_map_all,
+                     std::map<int, SrcRecInfo> &rec_map_all,
+                     std::vector<DataInfo> &data_vec_all);
 
 // do not swap the sources and receivers
-void do_not_swap_src_rec(std::map<std::string, SrcRecInfo> &, \
-                     std::map<std::string, SrcRecInfo> &, \
-                     std::map<std::string, std::map<std::string, std::vector<DataInfo>>> &, \
-                     std::vector<std::string>&);
+void do_not_swap_src_rec(std::map<int, SrcRecInfo> &src_map_all,
+                         std::map<int, SrcRecInfo> &rec_map_all,
+                         std::vector<DataInfo>     &data_vec_all);
 
 // tele seismic source management
-void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo> &,
-                                           std::map<std::string, SrcRecInfo> &,
-                                           std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,
-                                           std::map<std::string, SrcRecInfo> &,
-                                           std::map<std::string, SrcRecInfo> &,
-                                           std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,
-                                           std::map<std::string, SrcRecInfo> &,
-                                           std::map<std::string, SrcRecInfo> &,
-                                           std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,
-                                           std::map<std::string, int>        &,
-                                           int                               &,
-                                           int                               &,
-                                           int                               &,
-                                           int                               &,
-                                           int                               &,
-                                           const CUSTOMREAL, const CUSTOMREAL,
-                                           const CUSTOMREAL, const CUSTOMREAL,
-                                           const CUSTOMREAL, const CUSTOMREAL,
-                                           bool);
+void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>                                  &src_map_back,
+                                           std::map<std::string, SrcRecInfo>                                  &rec_map_back,
+                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec_back,
+                                           std::map<std::string, SrcRecInfo>                                  &src_map,
+                                           std::map<std::string, SrcRecInfo>                                  &rec_map,
+                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec,
+                                           std::map<std::string, SrcRecInfo>                                  &src_map_tele,
+                                           std::map<std::string, SrcRecInfo>                                  &rec_map_tele,
+                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec_tele,
+                                           std::map<std::string, int> &data_type,
+                                           int                        &N_abs_local_data,
+                                           int                        &N_cr_dif_local_data,
+                                           int                        &N_cs_dif_local_data,
+                                           int                        &N_teleseismic_data,
+                                           int                        &N_data,
+                                           const CUSTOMREAL min_lat, const CUSTOMREAL max_lat,
+                                           const CUSTOMREAL min_lon, const CUSTOMREAL max_lon,
+                                           const CUSTOMREAL min_dep, const CUSTOMREAL max_dep,
+                                           bool have_tele_data);
 
-void merge_region_and_tele_src(std::map<std::string, SrcRecInfo> &,
-                               std::map<std::string, SrcRecInfo> &,
-                               std::map<std::string, std::map<std::string,std::vector<DataInfo>>>&,
-                               std::vector<std::string>&,
-                               std::map<std::string, SrcRecInfo> &,
-                               std::map<std::string, SrcRecInfo> &,
-                               std::map<std::string, std::map<std::string,std::vector<DataInfo>>>&);
+void merge_region_and_tele_src(std::map<int, SrcRecInfo> &src_map_all,
+                               std::map<int, SrcRecInfo> &rec_map_all,
+                               std::vector<DataInfo>     &data_vec_all,
+                               std::map<int, SrcRecInfo> &src_map_tele,
+                               std::map<int, SrcRecInfo> &rec_map_tele,
+                               std::vector<DataInfo>     &data_vec_tele);
+
+                               // reorder data vector in the order of id_src_att, id_rec_att, id_pair_att.  
+void reorder_data_vector(std::map<int, SrcRecInfo> &src_map_all,
+                         std::vector<DataInfo>     &data_vec_all);
 
 // distribute srcrec data to all simulation groups
-void distribute_src_rec_data(std::map<std::string, SrcRecInfo>&, \
-                             std::map<std::string, SrcRecInfo>&, \
-                             std::map<std::string, std::map<std::string,std::vector<DataInfo>>>&, \
-                             std::vector<std::string>&, \
-                             std::map<std::string, SrcRecInfo>&, \
-                             std::map<std::string, SrcRecInfo>&, \
-                             std::map<std::string, std::map<std::string,std::vector<DataInfo>>>&, \
-                             std::vector<std::string>&, \
-                             std::vector<std::string>&);
+void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
+                             std::map<int, SrcRecInfo>&     rec_map_all,
+                             std::vector<DataInfo>&         data_vec_all,
+                             std::map<int, SrcRecInfo>&     src_map_this_sim,
+                             std::map<int, SrcRecInfo>&     rec_map_this_sim,
+                             std::vector<DataInfo>&         data_vec_this_sim);
 
-void prepare_src_map_for_2d_solver(std::map<std::string, SrcRecInfo>&, \
-                                   std::map<std::string, SrcRecInfo>&, \
-                                   std::vector<std::string>&, \
+// generate a list of events which involve common receiver double difference traveltime
+void generate_src_map_with_common_receiver(std::vector<DataInfo>&       data_map,
+                                           std::map<int, SrcRecInfo>&   src_map_comm_recp);
+
+void prepare_src_map_for_2d_solver(std::map<std::string, SrcRecInfo>&,
+                                   std::map<std::string, SrcRecInfo>&,
+                                   std::vector<std::string>&,
                                    std::map<std::string, SrcRecInfo>&);
 
 void send_src_info_inter_sim(SrcRecInfo&, int);

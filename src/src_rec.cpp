@@ -5,11 +5,11 @@
 // functions for processing src_rec_file
 //
 
-void parse_src_rec_file(std::string& src_rec_file, \
-                        std::map<int, SrcRecInfo>& src_map, \
-                        std::map<int, SrcRecInfo>& rec_map, \
-                        std::vector<DataInfo>& data_vec, \
-                        std::vector<int>& src_id_in_file, \
+void parse_src_rec_file(std::string& src_rec_file,
+                        std::map<int, SrcRecInfo>& src_map,
+                        std::map<int, SrcRecInfo>& rec_map,
+                        std::vector<DataInfo>& data_vec,
+                        std::vector<int>& src_id_in_file,
                         std::vector<std::vector<std::vector<int>>>& rec_id_in_file){
                         
     // start timer
@@ -140,7 +140,7 @@ void parse_src_rec_file(std::string& src_rec_file, \
                 src.name   = tokens[12];
 
                 if (src_name2id_att.find(src.name) == src_name2id_att.end()){   // if this is a new source, assign id.
-                    src.id_src_att = static_cast<int>(src_name2id_att.size()); 
+                    src.id_src_att = 1+static_cast<int>(src_name2id_att.size()); // positive id for source
                     src_name2id_att[src.name] = src.id_src_att; // assign id_att based on the current size of src_name2id_att,
                 } else {
                     src.id_src_att = src_name2id_att[src.name]; // if the source already exists, use the existing id_src_att
@@ -205,7 +205,7 @@ void parse_src_rec_file(std::string& src_rec_file, \
                     
                     // new receiver detected by its name
                     if(rec_name2id_att.find(rec.name) == rec_name2id_att.end()){    // new receiver
-                        rec.id_att = static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
+                        rec.id_att = -1-static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
                         rec_name2id_att[rec.name] = rec.id_att; // assign id_att based on the current size of rec_name2id_att, 
                         rec_map[rec.id_att] = rec; // store the receiver info in rec_map with id_rec_att as key
                     } else {
@@ -256,7 +256,7 @@ void parse_src_rec_file(std::string& src_rec_file, \
 
                     // new receiver detected by its name
                     if(rec_name2id_att.find(rec.name) == rec_name2id_att.end()){
-                        rec.id_att = static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
+                        rec.id_att = -1-static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
                         rec_name2id_att[rec.name] = rec.id_att; // assign id_att based on the current size of rec_name2id_att, 
                         rec_map[rec.id_att] = rec; // store the receiver info in rec_map with id_rec_att as key
                     } else {
@@ -301,7 +301,7 @@ void parse_src_rec_file(std::string& src_rec_file, \
 
                         // new source detected by its name
                         if(src_name2id_att.find(src2.name) == src_name2id_att.end()){ // new source
-                            src2.id_att = static_cast<int>(src_name2id_att.size()); // assign id_src_att based on the current size of src_name2id_att
+                            src2.id_att = 1+static_cast<int>(src_name2id_att.size()); // assign id_src_att based on the current size of src_name2id_att
                             src_name2id_att[src2.name] = src2.id_att; // assign id_att based on the current size of src_name2id_att, 
                             src_map[src2.id_att] = src2; // store the source info in src_map with id_src_att as key
                         } else {
@@ -334,7 +334,7 @@ void parse_src_rec_file(std::string& src_rec_file, \
 
                         // new receiver detected by its name
                         if(rec_name2id_att.find(rec2.name) == rec_name2id_att.end()){
-                            rec2.id_att = static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
+                            rec2.id_att = -1-static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
                             rec_name2id_att[rec2.name] = rec2.id_att; // assign id_att based on the current size of rec_name2id_att, 
                             rec_map[rec2.id_att] = rec2; // store the receiver info in rec_map with id_rec_att as key
                         } else {
@@ -454,7 +454,7 @@ void parse_src_rec_file(std::string& src_rec_file, \
 }
 
 
-void parse_sta_correction_file(std::string& sta_correction_file, \
+void parse_sta_correction_file(std::string& sta_correction_file,
                                std::map<std::string, SrcRecInfo>& rec_map){
 
     // read station correction file
@@ -918,10 +918,9 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
 }
 
 
-void do_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
-                     std::map<std::string, SrcRecInfo> &rec_map, \
-                     std::map<std::string, std::map<std::string, std::vector<DataInfo>>> &data_map,
-                     std::vector<std::string> &src_name_list) {
+void do_swap_src_rec(std::map<int, SrcRecInfo> &src_map_all,
+                     std::map<int, SrcRecInfo> &rec_map_all,
+                     std::vector<DataInfo> &data_vec_all) {
 
     // swap src/rec points
     // at this moment, all the sources are divided into src_points (regional) and tele_src_points (teleseismic)
@@ -930,154 +929,131 @@ void do_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
     std::string timer_name = "swap_src_rec";
     Timer timer(timer_name);
 
-    std::map<std::string, SrcRecInfo> tmp_src_rec_map = src_map;
-    src_map = rec_map;
-    rec_map = tmp_src_rec_map;
-
-    std::map<std::string, std::map<std::string, std::vector<DataInfo>>> tmp_data_map;// = data_map;
-
-    // for each element of src_map, count the number of rec_map with the same value of
-
-    for (auto it_src = data_map.begin(); it_src != data_map.end(); it_src++){ // loop over src
-        for (auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){ // loop over rec
-            for (const auto& data: it_rec->second){ // loop over datainfo
-
-                DataInfo tmp_data = data;
-
-                if (tmp_data.data_type == DATA_TYPE_ABS){
-                    // absolute traveltime  ->  absolute traveltime
-                    // |    abs     |               |    abs     |
-                    // |  s0 - r0   |       ->      |  r0 - s0   |
-                    // |            |               |            |
-                    // |            |               |            |
-
-                    tmp_data.id_src_pair[0]   = data.id_rec_pair[0];
-                    tmp_data.name_src_pair[0] = data.name_rec_pair[0];
-                    tmp_data.id_rec_pair[0]   = data.id_src_pair[0];
-                    tmp_data.name_rec_pair[0] = data.name_src_pair[0];
-                    tmp_data.dual_data = false; // is not a dual data. contribute both objective function and kernel
-                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
+    // swap src_map_all and rec_map_all
+    std::map<int, SrcRecInfo> tmp_src_rec_map = src_map_all;
+    src_map_all = rec_map_all;
+    rec_map_all = tmp_src_rec_map;
 
 
-                } else if (tmp_data.data_type == DATA_TYPE_CSDIF){
-                    // common source differential traveltime  ->  common receiver differential traveltime
-                    // |    cs_dif     |            |          cr_dif           |
-                    // |   s0 - r1     |    ->      |   r1 - s0     r2 - s0     |
-                    // |   |           |            |        |           |      |
-                    // |   r2          |            |        r2          r1     |
+    std::vector<DataInfo> tmp_data_vec_all; // -> data_vec_all
+    // swap data_vec_all. Only need to modofy 
+    // 1. data_type: DATA_TYPE_ABS -> DATA_TYPE_ABS, DATA_TYPE_CSDIF -> DATA_TYPE_CRDIF, DATA_TYPE_CRDIF -> DATA_TYPE_CSDIF
+    // 2. id_src_att <-> id_rec_att, id_pair_att <-> id_pair_att
+    for(const auto& data : data_vec_all){
+        DataInfo tmp_data = data;
 
-                    tmp_data.data_type              = DATA_TYPE_CRDIF;
+        if (tmp_data.data_type == DATA_TYPE_ABS){
+            // absolute traveltime  ->  absolute traveltime
+            // |    abs     |               |    abs     |
+            // |  s0 - r0   |       ->      |  r0 - s0   |
+            // |            |               |            |
+            // |            |               |            |
 
-                    tmp_data.id_src_pair            = data.id_rec_pair;
-                    tmp_data.name_src_pair          = data.name_rec_pair;
+            tmp_data.id_src_att = data.id_rec_att;
+            tmp_data.id_rec_att = data.id_src_att;
+            tmp_data.dual_data = false; // is not a dual data. contribute both objective function and kernel
+            tmp_data_vec_all.push_back(tmp_data);
+        
+        } else if (tmp_data.data_type == DATA_TYPE_CSDIF){
+            // common source differential traveltime  ->  common receiver differential traveltime
+            // |    cs_dif     |            |          cr_dif           |
+            // |   s0 - r1     |    ->      |   r1 - s0     r2 - s0     |
+            // |   |           |            |        |           |      |
+            // |   r2          |            |        r2          r1     |    
 
-                    tmp_data.id_rec_pair            = data.id_src_pair;
-                    tmp_data.name_rec_pair          = data.name_src_pair;
+            tmp_data.data_type              = DATA_TYPE_CRDIF;
 
-                    // one data
-                    tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
-                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
+            // one data
+            tmp_data.id_src_att              = data.id_rec_att;
+            tmp_data.id_rec_att              = data.id_src_att;
+            // tmp_data.id_pair_att             = data.id_pair_att;
+            tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
+            tmp_data_vec_all.push_back(tmp_data);
 
-                    // the other data
-                    // Note: name_src = cr_dif time always represent time(src, rec1) - time(src,rec2). Thus, -1.0 is necessary
-                    // Meanwhile, name_src(key) must equal data.name_src_pair[0] and data.name_src
-                    tmp_data.dual_data = true; // the other is a dual data. contribute kernel only
-                    tmp_data.name_src_pair = {data.name_rec_pair[1],data.name_rec_pair[0]};
-                    tmp_data.id_src_pair   = {data.id_rec_pair[1], data.id_rec_pair[0]};
-                    tmp_data.time_observation = -1.0 * data.time_observation;
-                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
+            // the other data
+            tmp_data.id_src_att              = data.id_pair_att;
+            tmp_data.id_rec_att              = data.id_src_att;
+            tmp_data.id_pair_att             = data.id_rec_att;
+            tmp_data.dual_data = true; // the other is a dual data. contribute kernel only
+            tmp_data.time_observation = -1.0 * data.time_observation;
+            tmp_data_vec_all.push_back(tmp_data);
+        
+        } else if (tmp_data.data_type == DATA_TYPE_CRDIF){
+            // common receiver differential traveltime  ->  common source differential traveltime
+            // |    cr_dif     |        |    cs_dif     |
+            // |   s0 - r3     |    ->  |   r3 - s0     |
+            // |        |      |        |   |           |
+            // |        s1     |        |   s1          |
 
+            tmp_data.data_type              = DATA_TYPE_CSDIF;
 
-                } else if (tmp_data.data_type == DATA_TYPE_CRDIF){
-                    // common receiver differential traveltime  ->  common source differential traveltime
-                    // |    cr_dif     |        |    cs_dif     |
-                    // |   s0 - r3     |    ->  |   r3 - s0     |
-                    // |        |      |        |   |           |
-                    // |        s1     |        |   s1          |
-
-                    tmp_data.data_type              = DATA_TYPE_CSDIF;
-
-                    tmp_data.id_src_pair            = data.id_rec_pair;
-                    tmp_data.name_src_pair          = data.name_rec_pair;
-
-                    tmp_data.id_rec_pair            = data.id_src_pair;
-                    tmp_data.name_rec_pair          = data.name_src_pair;
-
-                    // only need one data for common source dif
-                    tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
-                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
-
-                }
-
-           }
+            tmp_data.id_src_att              = data.id_rec_att;
+            tmp_data.id_rec_att              = data.id_src_att;
+            // tmp_data.id_pair_att             = data.id_pair_att;
+            tmp_data.dual_data = false; // only need one data for common source dif, contribute both objective function and kernel
+            tmp_data_vec_all.push_back(tmp_data);
         }
     }
 
-    // replace data_map with swapped data map
-    // TODO tmp_data_map has strange elements here
-    data_map = tmp_data_map;
+    // replace data_vec_all with swapped data_vec_all
+    data_vec_all = tmp_data_vec_all;
 
-    // set n_data (number of receivers for each source)
-    for (auto it_src = src_map.begin(); it_src != src_map.end(); it_src++){
-        it_src->second.n_data = data_map[it_src->second.name].size();
-    }
 
     // swap total_data_weight
     CUSTOMREAL tmp = total_cr_dif_local_data_weight;
     total_cr_dif_local_data_weight = total_cs_dif_local_data_weight;
     total_cs_dif_local_data_weight = tmp;
 
-    // create new src_id2name_all from swapped src_map
-    src_name_list.clear();
-    for (auto iter = src_map.begin(); iter != src_map.end(); iter++){
-        src_name_list.push_back(iter->first);
-    }
+    // swap number of data
+    int tmp = N_cr_dif_local_data;
+    N_cr_dif_local_data = N_cs_dif_local_data;
+    N_cs_dif_local_data = tmp;
+
+    // TO DO
+    // // set n_data (number of receivers for each source)
+    // for (auto it_src = src_map.begin(); it_src != src_map.end(); it_src++){
+    //     it_src->second.n_data = data_map[it_src->second.name].size();
+    // }
+
+    
 
     // check new version of src rec data
     if (if_verbose){
         std::cout << "do swap sources and receivers" << std::endl;
 
-        for(auto iter = src_map.begin(); iter != src_map.end(); iter++){
+        for(auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++){
             std::cout   << "source id: " << iter->second.id
                         << ", source name: " << iter->second.name
                         << std::endl;
         }
 
-        for(auto iter = rec_map.begin(); iter != rec_map.end(); iter++){
+        for(auto iter = rec_map_all.begin(); iter != rec_map_all.end(); iter++){
             std::cout   << "receiver id: " << iter->second.id
                         << ", receiver name: " << iter->second.name
                         << std::endl;
         }
 
-        for(auto it_src = data_map.begin(); it_src != data_map.end(); it_src++){
-            for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-                for(const auto& data: it_rec->second){
-
-                    if (data.data_type == DATA_TYPE_ABS){
-                        std::cout   << "key: it_src, it_rec: " << it_src->first << ", " << it_rec->first
-                                    << ", absolute traveltime: " << data.time_observation
-                                    << ", source name: "       << data.name_src_pair[0]
-                                    << ", receiver name: "     << data.name_rec_pair[0]
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CSDIF){
-                        std::cout   << "key: it_src, it_rec: "  << it_src->first << ", " << it_rec->first
-                                    << ", common source differential traveltime: " << data.time_observation
-                                    << ", source name: "                         << data.name_src_pair[0]
-                                    << ", receiver pair name: "                  << data.name_rec_pair[0]
-                                    << ", "                                      << data.name_rec_pair[1]
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CRDIF){
-                        std::cout   << "key: it_src, it_rec: "    << it_src->first << ", " << it_rec->first
-                                    << ", common receiver differential traveltime: " << data.time_observation
-                                    << ", source pair name: "                      << data.name_src_pair[0]
-                                    << ", "                                        << data.name_src_pair[1]
-                                    << ", receiver name: "                         << data.name_rec_pair[0]
-                                    << std::endl;
-                    }
-                }
+        for(auto data : data_vec_all){
+            if (data.data_type == DATA_TYPE_ABS){
+                std::cout   << ", absolute traveltime: " << data.time_observation
+                            << ", source name: "       << data.src_map_all[data.id_src_att].name
+                            << ", receiver name: "     << data.rec_map_all[data.id_rec_att].name
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CSDIF){
+                std::cout   << ", common source differential traveltime: " << data.time_observation
+                            << ", source name: "                         << data.src_map_all[data.id_src_att].name
+                            << ", receiver pair name: "                  << data.rec_map_all[data.id_rec_att].name
+                            << ", "                                      << data.rec_map_all[data.id_pair_att].name
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CRDIF){
+                std::cout   << ", common receiver differential traveltime: " << data.time_observation
+                            << ", source pair name: "                      << data.src_map_all[data.id_src_att].name
+                            << ", "                                        << data.src_map_all[data.id_pair_att].name
+                            << ", receiver name: "                         << data.rec_map_all[data.id_rec_att].name
+                            << std::endl;
             }
         }
-        std::cout << "data map size: " << data_map.size() << std::endl;
+        std::cout << "data vec size: " << data_vec_all.size() << std::endl;
     }
 
     // indicate elapsed time
@@ -1085,10 +1061,9 @@ void do_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
 }
 
 // do not swap source and receiver, process common receiver differential traveltime data
-void do_not_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
-                     std::map<std::string, SrcRecInfo> &rec_map, \
-                     std::map<std::string, std::map<std::string, std::vector<DataInfo>>> &data_map,
-                     std::vector<std::string> &src_name_list) {
+void do_not_swap_src_rec(std::map<int, SrcRecInfo> &src_map_all,
+                         std::map<int, SrcRecInfo> &rec_map_all,
+                         std::vector<DataInfo>     &data_vec_all) {
 
     // do not swap src/rec points
 
@@ -1096,105 +1071,84 @@ void do_not_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
     std::string timer_name = "do_not_swap_src_rec";
     Timer timer(timer_name);
 
-    std::map<std::string, std::map<std::string, std::vector<DataInfo>>> tmp_data_map;// = data_map;
+    std::vector<DataInfo> tmp_data_map;// = data_map;
 
     // for each element of src_map, count the number of rec_map with the same value of
+    for (auto data : data_vec_all){
+        DataInfo tmp_data = data;
 
-    for (auto it_src = data_map.begin(); it_src != data_map.end(); it_src++){ // loop over src
-        for (auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){ // loop over rec
-            for (const auto& data: it_rec->second){ // loop over datainfo
+        // common receiver differential traveltime
+        if (tmp_data.data_type == DATA_TYPE_CRDIF){
+            // keep the original data, meanwhile, add cr_dif data with the other source
+            // |    cr_dif     |            |          cr_dif           |
+            // |   s0 - r3     |    ->      |   s0 - r3     s1 - r3     |
+            // |        |      |            |        |           |      |
+            // |        s1     |            |        s1          s0     |
 
-                DataInfo tmp_data = data;
+            // one data
+            tmp_data.dual_data = false;  // contribute both objective function and kernel
+            data_vec_all.push_back(tmp_data);     // original data
 
-                // common receiver differential traveltime
-                if (tmp_data.data_type == DATA_TYPE_CRDIF){
-                    // keep the original data, meanwhile, add cr_dif data with the other source
-                    // |    cr_dif     |            |          cr_dif           |
-                    // |   s0 - r3     |    ->      |   s0 - r3     s1 - r3     |
-                    // |        |      |            |        |           |      |
-                    // |        s1     |            |        s1          s0     |
-                    tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
-                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);     // original data
+            // the other data with the other source.
+            // Note: name_src = cr_dif time always represent time(src1, rec) - time(src2,rec). Thus, -1 is necessary
+            tmp_data.id_src_att = data.id_pair_att;
+            tmp_data.id_pair_att = data.id_src_att;
+            tmp_data.time_observation = -1.0 * data.time_observation;
+            tmp_data.dual_data = true; // contribute kernel only
+            data_vec_all.push_back(tmp_data);
+        } else {
+            // abs data and cs_dif data remain unchanged
+            // |    abs     |    cs_dif     |
+            // |  s0 - r0   |   s0 - r1     |
+            // |            |   |           |
+            // |            |   r2          |
 
-                    // the other data with the other source.
-                    // Note: name_src = cr_dif time always represent time(src1, rec) - time(src2,rec). Thus, -1 is necessary
-                    // Meanwhile, name_src(key) must equal name_src_pair[0]
-                    tmp_data.dual_data = true; // the other is a dual data. contribute kernel only
-                    tmp_data.name_src_pair  = {data.name_src_pair[1],data.name_src_pair[0]};
-                    tmp_data.id_src_pair    = {data.id_src_pair[1],data.id_src_pair[0]};
-                    tmp_data.time_observation  = -1.0 * data.time_observation;
-                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
-
-                } else {    // abs and cs_dif data does not change
-                    // abs data and cs_dif data remain unchanged
-                    // |    abs     |    cs_dif     |
-                    // |  s0 - r0   |   s0 - r1     |
-                    // |            |   |           |
-                    // |            |   r2          |
-                    tmp_data.dual_data = false; // one is not a dual data. contribute both objective function and kernel
-                    tmp_data_map[tmp_data.name_src_pair[0]][tmp_data.name_rec_pair[0]].push_back(tmp_data);
-                }
-
-           }
+            tmp_data.dual_data = false; // contribute both objective function and kernel
+            data_vec_all.push_back(tmp_data);
         }
     }
 
     // replace data_map with swapped data map
-    // TODO tmp_data_map has strange elements here
     data_map = tmp_data_map;
 
-
-    // create new src_id2name_all from swapped src_map
-    src_name_list.clear();
-    for (auto iter = src_map.begin(); iter != src_map.end(); iter++){
-        src_name_list.push_back(iter->first);
-    }
 
     // check new version of src rec data
     if (if_verbose){
         std::cout << "do not swap sources and receivers" << std::endl;
 
-        for(auto iter = src_map.begin(); iter != src_map.end(); iter++){
+        for(auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++){
             std::cout   << "source id: " << iter->second.id
                         << ", source name: " << iter->second.name
                         << std::endl;
         }
 
-        for(auto iter = rec_map.begin(); iter != rec_map.end(); iter++){
+        for(auto iter = rec_map_all.begin(); iter != rec_map_all.end(); iter++){
             std::cout   << "receiver id: " << iter->second.id
                         << ", receiver name: " << iter->second.name
                         << std::endl;
         }
 
-        for(auto it_src = data_map.begin(); it_src != data_map.end(); it_src++){
-            for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-                for(const auto& data: it_rec->second){
-
-                    if (data.data_type == DATA_TYPE_ABS){
-                        std::cout   << "key: it_src, it_rec: " << it_src->first << ", " << it_rec->first
-                                    << ", absolute traveltime: " << data.time_observation
-                                    << ", source name: "       << data.name_src_pair[0]
-                                    << ", receiver name: "     << data.name_rec_pair[0]
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CSDIF){
-                        std::cout   << "key: it_src, it_rec: "  << it_src->first << ", " << it_rec->first
-                                    << ", common source differential traveltime: " << data.time_observation
-                                    << ", source name: "                         << data.name_src_pair[0]
-                                    << ", receiver pair name: "                  << data.name_rec_pair[0]
-                                    << ", "                                      << data.name_rec_pair[1]
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CRDIF){
-                        std::cout   << "key: it_src, it_rec: "    << it_src->first << ", " << it_rec->first
-                                    << ", common receiver differential traveltime: " << data.time_observation
-                                    << ", source pair name: "                      << data.name_src_pair[0]
-                                    << ", "                                        << data.name_src_pair[1]
-                                    << ", receiver name: "                         << data.name_rec_pair[0]
-                                    << std::endl;
-                    }
-                }
+        for(auto data : data_vec_all){
+            if (data.data_type == DATA_TYPE_ABS){
+                std::cout   << ", absolute traveltime: " << data.time_observation
+                            << ", source name: "       << src_map[data.id_src_att].name
+                            << ", receiver name: "     << rec_map[data.id_rec_att].name
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CSDIF){
+                std::cout   << ", common source differential traveltime: " << data.time_observation
+                            << ", source name: "                         << src_map[data.id_src_att].name
+                            << ", receiver pair name: "                  << rec_map[data.id_rec_att].name
+                            << ", "                                      << rec_map[data.id_pair_att].name
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CRDIF){
+                std::cout   << ", common receiver differential traveltime: " << data.time_observation
+                            << ", source pair name: "                      << src_map[data.id_src_att].name
+                            << ", "                                        << src_map[data.id_pair_att].name
+                            << ", receiver name: "                         << rec_map[data.id_rec_att].name
+                            << std::endl;
             }
         }
-        std::cout << "data map size: " << data_map.size() << std::endl;
+        std::cout << "data vec size: " << data_vec_all.size() << std::endl;
     }
 
     // indicate elapsed time
@@ -1204,13 +1158,13 @@ void do_not_swap_src_rec(std::map<std::string, SrcRecInfo> &src_map, \
 
 
 // merge the teleseismic data lsit into the local data list
-void merge_region_and_tele_src(std::map<std::string, SrcRecInfo> &src_map,
-                               std::map<std::string, SrcRecInfo> &rec_map,
-                               std::map<std::string, std::map<std::string, std::vector<DataInfo>>> &data_map,
-                               std::vector<std::string> &src_name_list,
-                               std::map<std::string, SrcRecInfo> &src_map_tele,
-                               std::map<std::string, SrcRecInfo> &rec_map_tele,
-                               std::map<std::string, std::map<std::string, std::vector<DataInfo>>> &data_map_tele){
+void merge_region_and_tele_src(std::map<int, SrcRecInfo> &src_map_all,
+                               std::map<int, SrcRecInfo> &rec_map_all,
+                               std::vector<DataInfo>     &data_vec_all,
+                               std::map<int, SrcRecInfo> &src_map_tele,
+                               std::map<int, SrcRecInfo> &rec_map_tele,
+                               std::vector<DataInfo>     &data_vec_tele){
+
     if(src_map_tele.size() > 0) {
         for (auto iter = src_map_tele.cbegin(); iter != src_map_tele.cend();){
             src_map[iter->first] = iter->second;
@@ -1224,235 +1178,241 @@ void merge_region_and_tele_src(std::map<std::string, SrcRecInfo> &src_map,
             rec_map_tele.erase(iter++);
         }
 
-        //data_map.insert(data_map_tele.begin(), data_map_tele.end());
-        // instead of insert, we use manual loop to avoid unefficent memory allocation
-        for (auto iter = data_map_tele.cbegin(); iter != data_map_tele.cend();){
-            for (auto iter2 = iter->second.cbegin(); iter2 != iter->second.cend();){
-                if (data_map[iter->first][iter2->first].size()==0) {
-                    data_map[iter->first][iter2->first] = iter2->second;
-                    // erase pushed data
-                    data_map_tele[iter->first].erase(iter2++);
-                } else {
-                    data_map[iter->first][iter2->first].insert(data_map[iter->first][iter2->first].end(), iter2->second.begin(), iter2->second.end());
-                    // erase pushed data
-                    data_map_tele[iter->first].erase(iter2++);
-                }
-
-            }
-            // erase pushed data
-            data_map_tele.erase(iter++);
-        }
+        for (auto data : data_vec_tele){
+            data_vec_all.push_back(data);
+        }   
     }
 
-    // create new src_id2name_all from merged src_map
-    src_name_list.clear();
-    for (auto iter = src_map.begin(); iter != src_map.end(); iter++){
-        src_name_list.push_back(iter->first);
-    }
+    // delete after merging
+    rec_map_tele.clear();
+    src_map_tele.clear();
+    data_vec_tele.clear();
 
-    // give new event id (accourding to the name)
-    int id_count = 0;
-    for (auto iter = src_map.begin(); iter != src_map.end(); iter ++){
-        iter->second.id = id_count;
-        id_count += 1;
-    }
 
     if (if_verbose){
         std::cout << "merge region and tele src" << std::endl;
 
-        for(auto iter = src_map.begin(); iter != src_map.end(); iter++){
+        for(auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++){
             std::cout   << "source id: " << iter->second.id
                         << ", source name: " << iter->second.name
                         << std::endl;
         }
 
-        for(auto iter = rec_map.begin(); iter != rec_map.end(); iter++){
+        for(auto iter = rec_map_all.begin(); iter != rec_map_all.end(); iter++){
             std::cout   << "receiver id: " << iter->second.id
                         << ", receiver name: " << iter->second.name
                         << std::endl;
         }
 
-        for(auto it_src = data_map.begin(); it_src != data_map.end(); it_src++){
-            for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-                for(const auto& data: it_rec->second){
+        for(auto data : data_vec_all){
 
-                    if (data.data_type == DATA_TYPE_ABS){
-                        std::cout   << "key: it_src, it_rec: " << it_src->first << ", " << it_rec->first
-                                    << ", absolute traveltime: " << data.time_observation
-                                    << ", source name: "       << data.name_src_pair[0]
-                                    << ", receiver name: "     << data.name_rec_pair[0]
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CSDIF){
-                        std::cout   << "key: it_src, it_rec: "  << it_src->first << ", " << it_rec->first
-                                    << ", common source differential traveltime: " << data.time_observation
-                                    << ", source name: "                         << data.name_src_pair[0]
-                                    << ", receiver pair name: "                  << data.name_rec_pair[0]
-                                    << ", "                                      << data.name_rec_pair[1]
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CRDIF){
-                        std::cout   << "key: it_src, it_rec: "    << it_src->first << ", " << it_rec->first
-                                    << ", common receiver differential traveltime: " << data.time_observation
-                                    << ", source pair name: "                      << data.name_src_pair[0]
-                                    << ", "                                        << data.name_src_pair[1]
-                                    << ", receiver name: "                         << data.name_rec_pair[0]
-                                    << std::endl;
-                    }
-                }
+            if (data.data_type == DATA_TYPE_ABS){
+                std::cout   << ", absolute traveltime: " << data.time_observation
+                            << ", source name: "       << src_map_all[data.id_src_att].name
+                            << ", receiver name: "     << rec_map_all[data.id_rec_att].name
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CSDIF){
+                std::cout   << ", common source differential traveltime: " << data.time_observation
+                            << ", source name: "                         << src_map_all[data.id_src_att].name
+                            << ", receiver pair name: "                  << rec_map_all[data.id_rec_att].name
+                            << ", "                                      << rec_map_all[data.id_pair_att].name
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CRDIF){
+                std::cout   << ", common receiver differential traveltime: " << data.time_observation
+                            << ", source pair name: "                      << src_map_all[data.id_src_att].name
+                            << ", "                                        << src_map_all[data.id_pair_att].name
+                            << ", receiver name: "                         << rec_map_all[data.id_rec_att].name
+                            << std::endl;
             }
         }
-        std::cout << "data map size: " << data_map.size() << std::endl;
+        std::cout << "data vec size: " << data_vec_all.size() << std::endl;
+    }
+}
+
+// reorder data vector in the order of id_src_att, id_rec_att, id_pair_att.        
+void reorder_data_vector(std::map<int, SrcRecInfo> &src_map_all,
+                         std::vector<DataInfo>     &data_vec_all){
+
+    // sort data_vec_all by id_src_att, id_rec_att, and id_pair_att
+    std::sort(
+        data_vec_all.begin(),
+        data_vec_all.end(),
+        // sort by id_src_att, id_rec_att, and id_pair_att
+        [](const DataInfo& a, const DataInfo& b) {
+            return std::tie(a.id_src_att, a.id_rec_att, a.id_pair_att)
+                 < std::tie(b.id_src_att, b.id_rec_att, b.id_pair_att);
+        }
+    );
+
+    // set data_begin, data_end, and n_data for each source
+    // for(auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++){
+    //     iter->second.data_begin = -1;
+    // }
+
+    std::int begin = 0;  // begin index
+
+    while (begin < data_vec_all.size()) {
+        int id_src_att = data_vec_all[begin].id_src_att;    // source id
+
+        // find the end index of the current source
+        std::int end = begin + 1;
+        while (end < data_vec_all.size() && data_vec_all[end].id_src_att == id_src_att) {
+            end++;  // if src id is the same, move to the next data
+        }
+        // now, data_vec_all[end] has a different src id, or end is out of range
+
+
+        // set data_begin, data_end, and n_data for the current source
+        src_map_all[id_src_att].data_begin = begin;
+        src_map_all[id_src_att].data_end = end;
+        src_map_all[id_src_att].n_data = end - begin;
+
+        // move to the next source
+        begin = end;
     }
 }
 
 
 // distribute the source/receiver list and data list to all the processors
-void distribute_src_rec_data(std::map<std::string, SrcRecInfo>&                                   src_map, \
-                             std::map<std::string, SrcRecInfo>&                                   rec_map, \
-                             std::map<std::string, std::map<std::string, std::vector<DataInfo>>>& data_map, \
-                             std::vector<std::string>&                                            src_name_list, \
-                             std::map<std::string, SrcRecInfo>&                                   src_map_this_sim, \
-                             std::map<std::string, SrcRecInfo>&                                   rec_map_this_sim, \
-                             std::map<std::string, std::map<std::string, std::vector<DataInfo>>>& data_map_this_sim, \
-                             std::vector<std::string>&                                            src_name_list_this_sim, \
-                             std::vector<std::string>&                                            rec_name_list_this_sim){
+void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
+                             std::map<int, SrcRecInfo>&     rec_map_all,
+                             std::vector<DataInfo>&         data_vec_all,
+                             std::map<int, SrcRecInfo>&     src_map_this_sim,
+                             std::map<int, SrcRecInfo>&     rec_map_this_sim,
+                             std::vector<DataInfo>&         data_vec_this_sim){
 
 
     // this process is done by only the processes which stores the data.
     if (proc_store_srcrec) {
+
+        // initialize the source/receiver list and data list for this simulutaneous run group
+        src_map_this_sim.clear();
+        rec_map_this_sim.clear();
+        data_vec_this_sim.clear();
 
         // number of total sources
         int n_src = 0;
 
         // number of total sources
         if (proc_read_srcrec)
-            n_src = src_map.size();
+            n_src = src_map_all.size();
 
-        // broadcast the number of sources to all the processors
+        // broadcast the number of sources to all the processors (level 1)
         broadcast_i_single_inter_sim(n_src, 0); // inter simulutaneous run group
 
         // store the total number of sources
         nsrc_total = n_src;
 
         // assign sources to each simulutaneous run group
+        std::vector<int> id_src_att_vector;
+        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
+            for (auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++) {
+                id_src_att_vector.push_back(iter->first); // store the source id
+            }
+        }
+
         for (int i_src = 0; i_src < n_src; i_src++) {
             // id of simulutaneous run group to which the i_src-th source belongs
             int dst_id_sim = select_id_sim_for_src(i_src, n_sims);
 
             // broadcast the source name
-            std::string src_name;
-            if (id_sim == 0 && subdom_main){
-                src_name = src_name_list[i_src];
+            int id_src_att;
+            if (id_sim == 0 && subdom_main){            // for rank 0, get the key of src_map_all
+                id_src_att = id_src_att_vector[i_src];
             }
 
-            broadcast_str_inter_sim(src_name, 0); // inter simulutaneous run group
+            broadcast_int_inter_sim(id_src_att, 0); // (level 1) broadcast the source id to all the simulutaneous run groups
             if (id_sim==0){ // sender
 
-                if (dst_id_sim == id_sim){ // this source belongs to this simulutaneous run group
+                if (dst_id_sim == id_sim){ // if the destination is itself (rank 0), directly get the info from src_map_all, rec_map_all, and data_map_all.
+                    int data_begin = src_map_all[id_src_att].data_begin;
+                    int data_end   = src_map_all[id_src_att].data_end;
 
                     // src
-                    src_map_this_sim[src_name] = src_map[src_name];
+                    src_map_this_sim[id_src_att] = src_map_all[id_src_att];
+                    src_map_this_sim[id_src_att].data_begin = data_vec_this_sim.size(); // data begin index for this source
+                    src_map_this_sim[id_src_att].data_end   = src_map_this_sim[id_src_att].data_begin + (data_end - data_begin); // data end index for this source
+                    src_map_this_sim[id_src_att].n_data     = data_end - data_begin; // number of data for this source
+
                     // data
-                    for (auto iter = data_map[src_name].begin(); iter != data_map[src_name].end(); iter++){
+                    for (int i_data = data_begin; i_data < data_end; i_data++){
+                        DataInfo& data = data_vec_all[i_data];
+                        data_vec_this_sim.push_back(data);
+
                         // rec by data
-                        rec_map_this_sim[iter->first] = rec_map[iter->first];
-                        rec_name_list_this_sim.push_back(iter->first);
+                        rec_map_this_sim[data.id_rec_att] = rec_map_all[data.id_rec_att];
+                        
+                        // store the second receiver for rec_pair
+                        if (data.data_type == DATA_TYPE_CSDIF){
+                            rec_map_this_sim[data.id_pair_att] = rec_map_all[data.id_pair_att];
+                        }
+                    }
 
-                        for (auto& data : iter->second){
-                            data_map_this_sim[src_name][iter->first].push_back(data);
 
-                            // store the second receiver for rec_pair
+                } else { // (level 1) if the destination is not itself (rank 0), send info to other ranks
+                    // 1. send src
+                    send_src_info_inter_sim(src_map_all[id_src_att], dst_id_sim);  // n_data has been included in src_map
+
+                    // 2. send data first
+                    int n_data = src_map_all[id_src_att].n_data;
+                    std::map<int, bool> rec_id_to_be_sent; // store the receiver id to be sent
+                    
+                    int data_begin = src_map_all[id_src_att].data_begin;
+                    int data_end   = src_map_all[id_src_att].data_end;
+                    if (n_data > 0){
+                        for (int idata = data_begin; idata < data_end; idata++){
+                            DataInfo& data = data_vec_all[idata];
+                            send_data_info_inter_sim(data, dst_id_sim);
+
+                            rec_id_to_be_sent[data.id_rec_att] = true; // mark the receiver id to be sent
+                            // send the second receiver for rec_pair
                             if (data.data_type == DATA_TYPE_CSDIF){
-                                rec_map_this_sim[data.name_rec_pair[1]] = rec_map[data.name_rec_pair[1]];
-                                rec_name_list_this_sim.push_back(data.name_rec_pair[1]);
+                                rec_id_to_be_sent[data.id_pair_att] = true; // mark the second receiver id to be sent
                             }
                         }
                     }
 
-                    // add the source name to the source name list
-                    src_name_list_this_sim.push_back(src_name);
+                    // 3. send receiver next
+                    int n_rec = rec_id_to_be_sent.size();
+                    send_i_single_sim(&n_rec, dst_id_sim);  // send the number of receivers (level 1, inter sim)
 
-                } else { // this source belongs to non-main simulutaneous run group
-                    // send src
-                    send_src_info_inter_sim(src_map[src_name], dst_id_sim);
-
-                    // send number of receivers belonging to src
-                    int n_rec = data_map[src_name].size();
-                    send_i_single_sim(&n_rec, dst_id_sim);
-                 
-                    if (n_rec > 0){
-
-                        // send data_map[name_i_src] to the main process of dst_id_sim
-                        for (auto iter = data_map[src_name].begin(); iter != data_map[src_name].end(); iter++){
-
-                            // send rec_map[name_i_rec] to the main process of dst_id_sim
-                            send_rec_info_inter_sim(rec_map[iter->first], dst_id_sim);
-
-                            // send data_map[name_i_src].size() to the main process of dst_id_sim
-                            int n_data = iter->second.size();
-                            send_i_single_sim(&n_data, dst_id_sim);
-                            // send data
-                            for (auto& data : iter->second) {
-                                send_data_info_inter_sim(data, dst_id_sim);
-
-                                // send the second receiver for rec_pair
-                                if (data.data_type == DATA_TYPE_CSDIF){
-                                    send_rec_info_inter_sim(rec_map[data.name_rec_pair[1]], dst_id_sim);
-                                }
-                            }
-
-                        }
-                    } // if (n_data > 0)
-
+                    for (auto iter = rec_id_to_be_sent.begin(); iter != rec_id_to_be_sent.end(); iter++){
+                        send_rec_info_inter_sim(rec_map_all[iter->first], dst_id_sim);
+                    }
                 }
-            } else { // receive
-                if (dst_id_sim == id_sim){
 
-                    // receive src/rec_points from the main process of dst_id_sim
+            } else { // receive (other ranks)
 
-                    // prepare SrcRecInfo object for receiving the contents
+                if (dst_id_sim == id_sim){      // this rank is the destination. Try to receive the info
+
+                    // 1. receive src
                     SrcRecInfo tmp_SrcInfo;
-                     // receive src
                     recv_src_info_inter_sim(tmp_SrcInfo, 0);
+                    int n_data = tmp_SrcInfo.data_end - tmp_SrcInfo.data_begin; // number of data for this source
 
-                    // add the received src_map to the src_map
-                    src_map_this_sim[tmp_SrcInfo.name] = tmp_SrcInfo;
+                    // add the received src_map to the src_map (id_src_att == tmp_SrcInfo.id_att)
+                    tmp_SrcInfo.data_begin = data_vec_this_sim.size(); // data begin index for this source
+                    tmp_SrcInfo.data_end   = tmp_SrcInfo.data_begin + n_data;
+                    src_map_this_sim[tmp_SrcInfo.id_att] = tmp_SrcInfo;
 
-                    // recv number of receivers belonging to src
+                    // 2. receiver data
+                    for (int i_data = 0; i_data < n_data; i_data++){
+                        // receive data_info from the main process of dst_id_sim
+                        DataInfo tmp_DataInfo;
+                        recv_data_info_inter_sim(tmp_DataInfo, 0);
+                        data_vec_this_sim.push_back(tmp_DataInfo);
+                    }
+
+                    // 3. receive receivers
                     int n_rec = 0;
-                    recv_i_single_sim(&n_rec, 0);
+                    recv_i_single_sim(&n_rec, 0);  // receive the number of receivers (level 1, inter sim)
 
-                    // receive data_info from the main process of dst_id_sim
-                    for (int i_srcrec = 0; i_srcrec < n_rec; i_srcrec++){
-
-                        // recv data_map[name_i_src].size() from the main process of dst_id_sim
+                    for (int i_rec = 0; i_rec < n_rec; i_rec++){
+                        // receive rec_info from the main process of dst_id_sim
                         SrcRecInfo tmp_RecInfo;
                         recv_rec_info_inter_sim(tmp_RecInfo, 0);
-
-                        rec_map_this_sim[tmp_RecInfo.name] = tmp_RecInfo;
-                        rec_name_list_this_sim.push_back(tmp_RecInfo.name);
-
-                        int n_data = 0;
-                        recv_i_single_sim(&n_data, 0);
-
-                        for (int i_data = 0; i_data < n_data; i_data++){
-                            // prepare DataInfo object for receiving the contents
-                            DataInfo tmp_DataInfo;
-                            // receive data_info from the main process of dst_id_sim
-                            recv_data_info_inter_sim(tmp_DataInfo, 0);
-                            // add the received data_info to the data_info
-                            data_map_this_sim[tmp_DataInfo.name_src_pair[0]][tmp_DataInfo.name_rec_pair[0]].push_back(tmp_DataInfo);
-
-                            // store the second receiver for rec_pair
-                            if (tmp_DataInfo.data_type == DATA_TYPE_CSDIF){
-                                recv_rec_info_inter_sim(rec_map_this_sim[tmp_DataInfo.name_rec_pair[1]], 0);
-                                rec_name_list_this_sim.push_back(tmp_DataInfo.name_rec_pair[1]);
-                            }
-                        }
-
-                    } // end of for i_srcrec
-
-                    // add the source name to the source name list
-                    src_name_list_this_sim.push_back(src_name);
+                        rec_map_this_sim[tmp_RecInfo.id_att] = tmp_RecInfo;
+                    }
 
                 } else {
                     // do nothing
@@ -1461,11 +1421,6 @@ void distribute_src_rec_data(std::map<std::string, SrcRecInfo>&                 
             } // end of if (id_sim==0)
 
         } // end of for i_src
-
-        
-        // make rec_name_list_this_sim unique using unique
-        std::sort(rec_name_list_this_sim.begin(), rec_name_list_this_sim.end());
-        rec_name_list_this_sim.erase(std::unique(rec_name_list_this_sim.begin(), rec_name_list_this_sim.end()), rec_name_list_this_sim.end());
 
     } // end of if (proc_store_srcrec)
 
@@ -1481,18 +1436,43 @@ void distribute_src_rec_data(std::map<std::string, SrcRecInfo>&                 
 }
 
 
-void prepare_src_map_for_2d_solver(std::map<std::string, SrcRecInfo>& src_map_all, \
-                                   std::map<std::string, SrcRecInfo>& src_map, \
-                                   std::vector<std::string>&          src_id2name_2d, \
-                                   std::map<std::string, SrcRecInfo>& src_map_2d) {
-    //
-    // src_id2name_2d: list of src name assigned to this simultaneous run group
-    // src_map_2d: src map assigned to this simultaneous run group
+// generate a list of events which involve common receiver double difference traveltime
+void generate_src_map_with_common_receiver(std::vector<DataInfo>&       data_map,
+                                           std::map<int, SrcRecInfo>&   src_map_comm_recp){
 
     if (proc_store_srcrec) {
 
-        std::map<std::string, SrcRecInfo> tmp_src_map_unique;
-        std::vector<std::string> tmp_src_name_list_unique;
+        for(auto data : data_map){
+            if (data.data_type == DATA_TYPE_CRDIF) {
+                // add this source and turn to the next source
+                src_map_comm_recp[data.id_src_att] = src_map[data.id_src_att];
+            }
+        }
+
+        // check if this sim group has common source double difference traveltime
+        if (src_map_comm_recp.size() > 0){
+            src_pair_exists = true;
+        }
+
+    } // end of if (proc_store_srcrec)
+
+    // flag if any src_pair exists
+    allreduce_bool_inplace_inter_sim(&src_pair_exists, 1); // inter-sim (level 1)
+    allreduce_bool_inplace(&src_pair_exists, 1); // intra-sim / inter subdom (level 2)
+    allreduce_bool_inplace_sub(&src_pair_exists, 1); // intra-subdom (level 3)
+}
+
+
+void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
+                                   std::map<int, SrcRecInfo>& src_map,
+                                   std::map<int, SrcRecInfo>& src_map_2d) {
+    //
+    // src_map_2d: src map assigned to this simultaneous run group. source with the same depth, will be regarded as the same source
+
+    if (proc_store_srcrec) {
+
+        std::map<int, SrcRecInfo> tmp_src_map_unique;
+        std::vector<int> tmp_src_id_list_unique;
 
         // at first, make a depth-unique source list in the main process from src_map_tele
         if (proc_read_srcrec) {
@@ -1503,7 +1483,7 @@ void prepare_src_map_for_2d_solver(std::map<std::string, SrcRecInfo>& src_map_al
                 if (!iter->second.is_out_of_region)
                     continue;
 
-                std::string tmp_name = iter->second.name;
+                int tmp_src_id = iter->second.id_att;
 
                 // check if there is no element in tmp_src_map_unique with the same iter->second.depth
                 bool if_unique = true;
@@ -1515,37 +1495,44 @@ void prepare_src_map_for_2d_solver(std::map<std::string, SrcRecInfo>& src_map_al
                 }
 
                 if (if_unique) {
-                    tmp_src_map_unique[tmp_name] = iter->second;
-                    tmp_src_name_list_unique.push_back(tmp_name);
+                    tmp_src_map_unique[tmp_src_id] = iter->second;
                 }
             }
         }
 
         // broadcast the number of unique sources to all processes
         int n_src_unique = 0;
-        if (proc_read_srcrec) n_src_unique = tmp_src_map_unique.size();
+        if (proc_read_srcrec){  // rank 0
+            n_src_unique = tmp_src_map_unique.size();
+        } 
         broadcast_i_single_inter_sim(n_src_unique, 0); // inter simulutaneous run group
+
+        std::vector<int> id_src_att_vector;
+        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
+            for (auto iter = tmp_src_map_unique.begin(); iter != tmp_src_map_unique.end(); iter++) {
+                id_src_att_vector.push_back(iter->first); // store the source id
+            }
+        }
 
         // iterate over all the unique sources
         for (int i_src_unique = 0; i_src_unique < n_src_unique; i_src_unique++){
             int dst_id_sim = select_id_sim_for_src(i_src_unique, n_sims);
 
-            if (id_sim==0){
-                if (dst_id_sim==id_sim){
+            if (id_sim==0){   // sender
+                int id_src_att = id_src_att_vector[i_src_unique];
+                if (dst_id_sim==id_sim){    // if the destination is itself (rank 0), directly get the info from src_map_all, rec_map_all, and data_map_all.
                     // store
-                    src_map_2d[tmp_src_name_list_unique[i_src_unique]] = tmp_src_map_unique[tmp_src_name_list_unique[i_src_unique]];
-                    src_id2name_2d.push_back(tmp_src_name_list_unique[i_src_unique]);
-                } else {
-                    // send to dst_id_sim
-                    send_src_info_inter_sim(tmp_src_map_unique[tmp_src_name_list_unique[i_src_unique]], dst_id_sim);
+                    src_map_2d[id_src_att] = tmp_src_map_unique[id_src_att];
+                } else {    // (level 1) if the destination is not itself (rank 0), send info to other ranks
+                    // send to dst_id_sim 
+                    send_src_info_inter_sim(tmp_src_map_unique[id_src_att], dst_id_sim);
                 }
-            } else {
-                if (dst_id_sim==id_sim){
+            } else {  // receiver
+                if (dst_id_sim==id_sim){    // this rank is the destination. Try to receive the info
                     // receive from 0
                     SrcRecInfo tmp_src;
                     recv_src_info_inter_sim(tmp_src, 0);
-                    src_map_2d[tmp_src.name] = tmp_src;
-                    src_id2name_2d.push_back(tmp_src.name);
+                    src_map_2d[tmp_src.id_att] = tmp_src;
                 } else {
                     // do nothing
                 }
@@ -1586,6 +1573,8 @@ void send_src_info_inter_sim(SrcRecInfo &src, int dest){
     send_i_single_sim(&src.n_data, dest);
     send_str_sim(src.name, dest);
     send_bool_single_sim(&src.is_out_of_region, dest);
+    send_i_single_sim(&src.data_begin, dest);
+    send_i_single_sim(&src.data_end, dest);
 
 }
 
@@ -1670,13 +1659,17 @@ void send_data_info_inter_sim(DataInfo &data, int dest){
 
     send_cr_single_sim(&data.time_observation, dest);
 
-    for (int ipair=0; ipair<2; ipair++){
-        send_i_single_sim(&data.id_rec_pair[ipair], dest);
-        send_str_sim(data.name_rec_pair[ipair], dest);
+    send_i_single_sim(&data.id_src_att, dest);
+    send_i_single_sim(&data.id_rec_att, dest);
+    send_i_single_sim(&data.id_pair_att, dest);
 
-        send_i_single_sim(&data.id_src_pair[ipair], dest);
-        send_str_sim(data.name_src_pair[ipair], dest);
-    }
+    // for (int ipair=0; ipair<2; ipair++){
+    //     send_i_single_sim(&data.id_rec_pair[ipair], dest);
+    //     send_str_sim(data.name_rec_pair[ipair], dest);
+
+    //     send_i_single_sim(&data.id_src_pair[ipair], dest);
+    //     send_str_sim(data.name_src_pair[ipair], dest);
+    // }
 }
 
 

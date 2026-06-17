@@ -259,9 +259,7 @@ public:
     std::vector<DataInfo> data_vec;         // data list for this simultaneous group (including the data whose sources are in ths simultaneous group)
     std::vector<DataInfo> data_vec_tele;    // data list for teleseismic (tele is not swapped, and will be aggregated to data_vec_all in merge_region_and_tele_src)
 
-    void data_vec_sort(std::vector<DataInfo> &data_vec_in); // sort data_vec_in by id_src_att, id_rec_att, and id_pair_att
-
-
+    
     std::vector<std::string> name_for_reloc;    // name list of receivers (swarpped sources) for location
 
     // src id <-> src name relations
@@ -270,8 +268,8 @@ public:
     std::vector<std::string>                           src_id2name_comm_rec; // name list of sources with common receiver
     std::vector<std::string>                           src_id2name_2d;       // name list of sources assigned for 2d solver.
 
-    std::vector<std::string>                           src_id2name_all;     // name list of all sources (id_att -> name)
-    std::vector<std::string>                           rec_id2name_all;     // name list of all receivers (id_att -> name)
+    // std::vector<std::string>                           src_id2name_all;     // name list of all sources (id_att -> name)
+    // std::vector<std::string>                           rec_id2name_all;     // name list of all receivers (id_att -> name)
     std::vector<int>                                   src_id_in_file;      // sources list in the file (this will not be swapped) (store the order of sources in src_rec file)
     std::vector<std::vector<std::vector<int>>>         rec_id_in_file;      // receivers list in the file (this will not be swapped) (store the order of sources in src_rec file)
 
@@ -444,9 +442,9 @@ private:
     void gather_rec_info_to_main();
 
     // generate a map of sources which include common receiver double difference data
-    void generate_src_map_with_common_receiver(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,
-                                             std::map<std::string, SrcRecInfo>&,
-                                             std::vector<std::string>&);
+    // void generate_src_map_with_common_receiver(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,
+    //                                          std::map<std::string, SrcRecInfo>&,
+    //                                          std::vector<std::string>&);
 
     bool i_first=false, i_last=false, \
          j_first=false, j_last=false, \

@@ -233,8 +233,8 @@ inline bool     subdom_main      = false; // true if this process is main proces
 
 
 // flags for explaining the process's role
-inline bool proc_read_srcrec = false;  // true if this process is reading source file
-inline bool proc_store_srcrec = false; // true if this process is storing srcrec file
+inline bool proc_read_srcrec = false;  // main ol levels 1,2,3 (subdom_main && id_subdomain==0 && id_sim==0) true if this process is reading source file
+inline bool proc_store_srcrec = false; // main ol levels 2,3 (subdom_main && id_subdomain==0) true if this process is storing srcrec file
 
 // MNMN stop using these global variable for avoiding misleadings during the sources' iteration loop
 //inline int      id_sim_src       = 0; // id of current target source
