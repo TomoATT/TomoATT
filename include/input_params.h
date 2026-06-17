@@ -232,15 +232,15 @@ public:
     // std::map<std::string, SrcRecInfo> rec_map;         // map of receivers belonging to this simultaneous group
     // std::map<std::string, SrcRecInfo> rec_map_tele;    // rec list for teleseismic
 
-    std::map< int, SrcRecInfo> src_map_all;          // map of all sources (full information is only stored by the main process)
-    std::map< int, SrcRecInfo> src_map;              // map of sources belonging to this simultaneous group
-    std::map< int, SrcRecInfo> src_map_comm_rec;     // map of sources with common receiver
-    std::map< int, SrcRecInfo> src_map_2d;           // map of sources assigned for 2d solver
-    std::map< int, SrcRecInfo> src_map_tele;         // source list for teleseismic
+    std::map< int, SrcRecInfo> src_map_all;          // (id_att -> SrcRecInfo) map of all sources (full information is only stored by the main process)
+    std::map< int, SrcRecInfo> src_map;              // (id_att -> SrcRecInfo) map of sources belonging to this simultaneous group
+    std::map< int, SrcRecInfo> src_map_comm_rec;     // (id_att -> SrcRecInfo) map of sources with common receiver
+    std::map< int, SrcRecInfo> src_map_2d;           // (id_att -> SrcRecInfo) map of sources assigned for 2d solver
+    std::map< int, SrcRecInfo> src_map_tele;         // (id_att -> SrcRecInfo) source list for teleseismic
 
-    std::map< int, SrcRecInfo> rec_map_all;     // map of all receivers (full information is only stored by the main process)
-    std::map< int, SrcRecInfo> rec_map;         // map of receivers belonging to this simultaneous group
-    std::map< int, SrcRecInfo> rec_map_tele;    // rec list for teleseismic
+    std::map< int, SrcRecInfo> rec_map_all;     // (id_att -> SrcRecInfo) map of all receivers (full information is only stored by the main process)
+    std::map< int, SrcRecInfo> rec_map;         // (id_att -> SrcRecInfo) map of receivers belonging to this simultaneous group
+    std::map< int, SrcRecInfo> rec_map_tele;    // (id_att -> SrcRecInfo) rec list for teleseismic
 
 
     // datainfo-vector maps <src_name, rec_name>
@@ -248,12 +248,18 @@ public:
     // std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map;         // data list for this simultaneous group
     // std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map_tele;    // data list for teleseismic
 
-    std::map< int, std::map<int, std::vector<DataInfo>>> data_map_all;   // data list for all data (full information is only stored by the main process)
-    std::map< int, std::map<int, std::vector<DataInfo>>> data_map;       // data list for this simultaneous group
-    std::map< int, std::map<int, std::vector<DataInfo>>> data_map_tele;  // data list for teleseismic
+    // std::map< int, std::map<int, std::vector<DataInfo>>> data_map_all;   // data list for all data (full information is only stored by the main process)
+    // std::map< int, std::map<int, std::vector<DataInfo>>> data_map;       // data list for this simultaneous group
+    // std::map< int, std::map<int, std::vector<DataInfo>>> data_map_tele;  // data list for teleseismic
 
-    std::map< int, std::string> data_map_level1_id2name; // map the first level id (src id) to src name
-    std::map< int, std::string> data_map_level2_id2name; // map the second level id (rec id) to rec name
+    // std::map< int, std::string> data_map_level1_id2name; // map the first level id (src id) to src name
+    // std::map< int, std::string> data_map_level2_id2name; // map the second level id (rec id) to rec name
+
+    std::vector<DataInfo> data_vec_all;     // data list for all data (full information is only stored by the main process)
+    std::vector<DataInfo> data_vec;         // data list for this simultaneous group (including the data whose sources are in ths simultaneous group)
+    std::vector<DataInfo> data_vec_tele;    // data list for teleseismic (tele is not swapped, and will be aggregated to data_vec_all in merge_region_and_tele_src)
+
+    void data_vec_sort(std::vector<DataInfo> &data_vec_in); // sort data_vec_in by id_src_att, id_rec_att, and id_pair_att
 
 
     std::vector<std::string> name_for_reloc;    // name list of receivers (swarpped sources) for location
@@ -263,14 +269,11 @@ public:
     std::vector<std::string>                           rec_id2name;          // name list of receivers belongig to this simultaneous group
     std::vector<std::string>                           src_id2name_comm_rec; // name list of sources with common receiver
     std::vector<std::string>                           src_id2name_2d;       // name list of sources assigned for 2d solver.
-    std::vector<std::string>                           src_id2name_all;      // name list of all sources (store the order of sources in src_rec file)
-    std::vector<std::string>                           src_id2name_back;     // back up of name list of all sources (this will not be swapped)
-    std::vector<std::vector<std::vector<std::string>>> rec_id2name_back;     // back up of the name list of all receivers for each source (this will not be swapped)
 
-    // backups used when outputing the data
-    std::map<int, SrcRecInfo>                                   src_map_back;
-    std::map<int, SrcRecInfo>                                   rec_map_back;
-    std::map<int, std::map<int, std::vector<DataInfo>>>         data_map_back;
+    std::vector<std::string>                           src_id2name_all;     // name list of all sources (id_att -> name)
+    std::vector<std::string>                           rec_id2name_all;     // name list of all receivers (id_att -> name)
+    std::vector<int>                                   src_id_in_file;      // sources list in the file (this will not be swapped) (store the order of sources in src_rec file)
+    std::vector<std::vector<std::vector<int>>>         rec_id_in_file;      // receivers list in the file (this will not be swapped) (store the order of sources in src_rec file)
 
     // the number of data
     int N_abs_local_data    = 0;

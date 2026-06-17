@@ -18,8 +18,8 @@
 // information of source or receiver
 class SrcRecInfo {
 public:
-    int id = -1;
-    std::string name = "unknown";
+    int id = -1;                        // id in the file
+    std::string name = "unknown";       // name in the file
     CUSTOMREAL dep; // stored as depth (km), so need to depth2radious function when using it in other part of the code
     CUSTOMREAL lat; // stored in degree, but convarted to radian when passed through get_src_* function
     CUSTOMREAL lon; // stored in degree, but convarted to radian when passed through get_src_* function
@@ -36,6 +36,9 @@ public:
     CUSTOMREAL adjoint_source_density = 0.0;
 
     int n_data = 0;
+
+    // unique id for TomoATT, used to identify the source or receiver in TomoATT. 
+    int id_att = -1;    // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att.
 
     // arrays for storing arrival times on boundary surfaces, calculated by 2D Eikonal solver
     bool        is_out_of_region    = false;   // is the source or receiver in the region; false: in the refion; true: teleseismic
@@ -99,19 +102,23 @@ public:
     // bool is_rec_pair (for case 3)
     int data_type = -1; 
 
+    int id_src_att = -1;    // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att.
+    int id_rec_att = -1;    // the index of receivers in TomoATT, used to identify this receiver. Each receiver has a unique id_rec_att.
+    int id_pair_att = -1; // the index of the second source or receiver in TomoATT. valid only for data_type = 1 or 2. For data_type = 0, id_pari_att = -1.
+
     // source information
     // for data_type = 0, id_srcs[0] is the source id; 
     // for data_type = 1, id_srcs[0] is the source id;
     // for data_type = 2, id_srcs[0] and id_srcs[1] are the source ids
-    std::vector<int>            id_src_pair = {-1, -1};
-    std::vector<std::string>    name_src_pair = {"unknown", "unknown"};
+    // std::vector<int>            id_src_pair = {-1, -1};
+    // std::vector<std::string>    name_src_pair = {"unknown", "unknown"};
 
     // receiver information
     // for data_type = 0, id_recs[0] is the receiver id;
     // for data_type = 1, id_recs[0] and id_recs[1] are the receiver ids;
     // for data_type = 2, id_recs[0] is the receiver id;
-    std::vector<int>            id_rec_pair = {-1, -1};
-    std::vector<std::string>    name_rec_pair = {"unknown", "unknown"};
+    // std::vector<int>            id_rec_pair = {-1, -1};
+    // std::vector<std::string>    name_rec_pair = {"unknown", "unknown"};
 
     // traveltime
     CUSTOMREAL travel_time     = -999.0;        // synthetic travel time from id_srcs[0] to id_recs[0]

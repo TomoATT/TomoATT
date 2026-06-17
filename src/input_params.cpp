@@ -1880,9 +1880,9 @@ void InputParams::prepare_src_map(){
         parse_src_rec_file(src_rec_file, \
                            src_map_all, \
                            rec_map_all, \
-                           data_map_all, \
-                           src_id2name_all, \
-                           rec_id2name_back);
+                           data_vec_all, \
+                           src_id_in_file, \
+                           rec_id_in_file);
 
         // read station correction file by all processes
         if (sta_correction_file_exist) {
@@ -1894,14 +1894,16 @@ void InputParams::prepare_src_map(){
         // copy backups (KEEPED AS THE STATE BEFORE SWAPPING SRC AND REC)
         src_map_back     = src_map_all;
         rec_map_back     = rec_map_all;
-        data_map_back    = data_map_all;
-        src_id2name_back = src_id2name_all;
+        data_vec_back    = data_vec_all;
 
         // check if src positions are within the domain or not (teleseismic source)
         // detected teleseismic source is separated into tele_src_points and tele_rec_points
 
         std::cout << std::endl << "separate regional and teleseismic src/rec points" << std::endl;
 
+        // src_map_back -> src_map_all + src_map_tele
+        // rec_map_back -> rec_map_all + rec_map_tele
+        // data_vec_back -> data_vec_all + data_vec_tele
         separate_region_and_tele_src_rec_data(src_map_back, rec_map_back, data_map_back,
                                               src_map_all,  rec_map_all,  data_map_all,
                                               src_map_tele, rec_map_tele, data_map_tele,
@@ -1950,9 +1952,9 @@ void InputParams::prepare_src_map(){
 
         // concatenate resional and teleseismic src/rec points
         //
-        // src_map  = src_map_all  + src_map_tele
-        // rec_map  = rec_map_all  + rec_map_tele
-        // data_map = data_map_all + data_map_tele
+        // src_map_all  <- src_map_all  + src_map_tele
+        // rec_map_all  <- rec_map_all  + rec_map_tele
+        // data_map_all <- data_map_all + data_map_tele
         // *_map_tele will be empty after this function
 
         std::cout << std::endl << "merge regional and teleseismic src/rec points" << std::endl;
@@ -3314,4 +3316,17 @@ void InputParams::check_upper_bound(CUSTOMREAL*& arr, int& n_grid, CUSTOMREAL up
         arr = new_arr;
         n_grid += 1;
     }
+}
+
+// sort data_vec_in by id_src_att, id_rec_att, and id_pair_att
+void InputParams::data_vec_sort(std::vector<DataInfo> &data_vec_in){
+    std::sort(
+        data_vec_in.begin(),
+        data_vec_in.end(),
+        // sort by id_src_att, id_rec_att, and id_pair_att
+        [](const DataInfo& a, const DataInfo& b) {
+            return std::tie(a.id_src_att, a.id_rec_att, a.id_pair_att)
+                 < std::tie(b.id_src_att, b.id_rec_att, b.id_pair_att);
+        }
+    );
 }

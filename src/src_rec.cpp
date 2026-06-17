@@ -6,12 +6,12 @@
 //
 
 void parse_src_rec_file(std::string& src_rec_file, \
-                        std::map<std::string, SrcRecInfo>& src_map, \
-                        std::map<std::string, SrcRecInfo>& rec_map, \
-                        std::map<std::string, std::map<std::string, std::vector<DataInfo>>>& data_map, \
-                        std::vector<std::string>& src_name_list, \
-                        std::vector<std::vector<std::vector<std::string>>>& srcrec_name_list){
-
+                        std::map<int, SrcRecInfo>& src_map, \
+                        std::map<int, SrcRecInfo>& rec_map, \
+                        std::vector<DataInfo>& data_vec, \
+                        std::vector<int>& src_id_in_file, \
+                        std::vector<std::vector<std::vector<int>>>& rec_id_in_file){
+                        
     // start timer
     std::string timer_name = "parse_src_rec_file";
     Timer timer(timer_name);
@@ -36,18 +36,26 @@ void parse_src_rec_file(std::string& src_rec_file, \
     int cc = 0;        // count the number of lines
     int i_src_now = 0; // count the number of srcs
     int ndata_tmp = 0; // count the number of receivers or differential traveltime data for each source
-    src_map.clear();
-    rec_map.clear();
-    data_map.clear();
+    src_map.clear();            // src name -> SrcRecInfo
+    rec_map.clear();            // rec name -> SrcRecInfo
+    data_vec.clear();           // data vector
+    src_id_in_file.clear();     // store the order of sources in the file
+    rec_id_in_file.clear();     // store the order of receivers for each source in the file
+
+
+    std::map<std::string, int> src_name2id_att; // map from src name to id_att, used for checking duplicated source name in the file
+    std::map<std::string, int> rec_name2id_att;  
+
 
     std::string src_name;
     CUSTOMREAL src_weight = 1.0;
     CUSTOMREAL rec_weight = 1.0;
-    int src_id = -1;
+    int src_id = -1;    // src id in the file
+    int src_id_att = -1; // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att. --- IGNORE ---
 
     // temporary receiver name list for each source
-    // this stores station name and the data type ("abs", "cr" or "cs") for each data line.
-    std::vector<std::vector<std::string>> rec_name_list;
+    // this stores station id and the data type (DATA_TYPE_ABS, DATA_TYPE_CSDIF or DATA_TYPE_CRDIF) for each data line.
+    std::vector<std::vector<int>> rec_id_list;
 
     while (true) {
 
@@ -130,6 +138,17 @@ void parse_src_rec_file(std::string& src_rec_file, \
                 src.mag    = static_cast<CUSTOMREAL>(std::stod(tokens[10]));
                 src.n_data = std::stoi(tokens[11]);
                 src.name   = tokens[12];
+
+                if (src_name2id_att.find(src.name) == src_name2id_att.end()){   // if this is a new source, assign id.
+                    src.id_src_att = static_cast<int>(src_name2id_att.size()); 
+                    src_name2id_att[src.name] = src.id_src_att; // assign id_att based on the current size of src_name2id_att,
+                } else {
+                    src.id_src_att = src_name2id_att[src.name]; // if the source already exists, use the existing id_src_att
+                }
+
+                // whether the src.name exists or not, overwrite it. (it can overwrite the src_info in the cr_dif data, whose source infomation (e.g., ortime, Ndata) is incomplete.)
+                src_map[src.id_src_att] = src; // store the source info in src_map with id_src_att as key
+
                 cc++;
 
                 // check if tokens[13] exists, then read weight
@@ -143,14 +162,14 @@ void parse_src_rec_file(std::string& src_rec_file, \
                 // if (src_map.find(src.name) == src_map.end())
                 //     src_map[src.name] = src;
 
-                // whether the src.name exists or not, overwrite it. (it can overwrite the src_info in the cr_dif data, whose source infomation (e.g., ortime, Ndata) is incomplete.)
-                src_map[src.name] = src;
+                // src_map[src.name] = src;
 
-                src_id   = src.id;
+                src_id      = src.id;
+                src_id_att  = src.id_att;
                 src_name = src.name;
 
                 ndata_tmp = src.n_data;
-                src_name_list.push_back(src_name); // store order of sources in the file
+                src_id_in_file.push_back(src_id); // store order of sources in the file
 
                 // source with no receiver is allowed (cc = 1, ndata_tmp = 0)
                 if (cc > ndata_tmp) {
@@ -159,9 +178,9 @@ void parse_src_rec_file(std::string& src_rec_file, \
                     i_src_now++;
 
                     // store the receiver name list for the source
-                    srcrec_name_list.push_back(rec_name_list);
+                    rec_id_in_file.push_back(rec_id_list);
                     // clear the temporary receiver name list
-                    rec_name_list.clear();
+                    rec_id_list.clear();
 
                     // timer
                     if (i_src_now % 1000 == 0 && world_rank == 0) {
@@ -174,7 +193,7 @@ void parse_src_rec_file(std::string& src_rec_file, \
                 // read single receiver or differential traveltime data
                 if (tokens.size() < 11) {
                     // store receiver name of onle receiver line in src rec file
-                    std::vector<std::string> rec_name_list_one_line;
+                    std::vector<int> rec_id_list_one_line;
 
                     SrcRecInfo rec;
 
@@ -183,14 +202,19 @@ void parse_src_rec_file(std::string& src_rec_file, \
                     rec.lat  = static_cast<CUSTOMREAL>(std::stod(tokens[3])); // in degree
                     rec.lon  = static_cast<CUSTOMREAL>(std::stod(tokens[4])); // in degree
                     rec.dep  = static_cast<CUSTOMREAL>(-1.0*std::stod(tokens[5])/1000.0); // convert elevation in meter to depth in km
-
+                    
                     // new receiver detected by its name
-                    if(rec_map.find(rec.name) == rec_map.end())
-                        rec_map[rec.name] = rec;
+                    if(rec_name2id_att.find(rec.name) == rec_name2id_att.end()){    // new receiver
+                        rec.id_att = static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
+                        rec_name2id_att[rec.name] = rec.id_att; // assign id_att based on the current size of rec_name2id_att, 
+                        rec_map[rec.id_att] = rec; // store the receiver info in rec_map with id_rec_att as key
+                    } else {
+                        rec.id_att = rec_name2id_att[rec.name]; // if the receiver already exists, use the existing id_rec_att
+                    }
 
-                    // store temporary receiver name list for each source
-                    rec_name_list_one_line.push_back(rec.name);
-                    rec_name_list_one_line.push_back("abs");
+                    // store temporary receiver id list for each source
+                    rec_id_list_one_line.push_back(rec.id_att);
+                    rec_id_list_one_line.push_back(DATA_TYPE_ABS);
 
                     // traveltime data
                     DataInfo data;
@@ -199,29 +223,28 @@ void parse_src_rec_file(std::string& src_rec_file, \
                     else
                         rec_weight = 1.0; // default weight
 
+
                     data.data_weight = src_weight * rec_weight;
                     data.weight      = data.data_weight * abs_time_local_weight;
                     data.weight_reloc= data.data_weight * abs_time_local_weight_reloc;
                     data.phase       = tokens[6];
 
                     data.data_type          = DATA_TYPE_ABS;
-                    data.id_src_pair[0]     = src_id;
-                    data.name_src_pair[0]   = src_name;
-                    data.id_rec_pair[0]     = rec.id;
-                    data.name_rec_pair[0]   = rec.name;
+                    data.id_src_att          = src_id_att;
+                    data.id_rec_att          = rec.id_att;
                     data.time_observation   = static_cast<CUSTOMREAL>(std::stod(tokens[7])); // store read data
 
-                    data_map[data.name_src_pair[0]][data.name_rec_pair[0]].push_back(data);
+                    data_vec.push_back(data);
 
-                    // store receiver name of onle receiver line in src rec file
-                    rec_name_list.push_back(rec_name_list_one_line);
+                    // store receiver id of onle receiver line in src rec file
+                    rec_id_list.push_back(rec_id_list_one_line);
 
                     cc++;
 
                 } else {
                     // read common source differential traveltime (cs_dif) or common receiver differential traveltime (cr_dif)
 
-                    std::vector<std::string> rec_name_list_one_line;
+                    std::vector<int> rec_id_list_one_line;
 
                     // read differential traveltime
                     SrcRecInfo rec;
@@ -232,11 +255,16 @@ void parse_src_rec_file(std::string& src_rec_file, \
                     rec.dep  = static_cast<CUSTOMREAL>(-1.0*std::stod(tokens[5])/1000.0); // convert elevation in meter to depth in km
 
                     // new receiver detected by its name
-                    if(rec_map.find(rec.name) == rec_map.end())
-                        rec_map[rec.name] = rec;
+                    if(rec_name2id_att.find(rec.name) == rec_name2id_att.end()){
+                        rec.id_att = static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
+                        rec_name2id_att[rec.name] = rec.id_att; // assign id_att based on the current size of rec_name2id_att, 
+                        rec_map[rec.id_att] = rec; // store the receiver info in rec_map with id_rec_att as key
+                    } else {
+                        rec.id_att = rec_name2id_att[rec.name]; // if the receiver already exists, use the existing id_rec_att
 
-                    // store temporary receiver name list for each source
-                    rec_name_list_one_line.push_back(rec.name);
+                    }
+                    // store temporary receiver id list for each source
+                    rec_id_list_one_line.push_back(rec.id_att);
 
 
                     // differential traveltime data
@@ -272,18 +300,24 @@ void parse_src_rec_file(std::string& src_rec_file, \
                         src2.dep  = static_cast<CUSTOMREAL>(std::stod(tokens[10])); // convert elevation in meter to depth in km
 
                         // new source detected by its name
-                        if (src_map.find(src2.name) == src_map.end())
-                            src_map[src2.name] = src2;
+                        if(src_name2id_att.find(src2.name) == src_name2id_att.end()){ // new source
+                            src2.id_att = static_cast<int>(src_name2id_att.size()); // assign id_src_att based on the current size of src_name2id_att
+                            src_name2id_att[src2.name] = src2.id_att; // assign id_att based on the current size of src_name2id_att, 
+                            src_map[src2.id_att] = src2; // store the source info in src_map with id_src_att as key
+                        } else {
+                            src2.id_att = src_name2id_att[src2.name]; // if the source already exists, use the existing id_src_att
+                        }
 
-                        // store temporary receiver(source) name list for each source
-                        rec_name_list_one_line.push_back(src2.name);
-                        rec_name_list_one_line.push_back("cr");
+
+                        
+                        // store temporary receiver(source) id list for each source
+                        rec_id_list_one_line.push_back(src2.id_att);
+                        rec_id_list_one_line.push_back(DATA_TYPE_CRDIF);
                         // common receiver differential traveltime data
                         data.data_type              = DATA_TYPE_CRDIF;
-                        data.id_src_pair            = {src_id, src2.id};
-                        data.name_src_pair          = {src_name, src2.name};
-                        data.id_rec_pair            = {rec.id, -1}; 
-                        data.name_rec_pair          = {rec.name, "unknown"}; 
+                        data.id_src_att             = src_id_att;
+                        data.id_rec_att             = rec.id_att;
+                        data.id_pair_att            = src2.id_att;
                         data.time_observation       = static_cast<CUSTOMREAL>(std::stod(tokens[12])); // store read data
 
                         data.weight         = data.data_weight * cr_dif_time_local_weight;
@@ -299,28 +333,32 @@ void parse_src_rec_file(std::string& src_rec_file, \
                         rec2.dep  = static_cast<CUSTOMREAL>(-1.0*std::stod(tokens[10])/1000.0); // convert elevation in meter to depth in km
 
                         // new receiver detected by its name
-                        if(rec_map.find(rec2.name) == rec_map.end())
-                            rec_map[rec2.name] = rec2;
+                        if(rec_name2id_att.find(rec2.name) == rec_name2id_att.end()){
+                            rec2.id_att = static_cast<int>(rec_name2id_att.size()); // assign id_rec_att based on the current size of rec_name2id_att
+                            rec_name2id_att[rec2.name] = rec2.id_att; // assign id_att based on the current size of rec_name2id_att, 
+                            rec_map[rec2.id_att] = rec2; // store the receiver info in rec_map with id_rec_att as key
+                        } else {
+                            rec2.id_att = rec_name2id_att[rec2.name]; // if the receiver already exists, use the existing id_rec_att
+                        }
 
-                        // store temporary receiver name list for each source
-                        rec_name_list_one_line.push_back(rec2.name);
-                        rec_name_list_one_line.push_back("cs");
+                        // store temporary receiver id list for each source
+                        rec_id_list_one_line.push_back(rec2.id_att);
+                        rec_id_list_one_line.push_back(DATA_TYPE_CSDIF);
 
                         // common source differential traveltime data
                         data.data_type              = DATA_TYPE_CSDIF;
-                        data.id_rec_pair            = {rec.id, rec2.id};
-                        data.name_rec_pair          = {rec.name, rec2.name};
-                        data.id_src_pair            = {src_id, -1};
-                        data.name_src_pair          = {src_name, "unknown"};
+                        data.id_src_att             = src_id_att;
+                        data.id_rec_att             = rec.id_att;
+                        data.id_pair_att            = rec2.id_att;
                         data.time_observation       = static_cast<CUSTOMREAL>(std::stod(tokens[12]));
                         
                         data.weight       = data.data_weight * cs_dif_time_local_weight;
                         data.weight_reloc = data.data_weight * cs_dif_time_local_weight_reloc;
-                        data_map[data.name_src_pair[0]][data.name_rec_pair[0]].push_back(data); // USE ONE-DATAMAP-FOR-ONE-SRCREC-LINE
+                        data_vec.push_back(data); // USE ONE-DATAMAP-FOR-ONE-SRCREC-LINE
                     }
 
-                    // store receiver name of one receiver line in src rec file
-                    rec_name_list.push_back(rec_name_list_one_line);
+                    // store receiver id of one receiver line in src rec file
+                    rec_id_list.push_back(rec_id_list_one_line);
 
                     cc++;
                 }
@@ -330,10 +368,10 @@ void parse_src_rec_file(std::string& src_rec_file, \
                     cc = 0;
                     i_src_now++;
 
-                    // store the receiver name list for the source
-                    srcrec_name_list.push_back(rec_name_list);
-                    // clear the temporary receiver name list
-                    rec_name_list.clear();
+                    // store the receiver id list for the source
+                    rec_id_in_file.push_back(rec_id_list);
+                    // clear the temporary receiver id list
+                    rec_id_list.clear();
 
                     // timer
                     if (i_src_now % 1000 == 0 && world_rank == 0) {
@@ -389,20 +427,20 @@ void parse_src_rec_file(std::string& src_rec_file, \
             for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
                 for (const auto& data : iter2->second) {
                     if (data.data_type == DATA_TYPE_ABS) {
-                        std::cout   << "source name: "     << data.name_src_pair[0]
-                                    << ", receiver name: " << data.name_rec_pair[0]
+                        std::cout   << "source id_att: "     << data.id_src_att
+                                    << ", receiver id_att: " << data.id_rec_att
                                     << ", traveltime: "    << data.time_observation
                                     << std::endl;
                     } else if (data.data_type == DATA_TYPE_CSDIF) {
-                        std::cout   << "source name: "          << data.name_src_pair[0]
-                                    << ", receiver pair name: " << data.name_rec_pair[0]
-                                    << ", "                     << data.name_rec_pair[1]
+                        std::cout   << "source id_att: "          << data.id_src_att
+                                    << ", receiver pair id_att: " << data.id_rec_att
+                                    << ", "                     << data.id_pair_att
                                     << ", traveltime: "         << data.time_observation
                                     << std::endl;
                     } else if (data.data_type == DATA_TYPE_CRDIF) {
-                        std::cout   << "source pair name: "     << data.name_src_pair[0]
-                                    << ", "                     << data.name_src_pair[1]
-                                    << ", receiver name: "      << data.name_rec_pair[0]
+                        std::cout   << "source pair id_att: "     << data.id_src_att
+                                    << ", "                     << data.id_pair_att
+                                    << ", receiver id_att: "      << data.id_rec_att
                                     << ", traveltime: "         << data.time_observation
                                     << std::endl;
                     } else {
@@ -533,13 +571,13 @@ void parse_sta_correction_file(std::string& sta_correction_file, \
 
 void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>                                  &src_map_back,
                                            std::map<std::string, SrcRecInfo>                                  &rec_map_back,
-                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_map_back,
+                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec_back,
                                            std::map<std::string, SrcRecInfo>                                  &src_map,
                                            std::map<std::string, SrcRecInfo>                                  &rec_map,
-                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_map,
+                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec,
                                            std::map<std::string, SrcRecInfo>                                  &src_map_tele,
                                            std::map<std::string, SrcRecInfo>                                  &rec_map_tele,
-                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_map_tele,
+                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec_tele,
                                            std::map<std::string, int> &data_type,
                                            int                        &N_abs_local_data,
                                            int                        &N_cr_dif_local_data,
@@ -555,12 +593,12 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
     // initialize vectors for teleseismic events
     rec_map_tele.clear();
     src_map_tele.clear();
-    data_map_tele.clear();
+    data_vec_tele.clear();
 
     // clear original src, rec, data
     src_map.clear();
     rec_map.clear();
-    data_map.clear();
+    data_vec.clear();
 
     // divide source list
     //
@@ -589,6 +627,7 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
     }
 
     // check receiver location
+    // receiver must be within the study.
     for(auto iter = rec_map_back.begin(); iter != rec_map_back.end(); iter++){
         SrcRecInfo rec = iter->second;
         if (rec.lat < min_lat || rec.lat > max_lat \
@@ -608,105 +647,100 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
     //
     // rec_map_back  ____> rec_map
     //               \___> rec_map_tele
-    // data_map_back____> data_map
-    //              \___> data_map_tele
+    // data_vec_back____> data_vec
+    //              \___> data_vec_tele
     //
-    // iterate over event
-    for (auto it_src = data_map_back.begin(); it_src != data_map_back.end(); it_src++){
-        std::string name_src = it_src->first;
-        // iterate over stations
-        for (auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-            // loop over all data belongs to each source-receiver combination
-            for (auto& data: it_rec->second){
 
-                // absolute traveltime
-                if(data.data_type == DATA_TYPE_ABS){
-                    std::string name_src = data.name_src_pair[0];
-                    std::string name_rec = data.name_rec_pair[0];
+    // loop over all data
+    for (DataInfo& data : data_vec_back){
 
-                    // if name_src is out of region
-                    if(src_map_tele.find(name_src) != src_map_tele.end()){
-                        total_teleseismic_data_weight       += data.data_weight;
-                        data.weight                          = data.data_weight * teleseismic_weight;
-                        total_teleseismic_data_weight_reloc += data.data_weight;
-                        data.weight_reloc                    = data.data_weight * teleseismic_weight_reloc;
-                        data_map_tele[name_src][name_rec].push_back(data);
-                        rec_map_tele[name_rec]            = rec_map_back[name_rec];
-                        data_type["tele"]                 = 1;
+        // absolute traveltime
+        if(data.data_type == DATA_TYPE_ABS){
+            int id_src_att = data.id_src_att;
+            int id_rec_att = data.id_rec_att;
 
-                    // if name_src is in the region
-                    } else {
-                        total_abs_local_data_weight         += data.data_weight;
-                        total_abs_local_data_weight_reloc   += data.data_weight;
+            // if src is out of region, this is teleseismic data
+            if(src_map_tele.find(id_src_att) != src_map_tele.end()){
+                total_teleseismic_data_weight       += data.data_weight;
+                data.weight                          = data.data_weight * teleseismic_weight;
+                total_teleseismic_data_weight_reloc += data.data_weight;
+                data.weight_reloc                    = data.data_weight * teleseismic_weight_reloc;
+                data_vec_tele.push_back(data);
+                rec_map_tele[id_rec_att]             = rec_map_back[id_rec_att];
+                data_type["tele"]                    = 1;
+            
+                // if src is in the region
+            } else {
+                total_abs_local_data_weight         += data.data_weight;
+                total_abs_local_data_weight_reloc   += data.data_weight;
 
-                        data_map[name_src][name_rec].push_back(data);
-                        rec_map[name_rec]            = rec_map_back[name_rec];
-                        data_type["abs"]             = 1;
-                    }
+                data_vec.push_back(data);
+                rec_map[id_rec_att]                  = rec_map_back[id_rec_att];
+                data_type["abs"]                     = 1;
+            }
+        
+        // common receiver differential traveltime
+        } else if (data.data_type == DATA_TYPE_CRDIF){
+            int id_src_att1 = data.id_src_att;
+            int id_src_att2 = data.id_pair_att;
+            int id_rec_att  = data.id_rec_att;
 
-                // common receiver differential traveltime
-                } else if (data.data_type == DATA_TYPE_CRDIF){
-                    std::string name_src1 = data.name_src_pair[0];
-                    std::string name_src2 = data.name_src_pair[1];
-                    std::string name_rec  = data.name_rec_pair[0];
+            // if both sources are out of region
+            if(src_map_tele.find(id_src_att1) != src_map_tele.end() \
+            && src_map_tele.find(id_src_att2) != src_map_tele.end()){
+                total_teleseismic_data_weight           += data.data_weight;
+                data.weight                              = data.data_weight * teleseismic_weight;
+                total_teleseismic_data_weight_reloc     += data.data_weight;
+                data.weight_reloc                        = data.data_weight * teleseismic_weight_reloc;
 
-                    // if both sources are out of region
-                    if(src_map_tele.find(name_src1) != src_map_tele.end() \
-                    && src_map_tele.find(name_src2) != src_map_tele.end()){
-                        total_teleseismic_data_weight           += data.data_weight;
-                        data.weight                              = data.data_weight * teleseismic_weight;
-                        total_teleseismic_data_weight_reloc     += data.data_weight;
-                        data.weight_reloc                        = data.data_weight * teleseismic_weight_reloc;
+                data_vec_tele.push_back(data);
+                rec_map_tele[id_rec_att]                 = rec_map_back[id_rec_att];
+                data_type["tele"]                        = 1;
 
-                        data_map_tele[name_src1][name_rec].push_back(data);
-                        rec_map_tele[name_rec]             = rec_map_back[name_rec];
-                        data_type["tele"]                  = 1;
+            // if both sources is in the region
+            } else if (src_map.find(id_src_att1) != src_map.end() \
+                    && src_map.find(id_src_att2) != src_map.end() ) {
+                total_cr_dif_local_data_weight          += data.data_weight;
+                total_cr_dif_local_data_weight_reloc    += data.data_weight;
+                data_vec.push_back(data);
+                rec_map[id_rec_att]                      = rec_map_back[id_rec_att];
+                data_type["cr_dif"]                      = 1;
 
-                    // if both sources is in the region
-                    } else if (src_map.find(name_src1) != src_map.end() \
-                            && src_map.find(name_src2) != src_map.end() ) {
-                        total_cr_dif_local_data_weight       += data.data_weight;
-                        total_cr_dif_local_data_weight_reloc += data.data_weight;
-                        data_map[name_src1][name_rec].push_back(data);
-                        rec_map[name_rec]               = rec_map_back[name_rec];
-                        data_type["cr_dif"]             = 1;
+            } else {
+                std::cout << "ERROR data: common receiver differential time, but one teleseismic source, one local source";
+                exit(1);
+            }
 
-                    } else {
-                        std::cout << "ERROR data: common receiver differential time, but one teleseismic source, one local source";
-                        exit(1);
-                    }
+        // common source differential traveltime
+        } else if (data.data_type == DATA_TYPE_CSDIF){
+            int id_src_att  = data.id_src_att;
+            int id_rec_att1 = data.id_rec_pair[0];
+            int id_rec_att2 = data.id_rec_pair[1];
 
-                // common source differential traveltime
-                } else if (data.data_type == DATA_TYPE_CSDIF){
-                    std::string name_src  = data.name_src_pair[0];
-                    std::string name_rec1 = data.name_rec_pair[0];
-                    std::string name_rec2 = data.name_rec_pair[1];
+            // if id_src_att is out of region
+            if(src_map_tele.find(id_src_att) != src_map_tele.end() ){
+                total_teleseismic_data_weight           += data.data_weight;
+                data.weight                              = data.data_weight * teleseismic_weight;
+                total_teleseismic_data_weight_reloc     += data.data_weight;
+                data.weight_reloc                        = data.data_weight * teleseismic_weight_reloc;
+                data_vec_tele.push_back(data);
+                rec_map_tele[id_rec_att1]                = rec_map_back[id_rec_att1];
+                rec_map_tele[id_rec_att2]                = rec_map_back[id_rec_att2];
+                data_type["tele"]                        = 1;
 
-                    // if name_src is out of region
-                    if(src_map_tele.find(name_src) != src_map_tele.end() ){
-                        total_teleseismic_data_weight           += data.data_weight;
-                        data.weight                              = data.data_weight * teleseismic_weight;
-                        total_teleseismic_data_weight_reloc     += data.data_weight;
-                        data.weight_reloc                        = data.data_weight * teleseismic_weight_reloc;
-                        data_map_tele[name_src][name_rec1].push_back(data);
-                        rec_map_tele[name_rec1]            = rec_map_back[name_rec1];
-                        rec_map_tele[name_rec2]            = rec_map_back[name_rec2];
-                        data_type["tele"]                  = 1;
+            // if name_src is in the region
+            } else {
+                total_cs_dif_local_data_weight          += data.data_weight;
+                total_cs_dif_local_data_weight_reloc    += data.data_weight;
+                data_vec.push_back(data);
+                rec_map[id_rec_att1]                     = rec_map_back[id_rec_att1];
+                rec_map[id_rec_att2]                     = rec_map_back[id_rec_att2];
+                data_type["cs_dif"]                      = 1;
+            }
+        }
+    }
 
-                    // if name_src is in the region
-                    } else {
-                        total_cs_dif_local_data_weight          += data.data_weight;
-                        total_cs_dif_local_data_weight_reloc    += data.data_weight;
-                        data_map[name_src][name_rec1].push_back(data);
-                        rec_map[name_rec1]              = rec_map_back[name_rec1];
-                        rec_map[name_rec2]              = rec_map_back[name_rec2];
-                        data_type["cs_dif"]             = 1;
-                    }
-                }
 
-            } // end loop std::vector<datainfo>
-        } // end it_rec
-    } // end it_src
 
     if((!have_tele_data) && (src_map_tele.size() > 0)){
         std::cout << "ERROR: have_tele_data is false, but there are earthquakes out of study region:" << std::endl;
@@ -739,50 +773,40 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
     // balance the data weight
     //
     if (balance_data_weight){
-        for(auto it_src = data_map.begin(); it_src != data_map.end(); it_src++){
-            for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-                for(auto& data: it_rec->second){
-                    // absolute traveltime
-                   if(data.data_type == DATA_TYPE_ABS){
-                        data.weight = data.weight / total_abs_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
-                   // common receiver differential traveltime
-                   } else if (data.data_type == DATA_TYPE_CRDIF){
-                        data.weight = data.weight / total_cr_dif_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
-                   // common source differential traveltime
-                   } else if (data.data_type == DATA_TYPE_CSDIF){
-                        data.weight = data.weight / total_cs_dif_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
-                   }
-                }
+
+        // local data
+        for(DataInfo& data : data_vec){
+            if(data.data_type == DATA_TYPE_ABS){
+                data.weight = data.weight / total_abs_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
+            // common receiver differential traveltime
+            } else if (data.data_type == DATA_TYPE_CRDIF){
+                data.weight = data.weight / total_cr_dif_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
+            // common source differential traveltime
+            } else if (data.data_type == DATA_TYPE_CSDIF){
+                data.weight = data.weight / total_cs_dif_local_data_weight * (total_abs_local_data_weight + total_cr_dif_local_data_weight + total_cs_dif_local_data_weight);
             }
         }
 
         // teleseismic data
-        for(auto it_src = data_map_tele.begin(); it_src != data_map_tele.end(); it_src++){
-            for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-                for (auto& data: it_rec->second){
-                    data.weight = data.weight / total_teleseismic_data_weight;
-                }
-            }
+        for(DataInfo& data : data_vec_tele){
+            data.weight = data.weight / total_teleseismic_data_weight;
         }
     }
 
+    // balance the data weight for relocation
     if (balance_data_weight_reloc){
-        for(auto it_src = data_map.begin(); it_src != data_map.end(); it_src++){
-            for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-                for(auto& data: it_rec->second){
-                    // absolute traveltime
-                   if(data.data_type == DATA_TYPE_ABS){
-                       data.weight_reloc = data.weight_reloc / total_abs_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
+        for(DataInfo& data : data_vec){
+            // absolute traveltime
+            if(data.data_type == DATA_TYPE_ABS){
+                data.weight_reloc = data.weight_reloc / total_abs_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
 
-                   // common receiver differential traveltime
-                   } else if (data.data_type == DATA_TYPE_CRDIF){
-                       data.weight_reloc = data.weight_reloc / total_cr_dif_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
+            // common receiver differential traveltime
+            } else if (data.data_type == DATA_TYPE_CRDIF){
+                data.weight_reloc = data.weight_reloc / total_cr_dif_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
 
-                   // common source differential traveltime
-                   } else if (data.data_type == DATA_TYPE_CSDIF){
-                       data.weight_reloc = data.weight_reloc / total_cs_dif_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
-                   }
-                }
+            // common source differential traveltime
+            } else if (data.data_type == DATA_TYPE_CSDIF){
+                data.weight_reloc = data.weight_reloc / total_cs_dif_local_data_weight_reloc * (total_abs_local_data_weight_reloc + total_cr_dif_local_data_weight_reloc + total_cs_dif_local_data_weight_reloc);
             }
         }
     }
@@ -791,31 +815,23 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
     // count the number of data
     //
     // local data
-    for(auto it_src = data_map.begin(); it_src != data_map.end(); it_src++){
-        for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-            for (auto& data: it_rec->second){
-                // absolute traveltime
-                if(data.data_type == DATA_TYPE_ABS){
-                    N_abs_local_data += 1;
+    for(DataInfo& data : data_vec){
+        // absolute traveltime
+        if(data.data_type == DATA_TYPE_ABS){
+            N_abs_local_data += 1;
 
-                // common receiver differential traveltime
-                } else if (data.data_type == DATA_TYPE_CRDIF){
-                    N_cr_dif_local_data += 1;
+        // common receiver differential traveltime
+        } else if (data.data_type == DATA_TYPE_CRDIF){
+            N_cr_dif_local_data += 1;
 
-                // common source differential traveltime
-                } else if (data.data_type == DATA_TYPE_CSDIF){
-                    N_cs_dif_local_data += 1;
-                }
-            }
+        // common source differential traveltime
+        } else if (data.data_type == DATA_TYPE_CSDIF){
+            N_cs_dif_local_data += 1;
         }
     }
 
     // teleseismic data
-    for(auto it_src = data_map_tele.begin(); it_src != data_map_tele.end(); it_src++){
-        for(auto it_rec = it_src->second.begin(); it_rec != it_src->second.end(); it_rec++){
-            N_teleseismic_data += it_rec->second.size(); // add the number of data
-        }
-    }
+    N_teleseismic_data = data_vec_tele.size();
 
     // N_data is the total number of data
     N_data = N_abs_local_data + N_cr_dif_local_data + N_cs_dif_local_data + N_teleseismic_data;
@@ -837,31 +853,28 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
                         << std::endl;
         }
 
-        for (auto iter = data_map.begin(); iter != data_map.end(); iter++){
-            for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
-                for (const auto& data : iter2->second) {
-                    if (data.data_type == DATA_TYPE_ABS) {
-                        std::cout   << "source name: "     << data.name_src_pair[0]
-                                    << ", receiver name: " << data.name_rec_pair[0]
-                                    << ", traveltime: "    << data.time_observation
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CSDIF) {
-                        std::cout   << "source name: "          << data.name_src_pair[0]
-                                    << ", receiver pair name: " << data.name_rec_pair[0]
-                                    << ", "                     << data.name_rec_pair[1]
-                                    << ", traveltime: "         << data.time_observation
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CRDIF) {
-                        std::cout   << "source pair name: "     << data.name_src_pair[0]
-                                    << ", "                     << data.name_src_pair[1]
-                                    << ", receiver name: "      << data.name_rec_pair[0]
-                                    << ", traveltime: "         << data.time_observation
-                                    << std::endl;
-                    } else {
-                        std::cout   << "error type of data" << std::endl;
-                    }
-                }
-           }
+
+        for (DataInfo& data : data_vec) {
+            if (data.data_type == DATA_TYPE_ABS) {
+                std::cout   << "source name: "     << src_map[data.id_src_att].name
+                            << ", receiver name: " << rec_map[data.id_rec_att].name
+                            << ", traveltime: "    << data.time_observation
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CSDIF) {
+                std::cout   << "source name: "          << src_map[data.id_src_att].name
+                            << ", receiver pair name: " << rec_map[data.id_rec_att].name
+                            << ", "                     << rec_map[data.id_pair_att].name
+                            << ", traveltime: "         << data.time_observation
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CRDIF) {
+                std::cout   << "source pair name: "     << src_map[data.id_src_att].name
+                            << ", "                     << src_map[data.id_pair_att].name
+                            << ", receiver name: "      << rec_map[data.id_rec_att].name
+                            << ", traveltime: "         << data.time_observation
+                            << std::endl;
+            } else {
+                std::cout   << "error type of data" << std::endl;
+            }
         }
 
         std::cout << std::endl << "tele data: " << std::endl;
@@ -878,31 +891,27 @@ void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>    
                         << std::endl;
         }
 
-        for (auto iter = data_map_tele.begin(); iter != data_map_tele.end(); iter++){
-            for (auto iter2 = iter->second.begin(); iter2 != iter->second.end(); iter2++){
-                for (const auto& data : iter2->second) {
-                    if (data.data_type == DATA_TYPE_ABS) {
-                        std::cout   << "source name: "     << data.name_src_pair[0]
-                                    << ", receiver name: " << data.name_rec_pair[0]
-                                    << ", traveltime: "    << data.time_observation
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CSDIF) {
-                        std::cout   << "source name: "          << data.name_src_pair[0]
-                                    << ", receiver pair name: " << data.name_rec_pair[0]
-                                    << ", "                     << data.name_rec_pair[1]
-                                    << ", traveltime: "         << data.time_observation
-                                    << std::endl;
-                    } else if (data.data_type == DATA_TYPE_CRDIF) {
-                        std::cout   << "source pair name: "     << data.name_src_pair[0]
-                                    << ", "                     << data.name_src_pair[1]
-                                    << ", receiver name: "      << data.name_rec_pair[0]
-                                    << ", traveltime: "         << data.time_observation
-                                    << std::endl;
-                    } else {
-                        std::cout   << "error type of data" << std::endl;
-                    }
-                }
-           }
+        for (DataInfo& data : data_vec_tele) {
+            if (data.data_type == DATA_TYPE_ABS) {
+                std::cout   << "source name: "     << src_map[data.id_src_att].name
+                            << ", receiver name: " << rec_map[data.id_rec_att].name
+                            << ", traveltime: "    << data.time_observation
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CSDIF) {
+                std::cout   << "source name: "          << src_map[data.id_src_att].name
+                            << ", receiver pair name: " << rec_map[data.id_rec_att].name
+                            << ", "                     << rec_map[data.id_pair_att].name
+                            << ", traveltime: "         << data.time_observation
+                            << std::endl;
+            } else if (data.data_type == DATA_TYPE_CRDIF) {
+                std::cout   << "source pair name: "     << src_map[data.id_src_att].name
+                            << ", "                     << src_map[data.id_pair_att].name
+                            << ", receiver name: "      << rec_map[data.id_rec_att].name
+                            << ", traveltime: "         << data.time_observation
+                            << std::endl;
+            } else {
+                std::cout   << "error type of data" << std::endl;
+            }
         }
     }
 
