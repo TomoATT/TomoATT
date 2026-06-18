@@ -200,15 +200,15 @@ void do_not_swap_src_rec(std::map<int, SrcRecInfo> &src_map_all,
                          std::vector<DataInfo>     &data_vec_all);
 
 // tele seismic source management
-void separate_region_and_tele_src_rec_data(std::map<std::string, SrcRecInfo>                                  &src_map_back,
-                                           std::map<std::string, SrcRecInfo>                                  &rec_map_back,
-                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec_back,
-                                           std::map<std::string, SrcRecInfo>                                  &src_map,
-                                           std::map<std::string, SrcRecInfo>                                  &rec_map,
-                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec,
-                                           std::map<std::string, SrcRecInfo>                                  &src_map_tele,
-                                           std::map<std::string, SrcRecInfo>                                  &rec_map_tele,
-                                           std::map<std::string, std::map<std::string,std::vector<DataInfo>>> &data_vec_tele,
+void separate_region_and_tele_src_rec_data(std::map<int, SrcRecInfo>            &src_map_back,
+                                           std::map<int, SrcRecInfo>            &rec_map_back,
+                                           std::vector<DataInfo>                &data_vec_back,
+                                           std::map<int, SrcRecInfo>            &src_map,
+                                           std::map<int, SrcRecInfo>            &rec_map,
+                                           std::vector<DataInfo>                &data_vec,
+                                           std::map<int, SrcRecInfo>            &src_map_tele,
+                                           std::map<int, SrcRecInfo>            &rec_map_tele,
+                                           std::vector<DataInfo>                &data_vec_tele,
                                            std::map<std::string, int> &data_type,
                                            int                        &N_abs_local_data,
                                            int                        &N_cr_dif_local_data,
@@ -241,6 +241,7 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
 
 // generate a list of events which involve common receiver double difference traveltime
 void generate_src_map_with_common_receiver(std::vector<DataInfo>&       data_map,
+                                           std::map<int, SrcRecInfo>&   src_map,
                                            std::map<int, SrcRecInfo>&   src_map_comm_recp);
 
 void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
@@ -248,7 +249,7 @@ void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
                                    std::map<int, SrcRecInfo>& src_map_2d);
 
 
-std::vector<int> src_id_2_id_att(std::map<int, SrcRecInfo>& src_map);
+std::vector<int> srcrec_id_2_id_att(std::map<int, SrcRecInfo>& srcrec_map);
 
 
 void send_src_info_inter_sim(SrcRecInfo&, int);

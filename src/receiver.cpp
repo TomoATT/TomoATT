@@ -8,296 +8,370 @@ Receiver::Receiver() {
 Receiver::~Receiver() {
 }
 
-void Receiver::interpolate_and_store_arrival_times_at_rec_position(InputParams& IP, Grid& grid, const std::string& name_sim_src) {
-    if(subdom_main){
+void Receiver::interpolate_and_store_arrival_times_at_rec_position(InputParams& IP, Grid& grid, const int id_src_att) {
+    if(subdom_main){    // do it across level 2, (main of level 3).
 
-        int mykey_send=9999;
-        int mykey_end=9998;
-        int key = 0;
+        // int mykey_send=9999;
+        // int mykey_end=9998;
+        // int key = 0;
 
         // share the traveltime values on the corner points of the subdomains for interpolation
         // this is not necessary for sweeping (as the stencil is closs shape)
         grid.send_recev_boundary_data(grid.T_loc);
         grid.send_recev_boundary_data_kosumi(grid.T_loc);
 
-        if (proc_store_srcrec){
-            // routine for processes which have the source and receiver data
+        if (proc_store_srcrec){     // main of level 2
+            
+            // 1. estimate the number of traveltime to be calculated for this source
+            int n_time = 0;
+            int data_begin = src_map[id_src_att].data_begin;
+            int data_end   = src_map[id_src_att].data_end;
+            for (int i_data = data_begin; i_data < data_end; i_data++){
+                auto& data = IP.data_vec[i_data];    
+                if (data.data_type == DATA_TYPE_ABS){
+                    n_time += 1;
+                } else if (data.data_type == DATA_TYPE_CSDIF) {
+                    n_time += 2;
+                } else if (data.data_type == DATA_TYPE_CRDIF) {
+                    n_time += 1;
+                } else {
+                    std::cout << "error type of data" << std::endl;
+                    exit(1);
+                }
+            }
+            broadcast_i_single(n_time, 0);   // (level 2) broadcast the number of traveltime to be calculated for this source
 
-            // calculate the travel time of the receiver by interpolation
-            for (auto it_rec = IP.data_map[name_sim_src].begin(); it_rec != IP.data_map[name_sim_src].end(); ++it_rec) {
-                for (auto& data: it_rec->second){
+            // 2. loop all data, to calculate traveltime
+            for (int i_data = data_begin; i_data < data_end; i_data++){
+                auto& data = IP.data_vec[i_data];
 
-                    if (data.data_type == DATA_TYPE_ABS){   // absolute traveltime
-                        // send receivr name as a starting signal for interpolation
+                if (data.data_type == DATA_TYPE_ABS){   // absolute traveltime
+                    // send id_rec_att
+                    int id_rec_att = data.id_rec_att;
+                    broadcast_i_single(id_rec_att, 0);
+                    // calculate travel time
+                    data.travel_time = interpolate_travel_time(grid, IP, id_rec_att);
 
-                        // send dummy integer with key
-                        broadcast_i_single(mykey_send, 0);
-                        broadcast_str(data.name_rec_pair[0], 0);
+                } else if (data.data_type == DATA_TYPE_CSDIF) {     // common source differential traveltime
+                    // send id_rec_att for the first receiver
+                    int id_rec_att_1 = data.id_rec_att_1;
+                    broadcast_i_single(id_rec_att_1, 0);
+                    // calculate travel time for the first receiver
+                    CUSTOMREAL travel_time_1 = interpolate_travel_time(grid, IP, id_rec_att_1);
 
-                        // store travel time on single receiver and double receivers (what is double receivers? by CHEN Jing)
-                        // store travel time from name_sim_src(src_name) to it_rec->first(rec_name)
-                        data.travel_time = interpolate_travel_time(grid, IP, name_sim_src, it_rec->first);
-                    } else if (data.data_type == DATA_TYPE_CSDIF) {     // common source differential traveltime
-                        // store travel time from name_sim_src(src_name) to rec1_name and rec2_name
-                        // calculate travel times for two receivers
-                        broadcast_i_single(mykey_send, 0);
-                        broadcast_str(data.name_rec_pair[0], 0);
-                        CUSTOMREAL travel_time   = interpolate_travel_time(grid, IP, name_sim_src, data.name_rec_pair[0]);
+                    // send id_rec_att for the second receiver
+                    int id_rec_att_2 = data.id_rec_att_2;
+                    broadcast_i_single(id_rec_att_2, 0);
+                    // calculate travel time for the second receiver
+                    CUSTOMREAL travel_time_2 = interpolate_travel_time(grid, IP, id_rec_att_2);
 
-                        broadcast_i_single(mykey_send, 0);
-                        broadcast_str(data.name_rec_pair[1], 0);
-                        CUSTOMREAL travel_time_2 = interpolate_travel_time(grid, IP, name_sim_src, data.name_rec_pair[1]);
+                    // store travel time and differential traveltime
+                    data.travel_time   = travel_time_1;
+                    data.dif_travel_time = travel_time_1 - travel_time_2;
 
-                        // Because name_sim_src = data.name_src; it_rec->first = name_rec = name_rec_pair[0]
-                        // Thus data.travel_time is travel_time
-                        data.travel_time = travel_time;
-
-                        // calculate and store travel time difference
-                        data.dif_travel_time = travel_time - travel_time_2;
-                    } else if (data.data_type == DATA_TYPE_CRDIF) {     // common receiver differential traveltime
-                        // store travel time from name_sim_src(src1_name) to it_rec->first(rec_name)
-                        broadcast_i_single(mykey_send, 0);
-                        broadcast_str(data.name_rec_pair[0], 0);
-                        data.travel_time = interpolate_travel_time(grid, IP, name_sim_src, it_rec->first);
-
-                    } else {
-                        std::cout << "error type of data" << std::endl;
-                    }
+                } else if (data.data_type == DATA_TYPE_CRDIF) {     // common receiver differential traveltime
+                    // send id_rec_att
+                    int id_rec_att = data.id_rec_att;
+                    broadcast_i_single(id_rec_att, 0);
+                    // calculate travel time
+                    data.travel_time = interpolate_travel_time(grid, IP, id_rec_att);
+                } else {
+                    std::cout << "error type of data" << std::endl;
+                    exit(1);
                 }
             }
 
-            // send a endind signal to the processes which do not have the source receiver data
-            broadcast_i_single(mykey_end, 0);
+        } else {    // other ranks which do not have src_map, rec_map, data_vec
 
-        } else {
-            // routine for processes which do not have the source and receiver data
+            // 1. receive the number of traveltime to be calculated for this source
+            int n_time = 0;
+            broadcast_i_single(n_time, 0);   // (level 2) receive the number of traveltime to be calculated for this source
 
-            // waiting the communication from the proc_store_srcrec
-            while (true) {
-
-                // receive dummy integer
-                broadcast_i_single(key, 0);
-
-                // check the tag
-                if (key == mykey_send) {
-                    std::string name_rec;
-                    broadcast_str(name_rec, 0);
-
-                    CUSTOMREAL dummy_time = interpolate_travel_time(grid, IP, name_sim_src, name_rec);
-                    (void) dummy_time; // avoid compiler warning
-
-                } else if (key == mykey_end) {
-                    // receive dummy integer
-                    break;
-                } else {
-                    std::cout << "error in the tag" << std::endl;
-                }
-
+            // 2. loop all data, to calculate traveltime
+            for (int i_time = 0; i_time < n_time; i_time++){
+                // receive id_rec_att
+                int id_rec_att = 0;
+                broadcast_i_single(id_rec_att, 0);
+                // calculate travel time
+                CUSTOMREAL dummy_time = interpolate_travel_time(grid, IP, id_rec_att);
+                (void) dummy_time; // avoid compiler warning
             }
         }
     } // end subdomain
 
     synchronize_all();
+
+        // <OLD VERSION> JC: 20260618
+
+        // // using this way, because the number of receivers is not known for other processors.
+        // // the main processor will send a request to other processors if it (main processor) requires a traveltime.
+        // // the request is "broadcast_i_single(mykey_send, 0)".
+        // // Once it ends, the main processor will send a ending signal to other processors, "broadcast_i_single(mykey_end, 0)". 
+        // if (proc_store_srcrec){     // main of level 2
+        //     // routine for processes which have the source and receiver data
+
+        //     // calculate the travel time of the receiver by interpolation
+        //     for (auto it_rec = IP.data_map[name_sim_src].begin(); it_rec != IP.data_map[name_sim_src].end(); ++it_rec) {
+        //         for (auto& data: it_rec->second){
+
+        //             if (data.data_type == DATA_TYPE_ABS){   // absolute traveltime
+        //                 // send receivr name as a starting signal for interpolation
+
+        //                 // send dummy integer with key
+        //                 broadcast_i_single(mykey_send, 0);
+        //                 broadcast_str(data.name_rec_pair[0], 0);
+
+        //                 // store travel time on single receiver and double receivers (what is double receivers? by CHEN Jing)
+        //                 // store travel time from name_sim_src(src_name) to it_rec->first(rec_name)
+        //                 data.travel_time = interpolate_travel_time(grid, IP, name_sim_src, it_rec->first);
+        //             } else if (data.data_type == DATA_TYPE_CSDIF) {     // common source differential traveltime
+        //                 // store travel time from name_sim_src(src_name) to rec1_name and rec2_name
+        //                 // calculate travel times for two receivers
+        //                 broadcast_i_single(mykey_send, 0);
+        //                 broadcast_str(data.name_rec_pair[0], 0);
+        //                 CUSTOMREAL travel_time   = interpolate_travel_time(grid, IP, name_sim_src, data.name_rec_pair[0]);
+
+        //                 broadcast_i_single(mykey_send, 0);
+        //                 broadcast_str(data.name_rec_pair[1], 0);
+        //                 CUSTOMREAL travel_time_2 = interpolate_travel_time(grid, IP, name_sim_src, data.name_rec_pair[1]);
+
+        //                 // Because name_sim_src = data.name_src; it_rec->first = name_rec = name_rec_pair[0]
+        //                 // Thus data.travel_time is travel_time
+        //                 data.travel_time = travel_time;
+
+        //                 // calculate and store travel time difference
+        //                 data.dif_travel_time = travel_time - travel_time_2;
+        //             } else if (data.data_type == DATA_TYPE_CRDIF) {     // common receiver differential traveltime
+        //                 // store travel time from name_sim_src(src1_name) to it_rec->first(rec_name)
+        //                 broadcast_i_single(mykey_send, 0);
+        //                 broadcast_str(data.name_rec_pair[0], 0);
+        //                 data.travel_time = interpolate_travel_time(grid, IP, name_sim_src, it_rec->first);
+
+        //             } else {
+        //                 std::cout << "error type of data" << std::endl;
+        //             }
+        //         }
+        //     }
+
+        //     // send a endind signal to the processes which do not have the source receiver data
+        //     broadcast_i_single(mykey_end, 0);
+
+        // } else {    // other ranks in level 2
+        //     // routine for processes which do not have the source and receiver data
+
+        //     // waiting the communication from the proc_store_srcrec
+        //     while (true) {
+
+        //         // receive dummy integer
+        //         broadcast_i_single(key, 0);
+
+        //         // check the tag
+        //         if (key == mykey_send) {
+        //             std::string name_rec;
+        //             broadcast_str(name_rec, 0);
+
+        //             CUSTOMREAL dummy_time = interpolate_travel_time(grid, IP, name_sim_src, name_rec);
+        //             (void) dummy_time; // avoid compiler warning
+
+        //         } else if (key == mykey_end) {
+        //             // receive dummy integer
+        //             break;
+        //         } else {
+        //             std::cout << "error in the tag" << std::endl;
+        //         }
+
+        //     }
+        // }
+    // } // end subdomain
+
+    // synchronize_all();
 }
 
 
-void Receiver::calculate_adjoint_source(InputParams& IP, const std::string& name_sim_src) {
+void Receiver::calculate_adjoint_source(InputParams& IP, const int id_src_att) {
 
     // #TODO: run this function only by proc_store_srcrec
-    if (proc_store_srcrec) {
+    if (proc_store_srcrec) {  // maid of level 2 and 3
 
         // rec.adjoint_source = 0 && rec.adjoint_source_density = 0
         IP.initialize_adjoint_source();
 
+        int data_begin = IP.src_map[id_src_att].data_begin;
+        int data_end   = IP.src_map[id_src_att].data_end;
+
         // loop all data related to this source MNMN: use reference(auto&) to avoid copy
-        for (auto it_src = IP.data_map[name_sim_src].begin(); it_src != IP.data_map[name_sim_src].end(); ++it_src) {
-            bool is_tele = IP.src_map[name_sim_src].is_out_of_region;
+        for (int i_data = data_begin; i_data < data_end; i_data++){
+            auto& data = IP.data_vec[i_data];
 
-            for (auto& data: it_src->second){
-                //
-                // absolute traveltime
-                //
-                if (data.data_type == DATA_TYPE_ABS) {
-                    if (!IP.get_use_abs()){ // if we do not use abs data, ignore to consider the total obj and adjoint source
-                        continue;
-                    }
+            bool is_tele = IP.src_map[id_src_att].is_out_of_region;
+            //
+            // absolute traveltime
+            //
+            if (data.data_type == DATA_TYPE_ABS) {
+                if (!IP.get_use_abs()){ // if we do not use abs data, ignore to consider the total obj and adjoint source
+                    continue;
+                }
+                
+                int id_src_att      = data.id_src_att;
+                int id_rec_att      = data.id_rec_att;
+                CUSTOMREAL syn_time       = data.travel_time;
+                CUSTOMREAL obs_time       = data.time_observation;
 
+                // assign local weight
+                CUSTOMREAL  local_weight = _1_CR;
 
-                    std::string name_src      = data.name_src_pair[0];
-                    std::string name_rec      = data.name_rec_pair[0];
-                    CUSTOMREAL syn_time       = data.travel_time;
-                    CUSTOMREAL obs_time       = data.time_observation;
+                // evaluate residual_weight_abs （If run_mode == DO_INVERSION, tau_opt always equal 0. But when run_mode == INV_RELOC, we need to consider the change of ortime of earthquakes (swapped receiver)）
+                CUSTOMREAL  local_residual = abs(syn_time - obs_time + IP.rec_map[id_rec_att].tau_opt);
+                CUSTOMREAL* res_weight = IP.get_residual_weight_abs();
 
-                    // assign local weight
-                    CUSTOMREAL  local_weight = _1_CR;
-
-                    // evaluate residual_weight_abs （If run_mode == DO_INVERSION, tau_opt always equal 0. But when run_mode == INV_RELOC, we need to consider the change of ortime of earthquakes (swapped receiver)）
-                    CUSTOMREAL  local_residual = abs(syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
-                    CUSTOMREAL* res_weight = IP.get_residual_weight_abs();
-
-                    if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
-                    else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
-                    else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
-
-
-                    // evaluate distance_weight_abs
-                    CUSTOMREAL  local_dis    =   _0_CR;
-                    Epicentral_distance_sphere(IP.get_rec_point(name_rec).lat*DEG2RAD, IP.get_rec_point(name_rec).lon*DEG2RAD, IP.get_src_point(name_src).lat*DEG2RAD, IP.get_src_point(name_src).lon*DEG2RAD, local_dis);
-                    local_dis *= R_earth;       // rad to km
-                    CUSTOMREAL* dis_weight = IP.get_distance_weight_abs();
-
-                    if      (local_dis < dis_weight[0])         local_weight *= dis_weight[2];
-                    else if (local_dis > dis_weight[1])         local_weight *= dis_weight[3];
-                    else                                        local_weight *= ((local_dis - dis_weight[0])/(dis_weight[1] - dis_weight[0]) * (dis_weight[3] - dis_weight[2]) + dis_weight[2]);
-
-                    // assign adjoint source
-                    CUSTOMREAL adjoint_source = IP.get_rec_point(name_rec).adjoint_source + (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.weight * local_weight;
-                    IP.set_adjoint_source(name_rec, adjoint_source); // set adjoint source to rec_map[name_rec]
-
-                    // assign adjoint source density
-                    CUSTOMREAL adjoint_source_density = IP.get_rec_point(name_rec).adjoint_source_density + _1_CR;
-                    IP.set_adjoint_source_density(name_rec, adjoint_source_density);
-
-                //
-                // common receiver differential traveltime && we use this data
-                //
-                } else if (data.data_type == DATA_TYPE_CRDIF) {
-                    if (!((IP.get_use_cr() && !IP.get_is_srcrec_swap()) ||
-                          (IP.get_use_cs() &&  IP.get_is_srcrec_swap())))
-                        continue;   // if we do not use this data (cr + not swap) or (cs + swap) or (cs + tele), ignore to consider the adjoint source
-
-                    std::string name_src1 = data.name_src_pair[0];
-                    std::string name_src2 = data.name_src_pair[1];
-                    std::string name_rec  = data.name_rec_pair[0];
-
-                    CUSTOMREAL syn_dif_time   = data.dif_travel_time;
-                    CUSTOMREAL obs_dif_time   = data.time_observation;
-
-                    // assign local weight
-                    CUSTOMREAL  local_weight = _1_CR;
-
-                    // evaluate residual_weight_abs
-                    CUSTOMREAL  local_residual = abs(syn_dif_time - obs_dif_time);
-                    CUSTOMREAL* res_weight;
-                    if (IP.get_is_srcrec_swap())    res_weight = IP.get_residual_weight_cs();
-                    else                            res_weight = IP.get_residual_weight_cr();
-
-                    if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
-                    else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
-                    else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
+                if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
+                else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
+                else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
 
 
-                    // evaluate distance_weight_abs
-                    CUSTOMREAL  local_azi1    =   _0_CR;
-                    Azimuth_sphere(IP.get_rec_point(name_rec).lat*DEG2RAD, IP.get_rec_point(name_rec).lon*DEG2RAD, IP.get_src_point(name_src1).lat*DEG2RAD, IP.get_src_point(name_src1).lon*DEG2RAD, local_azi1);
-                    CUSTOMREAL  local_azi2    =   _0_CR;
-                    Azimuth_sphere(IP.get_rec_point(name_rec).lat*DEG2RAD, IP.get_rec_point(name_rec).lon*DEG2RAD, IP.get_src_point(name_src2).lat*DEG2RAD, IP.get_src_point(name_src2).lon*DEG2RAD, local_azi2);
-                    CUSTOMREAL  local_azi   = abs(local_azi1 - local_azi2)*RAD2DEG;
-                    if(local_azi > 180.0)   local_azi = 360.0 - local_azi;
+                // evaluate distance_weight_abs
+                CUSTOMREAL  local_dis    =   _0_CR;
+                Epicentral_distance_sphere(IP.get_rec_point(id_rec_att).lat*DEG2RAD, IP.get_rec_point(id_rec_att).lon*DEG2RAD, IP.get_src_point(id_src_att).lat*DEG2RAD, IP.get_src_point(id_src_att).lon*DEG2RAD, local_dis);
+                local_dis *= R_earth;       // rad to km
+                CUSTOMREAL* dis_weight = IP.get_distance_weight_abs();
+
+                if      (local_dis < dis_weight[0])         local_weight *= dis_weight[2];
+                else if (local_dis > dis_weight[1])         local_weight *= dis_weight[3];
+                else                                        local_weight *= ((local_dis - dis_weight[0])/(dis_weight[1] - dis_weight[0]) * (dis_weight[3] - dis_weight[2]) + dis_weight[2]);
+
+                // assign adjoint source
+                CUSTOMREAL adjoint_source = IP.get_rec_point(id_rec_att).adjoint_source + (syn_time - obs_time + IP.rec_map[id_rec_att].tau_opt) * data.weight * local_weight;
+                IP.set_adjoint_source(id_rec_att, adjoint_source); // set adjoint source to rec_map[id_rec_att]
+
+                // assign adjoint source density
+                CUSTOMREAL adjoint_source_density = IP.get_rec_point(id_rec_att).adjoint_source_density + _1_CR;
+                IP.set_adjoint_source_density(id_rec_att, adjoint_source_density);
+
+            //
+            // common receiver differential traveltime && we use this data
+            //
+            } else if (data.data_type == DATA_TYPE_CRDIF) {
+                if (!((IP.get_use_cr() && !IP.get_is_srcrec_swap()) ||
+                        (IP.get_use_cs() &&  IP.get_is_srcrec_swap())))
+                    continue;   // if we do not use this data (cr + not swap) or (cs + swap) or (cs + tele), ignore to consider the adjoint source
+
+                int id_src1_att = data.id_src_att;
+                int id_src2_att = data.id_pair_att;
+                int id_rec_att  = data.id_rec_att;
+
+                CUSTOMREAL syn_dif_time   = data.dif_travel_time;
+                CUSTOMREAL obs_dif_time   = data.time_observation;
+
+                // assign local weight
+                CUSTOMREAL  local_weight = _1_CR;
+
+                // evaluate residual_weight_abs
+                CUSTOMREAL  local_residual = abs(syn_dif_time - obs_dif_time);
+                CUSTOMREAL* res_weight;
+                if (IP.get_is_srcrec_swap())    res_weight = IP.get_residual_weight_cs();
+                else                            res_weight = IP.get_residual_weight_cr();
+
+                if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
+                else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
+                else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
 
 
-                    CUSTOMREAL* azi_weight;
-                    if (IP.get_is_srcrec_swap())    azi_weight = IP.get_azimuthal_weight_cs();
-                    else                            azi_weight = IP.get_azimuthal_weight_cr();
-
-                    if      (local_azi < azi_weight[0])         local_weight *= azi_weight[2];
-                    else if (local_azi > azi_weight[1])         local_weight *= azi_weight[3];
-                    else                                        local_weight *= ((local_azi - azi_weight[0])/(azi_weight[1] - azi_weight[0]) * (azi_weight[3] - azi_weight[2]) + azi_weight[2]);
-
-
-                    // assign adjoint source
-                    CUSTOMREAL adjoint_source = IP.get_rec_point(name_rec).adjoint_source + (syn_dif_time - obs_dif_time) * data.weight * local_weight;
-                    IP.set_adjoint_source(name_rec, adjoint_source);
-
-                    // assign adjoint source density
-                    CUSTOMREAL adjoint_source_density = IP.get_rec_point(name_rec).adjoint_source_density + _1_CR;
-                    IP.set_adjoint_source_density(name_rec, adjoint_source_density);
+                // evaluate distance_weight_abs
+                CUSTOMREAL  local_azi1    =   _0_CR;
+                Azimuth_sphere(IP.get_rec_point(id_rec_att).lat*DEG2RAD, IP.get_rec_point(id_rec_att).lon*DEG2RAD, IP.get_src_point(id_src1_att).lat*DEG2RAD, IP.get_src_point(id_src1_att).lon*DEG2RAD, local_azi1);
+                CUSTOMREAL  local_azi2    =   _0_CR;
+                Azimuth_sphere(IP.get_rec_point(id_rec_att).lat*DEG2RAD, IP.get_rec_point(id_rec_att).lon*DEG2RAD, IP.get_src_point(id_src2_att).lat*DEG2RAD, IP.get_src_point(id_src2_att).lon*DEG2RAD, local_azi2);
+                CUSTOMREAL  local_azi   = abs(local_azi1 - local_azi2)*RAD2DEG;
+                if(local_azi > 180.0)   local_azi = 360.0 - local_azi;
 
 
-                    // DEGUG: error check
-                    if (name_sim_src == name_src1){
-                        continue;
-                    } else if (name_sim_src == name_src2) { // after modification, this case does not occur. since  name_sim_src = data.name_src = data.name_src_pair[0]
-                        // thus, this part indicate an error.
-                        std::cout   << "cs_dif data strcuture error occur. name_sim_src: " << name_sim_src
-                                    << ", data.name_src_pair[0]: " << data.name_src_pair[0]
-                                    << ", data.name_src_pair[1]: " << data.name_src_pair[1]
-                                    << std::endl;
-                    } else {
-                        std::cout << "error match of data in function: calculate_adjoint_source() " << std::endl;
-                    }
+                CUSTOMREAL* azi_weight;
+                if (IP.get_is_srcrec_swap())    azi_weight = IP.get_azimuthal_weight_cs();
+                else                            azi_weight = IP.get_azimuthal_weight_cr();
 
-                //
-                // common source differential traveltime
-                //
-                } else if (data.data_type == DATA_TYPE_CSDIF) {
-                    if (!((IP.get_use_cs() && !IP.get_is_srcrec_swap()) ||
-                          (IP.get_use_cr() &&  IP.get_is_srcrec_swap()) ||
-                          (IP.get_use_cs() &&  is_tele                )))
-                        continue; // if we do not use this data (cs + not swap) or (cr + swap), ignore to consider the total obj and adjoint source
-
-                    std::string name_src  = data.name_src_pair[0];
-                    std::string name_rec1 = data.name_rec_pair[0];
-                    std::string name_rec2 = data.name_rec_pair[1];
-
-                    CUSTOMREAL syn_dif_time = data.dif_travel_time;
-                    CUSTOMREAL obs_dif_time = data.time_observation;
-
-                    if(is_tele){    // station correction for teleseismic data
-                        syn_dif_time = syn_dif_time + IP.rec_map[name_rec1].sta_correct - IP.rec_map[name_rec2].sta_correct;
-                    }
-
-                    // assign local weight
-                    CUSTOMREAL  local_weight = _1_CR;
-
-                    // evaluate residual_weight_abs (see the remark in absolute traveltime data for considering tau_opt here)
-                    CUSTOMREAL  local_residual = abs(syn_dif_time - obs_dif_time + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt);
-                    CUSTOMREAL* res_weight;
-                    if (IP.get_is_srcrec_swap() && !is_tele)    res_weight = IP.get_residual_weight_cr();
-                    else                                        res_weight = IP.get_residual_weight_cs();
-
-                    if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
-                    else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
-                    else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
+                if      (local_azi < azi_weight[0])         local_weight *= azi_weight[2];
+                else if (local_azi > azi_weight[1])         local_weight *= azi_weight[3];
+                else                                        local_weight *= ((local_azi - azi_weight[0])/(azi_weight[1] - azi_weight[0]) * (azi_weight[3] - azi_weight[2]) + azi_weight[2]);
 
 
-                    // evaluate distance_weight_abs
-                    CUSTOMREAL  local_azi1    =   _0_CR;
-                    Azimuth_sphere(IP.get_rec_point(name_rec1).lat*DEG2RAD, IP.get_rec_point(name_rec1).lon*DEG2RAD, IP.get_src_point(name_src).lat*DEG2RAD, IP.get_src_point(name_src).lon*DEG2RAD, local_azi1);
-                    CUSTOMREAL  local_azi2    =   _0_CR;
-                    Azimuth_sphere(IP.get_rec_point(name_rec2).lat*DEG2RAD, IP.get_rec_point(name_rec2).lon*DEG2RAD, IP.get_src_point(name_src).lat*DEG2RAD, IP.get_src_point(name_src).lon*DEG2RAD, local_azi2);
-                    CUSTOMREAL  local_azi   = abs(local_azi1 - local_azi2)*RAD2DEG;
-                    if(local_azi > 180.0)   local_azi = 360.0 - local_azi;
+                // assign adjoint source
+                CUSTOMREAL adjoint_source = IP.get_rec_point(id_rec_att).adjoint_source + (syn_dif_time - obs_dif_time) * data.weight * local_weight;
+                IP.set_adjoint_source(id_rec_att, adjoint_source);
 
+                // assign adjoint source density
+                CUSTOMREAL adjoint_source_density = IP.get_rec_point(id_rec_att).adjoint_source_density + _1_CR;
+                IP.set_adjoint_source_density(id_rec_att, adjoint_source_density);
 
-                    CUSTOMREAL* azi_weight;
-                    if (IP.get_is_srcrec_swap() && !is_tele)    azi_weight = IP.get_azimuthal_weight_cr();
-                    else                                        azi_weight = IP.get_azimuthal_weight_cs();
+            //
+            // common source differential traveltime
+            //
+            } else if (data.data_type == DATA_TYPE_CSDIF) {
+                if (!((IP.get_use_cs() && !IP.get_is_srcrec_swap()) ||
+                        (IP.get_use_cr() &&  IP.get_is_srcrec_swap()) ||
+                        (IP.get_use_cs() &&  is_tele                )))
+                    continue; // if we do not use this data (cs + not swap) or (cr + swap), ignore to consider the total obj and adjoint source
 
-                    if      (local_azi < azi_weight[0])         local_weight *= azi_weight[2];
-                    else if (local_azi > azi_weight[1])         local_weight *= azi_weight[3];
-                    else                                        local_weight *= ((local_azi - azi_weight[0])/(azi_weight[1] - azi_weight[0]) * (azi_weight[3] - azi_weight[2]) + azi_weight[2]);
+                int id_src_att  = data.id_src_att;
+                int id_rec1_att = data.id_rec_att;
+                int id_rec2_att = data.id_pair_att;
 
+                CUSTOMREAL syn_dif_time = data.dif_travel_time;
+                CUSTOMREAL obs_dif_time = data.time_observation;
 
-                    // assign adjoint source
-                    CUSTOMREAL adjoint_source;
-                    adjoint_source = IP.get_rec_point(name_rec1).adjoint_source + (syn_dif_time - obs_dif_time + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt) * data.weight * local_weight;
-                    IP.set_adjoint_source(name_rec1, adjoint_source);
-
-                    adjoint_source = IP.get_rec_point(name_rec2).adjoint_source - (syn_dif_time - obs_dif_time + IP.rec_map[name_rec1].tau_opt - IP.rec_map[name_rec2].tau_opt) * data.weight * local_weight;
-                    IP.set_adjoint_source(name_rec2, adjoint_source);
-
-                    // assign adjoint source density
-                    CUSTOMREAL adjoint_source_density;
-                    adjoint_source_density = IP.get_rec_point(name_rec1).adjoint_source_density + _1_CR;
-                    IP.set_adjoint_source_density(name_rec1, adjoint_source_density);
-
-                    adjoint_source_density = IP.get_rec_point(name_rec2).adjoint_source_density + _1_CR;
-                    IP.set_adjoint_source_density(name_rec2, adjoint_source_density);
+                if(is_tele){    // station correction for teleseismic data
+                    syn_dif_time = syn_dif_time + IP.get_rec_point(id_rec1_att).sta_correct - IP.get_rec_point(id_rec2_att).sta_correct;
                 }
 
-            } // end of loop over data
-        } // end loop receivers
+                // assign local weight
+                CUSTOMREAL  local_weight = _1_CR;
+
+                // evaluate residual_weight_abs (see the remark in absolute traveltime data for considering tau_opt here)
+                CUSTOMREAL  local_residual = abs(syn_dif_time - obs_dif_time + IP.get_rec_point(id_rec1_att).tau_opt - IP.get_rec_point(id_rec2_att).tau_opt);
+                CUSTOMREAL* res_weight;
+                if (IP.get_is_srcrec_swap() && !is_tele)    res_weight = IP.get_residual_weight_cr();
+                else                                        res_weight = IP.get_residual_weight_cs();
+
+                if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
+                else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
+                else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
+
+
+                // evaluate distance_weight_abs
+                CUSTOMREAL  local_azi1    =   _0_CR;
+                Azimuth_sphere(IP.get_rec_point(id_rec1_att).lat*DEG2RAD, IP.get_rec_point(id_rec1_att).lon*DEG2RAD, IP.get_src_point(id_src_att).lat*DEG2RAD, IP.get_src_point(id_src_att).lon*DEG2RAD, local_azi1);
+                CUSTOMREAL  local_azi2    =   _0_CR;
+                Azimuth_sphere(IP.get_rec_point(id_rec2_att).lat*DEG2RAD, IP.get_rec_point(id_rec2_att).lon*DEG2RAD, IP.get_src_point(id_src_att).lat*DEG2RAD, IP.get_src_point(id_src_att).lon*DEG2RAD, local_azi2);
+                CUSTOMREAL  local_azi   = abs(local_azi1 - local_azi2)*RAD2DEG;
+                if(local_azi > 180.0)   local_azi = 360.0 - local_azi;
+
+
+                CUSTOMREAL* azi_weight;
+                if (IP.get_is_srcrec_swap() && !is_tele)    azi_weight = IP.get_azimuthal_weight_cr();
+                else                                        azi_weight = IP.get_azimuthal_weight_cs();
+
+                if      (local_azi < azi_weight[0])         local_weight *= azi_weight[2];
+                else if (local_azi > azi_weight[1])         local_weight *= azi_weight[3];
+                else                                        local_weight *= ((local_azi - azi_weight[0])/(azi_weight[1] - azi_weight[0]) * (azi_weight[3] - azi_weight[2]) + azi_weight[2]);
+
+
+                // assign adjoint source
+                CUSTOMREAL adjoint_source;
+                adjoint_source = IP.get_rec_point(id_rec1_att).adjoint_source + (syn_dif_time - obs_dif_time + IP.get_rec_point(id_rec1_att).tau_opt - IP.get_rec_point(id_rec2_att).tau_opt) * data.weight * local_weight;
+                IP.set_adjoint_source(id_rec1_att, adjoint_source);
+
+                adjoint_source = IP.get_rec_point(id_rec2_att).adjoint_source - (syn_dif_time - obs_dif_time + IP.get_rec_point(id_rec1_att).tau_opt - IP.get_rec_point(id_rec2_att).tau_opt) * data.weight * local_weight;
+                IP.set_adjoint_source(id_rec2_att, adjoint_source);
+
+                // assign adjoint source density
+                CUSTOMREAL adjoint_source_density;
+                adjoint_source_density = IP.get_rec_point(id_rec1_att).adjoint_source_density + _1_CR;
+                IP.set_adjoint_source_density(id_rec1_att, adjoint_source_density);
+
+                adjoint_source_density = IP.get_rec_point(id_rec2_att).adjoint_source_density + _1_CR;
+                IP.set_adjoint_source_density(id_rec2_att, adjoint_source_density);
+            }
+
+        }
 
     } // end proc_store_srcrec
 
@@ -528,11 +602,11 @@ bool Receiver::check_if_receiver_is_in_this_subdomain(Grid& grid, const CUSTOMRE
 }
 
 
-CUSTOMREAL Receiver::interpolate_travel_time(Grid& grid, InputParams& IP, std::string name_src, std::string name_rec) {
+CUSTOMREAL Receiver::interpolate_travel_time(Grid& grid, InputParams& IP, const int id_rec_att) {
     // calculate the travel time of the receiver by 3d linear interpolation
 
     // get the reference for a receiver
-    const SrcRecInfo rec = IP.get_rec_point_bcast(name_rec);
+    const SrcRecInfo rec = IP.get_rec_point_bcast(id_rec_att);  // get by main of level 2 and broadcast to all processes in level 2
 
     // copy some parameters
     CUSTOMREAL delta_lon = grid.get_delta_lon();
@@ -564,7 +638,7 @@ CUSTOMREAL Receiver::interpolate_travel_time(Grid& grid, InputParams& IP, std::s
     if (rec_rank == -1) {
         std::cout << "Error: the receiver is not in the global domain" << std::endl;
         // print rec
-        std::cout << "name_src: " << name_src << " name_rec: " << name_rec << " depth: " << rec.dep << " lat: " << rec.lat << " lon: " << rec.lon << std::endl;
+        std::cout << " name_rec: " << rec.name << " depth: " << rec.dep << " lat: " << rec.lat << " lon: " << rec.lon << std::endl;
         // print boundary
         //std::cout << "lon min max rec: " << grid.get_lon_min_loc() << " " << grid.get_lon_max_loc() << " " << rec_lon << std::endl;
         //std::cout << "lat min max rec: " << grid.get_lat_min_loc() << " " << grid.get_lat_max_loc() << " " << rec_lat << std::endl;
@@ -642,7 +716,7 @@ CUSTOMREAL Receiver::interpolate_travel_time(Grid& grid, InputParams& IP, std::s
          || k_rec_p1 > loc_K-1) {
             // exit(1) as the source is out of the domain
             std::cout << "Error: the receiver is out of the domain" << std::endl;
-            std::cout << "name_src: " << name_src << " name_rec: " << name_rec << " depth: " << rec.dep << " lat: " << rec.lat << " lon: " << rec.lon << std::endl;
+            std::cout << " name_rec: " << rec.name << " depth: " << rec.dep << " lat: " << rec.lat << " lon: " << rec.lon << std::endl;
             std::cout << "lon min max rec: " << grid.get_lon_min_loc()*RAD2DEG << " " << grid.get_lon_max_loc()*RAD2DEG << " " << rec_lon*RAD2DEG << std::endl;
             std::cout << "lat min max rec: " << grid.get_lat_min_loc()*RAD2DEG << " " << grid.get_lat_max_loc()*RAD2DEG << " " << rec_lat*RAD2DEG << std::endl;
             std::cout << "r min max rec: " << radius2depth(grid.get_r_min_loc()) << " " << radius2depth(grid.get_r_max_loc()) << " " << radius2depth(rec_r) << std::endl;

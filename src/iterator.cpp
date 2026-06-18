@@ -2,8 +2,8 @@
 
 // test no valence anymore
 
-Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const std::string& src_name, \
-                   bool first_init, bool is_teleseismic_in, bool is_second_run_in) \
+Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, 
+                   bool first_init, bool is_teleseismic_in, bool is_second_run_in) 
          : is_second_run(is_second_run_in) {
 
     if(n_subprocs > 1) {
@@ -84,7 +84,7 @@ Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const
     ed_level = nr+nt+np-3;
 
     // initialize factors etc.
-    initialize_arrays(IP, io, grid, src, src_name);
+    initialize_arrays(IP, io, grid, src);
 
 
 
@@ -154,7 +154,7 @@ Iterator::~Iterator() {
 }
 
 
-void Iterator::initialize_arrays(InputParams& IP, IO_utils& io, Grid& grid, Source& src, const std::string& name_sim_src) {
+void Iterator::initialize_arrays(InputParams& IP, IO_utils& io, Grid& grid, Source& src) {
     if(if_verbose && myrank == 0) std::cout << "(re) initializing arrays" << std::endl;
 
     // std::cout << "source lat: " << src.get_src_t()*RAD2DEG << ", source lon: " << src.get_src_p()*RAD2DEG << ", source dep: " << src.get_src_r() << std::endl;
@@ -823,12 +823,16 @@ void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
         grid.Tadj_loc[idx]    = 9999999.9;
     }
 
+    // i_rec (1:N) -> id_rec_att (key of rec_map)
+    std::vector<int> id_rec_att_vector = srcrec_id_2_id_att(IP.rec_map);      // main of level 2 and 3
+
     // loop all receivers
     for (int irec = 0; irec < IP.n_rec_this_sim_group; irec++) {
 
         // get receiver information
-        std::string rec_name = IP.get_rec_name(irec);
-        auto rec = IP.get_rec_point_bcast(rec_name);
+        int id_rec_att       = IP.get_id_rec_att(irec, id_rec_att_vector);
+        std::string rec_name = IP.get_rec_name(irec, id_rec_att_vector);
+        auto rec = IP.get_rec_point_bcast(id_rec_att);
 
         // "iter->second" is the receiver, with the class SrcRecInfo
         if (rec.adjoint_source == 0){
@@ -907,12 +911,17 @@ void Iterator::init_delta_and_Tadj_density(Grid& grid, InputParams& IP) {
         grid.Tadj_density_loc[idx]    = 9999999.9;
     }
 
+    // i_rec (1:N) -> id_rec_att (key of rec_map)
+    std::vector<int> id_rec_att_vector = srcrec_id_2_id_att(IP.rec_map);      // main of level 2 and 3
+
     // loop all receivers
     for (int irec = 0; irec < IP.n_rec_this_sim_group; irec++) {
 
         // get receiver information
-        std::string rec_name = IP.get_rec_name(irec);
-        auto rec = IP.get_rec_point_bcast(rec_name);
+        int id_rec_att       = IP.get_id_rec_att(irec, id_rec_att_vector);
+        std::string rec_name = IP.get_rec_name(irec, id_rec_att_vector);
+        auto rec = IP.get_rec_point_bcast(id_rec_att);
+
 
         // "iter->second" is the receiver, with the class SrcRecInfo
         if (rec.adjoint_source_density == 0){

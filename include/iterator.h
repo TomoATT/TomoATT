@@ -24,13 +24,13 @@
 
 class Iterator {
 public:
-    Iterator(InputParams&, Grid&, Source&, IO_utils&, const std::string&, bool, bool, bool);
+    Iterator(InputParams&, Grid&, Source&, IO_utils&, bool, bool, bool);
     virtual ~Iterator();
     // regional source
     void run_iteration_forward(InputParams&, Grid&, IO_utils&, bool&); // run forward iteration till convergence
     void run_iteration_adjoint(InputParams&, Grid&, IO_utils&, int);        // run adjoint iteration till convergence
 
-    void initialize_arrays(InputParams&, IO_utils&, Grid&, Source&, const std::string&); // initialize factors etc.
+    void initialize_arrays(InputParams&, IO_utils&, Grid&, Source&); // initialize factors etc.
 
 protected:
     void assign_processes_for_levels(Grid&, InputParams&); // assign intra-node processes for each sweeping level

@@ -58,10 +58,10 @@ IO_utils::~IO_utils() {
     stdout_by_main("--- IO object finalization ---");
 }
 
-void IO_utils::reset_source_info(const int& id_sim_src, const std::string& name_sim_src) {
+void IO_utils::reset_source_info(const std::string& name_sim_src) {
 
     // set simulation group id and source name for output files/dataset names
-    set_id_src(id_sim_src);
+    // set_id_src(id_sim_src);
     set_name_src(name_sim_src);
 
 #ifdef USE_HDF5

@@ -10,10 +10,10 @@ public:
     Receiver();
     ~Receiver();
 
-    void interpolate_and_store_arrival_times_at_rec_position(InputParams&, Grid&, const std::string&);       // only for common receiver differential traveltime
+    void interpolate_and_store_arrival_times_at_rec_position(InputParams&, Grid&, const int);       // only for common receiver differential traveltime
 
     // adjoint source
-    void calculate_adjoint_source(InputParams&, const std::string&);
+    void calculate_adjoint_source(InputParams&, const int);
     // objective function and residual
     std::vector<CUSTOMREAL> calculate_obj_and_residual(InputParams&);
     // Gradient of traveltime

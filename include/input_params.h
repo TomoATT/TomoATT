@@ -51,24 +51,24 @@ public:
     // source receiver information for processes which stores source receiver information
     std::string                 get_src_rec_file()      {return src_rec_file;};
     bool                        get_src_rec_file_exist(){return src_rec_file_exist;};
-    SrcRecInfo&                 get_src_point(const std::string&);          // return SrcRec object
-    SrcRecInfo&                 get_rec_point(const std::string&);          // return receivers for the current source
+    SrcRecInfo&                 get_src_point(const int id_src_att);          // return SrcRec object
+    SrcRecInfo&                 get_rec_point(const int id_rec_att);          // return receivers for the current source
 
     // source receiver information with broadcast to all subdom_main processes
-    SrcRecInfo                  get_src_point_bcast(const std::string&);    // return SrcRec object
-    SrcRecInfo                  get_rec_point_bcast(const std::string&);    // return receivers for the current source
-    CUSTOMREAL                  get_src_radius(   const std::string&);
-    CUSTOMREAL                  get_src_lat(      const std::string&);
-    CUSTOMREAL                  get_src_lon(      const std::string&);
-    SrcRecInfo                  get_src_point_bcast_2d(const std::string&);    // return SrcRec object
-    CUSTOMREAL                  get_src_radius_2d(const std::string&);
-    CUSTOMREAL                  get_src_lat_2d(   const std::string&);
-    CUSTOMREAL                  get_src_lon_2d(   const std::string&);
-    std::string                 get_src_name(const int&);                   // return source name from in-sim_group id
-    std::string                 get_rec_name(const int&);                   // return receiver name from in-sim_group id
-    std::string                 get_src_name_comm(const int&);              // return source name in common receiver list
-    int                         get_src_id(const std::string&);             // return src global id from src name
-    bool                        get_if_src_teleseismic(const std::string&); // return true if the source is teleseismic
+    SrcRecInfo                  get_src_point_bcast(const int id_src_att);    // return SrcRec object
+    SrcRecInfo                  get_rec_point_bcast(const int id_rec_att);    // return receivers for the current source
+    CUSTOMREAL                  get_src_radius(   const int id_src_att);
+    CUSTOMREAL                  get_src_lat(      const int id_src_att);
+    CUSTOMREAL                  get_src_lon(      const int id_src_att);
+    SrcRecInfo                  get_src_point_bcast_2d(const int id_src_att);    // return SrcRec object
+    CUSTOMREAL                  get_src_radius_2d(const int id_src_att);
+    CUSTOMREAL                  get_src_lat_2d(   const int id_src_att);
+    CUSTOMREAL                  get_src_lon_2d(   const int id_src_att);
+    int                         get_id_src_att(const int&, const std::vector<int>&);                   // return id_src_att from src_map
+    std::string                 get_src_name(const int&, const std::vector<int>&);                     // return source name from src_map
+    int                         get_id_rec_att(const int&, const std::vector<int>&);                   // return id_rec_att from rec_map    
+    std::string                 get_rec_name(const int&, const std::vector<int>&);                     // return receiver name from rec_map
+    bool                        get_if_src_teleseismic(const int id_src_att); // return true if the source is teleseismic
 
     //
     // others
@@ -238,10 +238,13 @@ public:
     std::map< int, SrcRecInfo> src_map_2d;           // (id_att -> SrcRecInfo) map of sources assigned for 2d solver
     std::map< int, SrcRecInfo> src_map_tele;         // (id_att -> SrcRecInfo) source list for teleseismic
 
+    std::map< int, SrcRecInfo> src_map_back;         // (id_att -> SrcRecInfo) backup map of sources (before swap)
+
     std::map< int, SrcRecInfo> rec_map_all;     // (id_att -> SrcRecInfo) map of all receivers (full information is only stored by the main process)
     std::map< int, SrcRecInfo> rec_map;         // (id_att -> SrcRecInfo) map of receivers belonging to this simultaneous group
     std::map< int, SrcRecInfo> rec_map_tele;    // (id_att -> SrcRecInfo) rec list for teleseismic
 
+    std::map< int, SrcRecInfo> rec_map_back;     // (id_att -> SrcRecInfo) backup map of receivers (before swap)
 
     // datainfo-vector maps <src_name, rec_name>
     // std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map_all;     // data list for all data (full information is only stored by the main process)
@@ -441,6 +444,19 @@ private:
     // gather rec info to main process
     void gather_rec_info_to_main();
 
+    // find ads data in data_vec_all for id_src_att and id_rec_att 
+    DataInfo& get_data_src_rec_from_all(const int id_src_att, const int id_rec_att);
+
+    // find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att
+    DataInfo& get_data_rec_pair_from_all(const int id_src_att,
+                                         const int id_rec1_att,
+                                         const int id_rec2_att);
+
+    // find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att
+    DataInfo& get_data_src_pair_from_all(const int id_src1_att,
+                                         const int id_src2_att,
+                                         const int id_rec_att);        
+
     // generate a map of sources which include common receiver double difference data
     // void generate_src_map_with_common_receiver(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,
     //                                          std::map<std::string, SrcRecInfo>&,
@@ -478,8 +494,7 @@ private:
 
     // single precision (float) output mode
     bool single_precision_output = false;
-
-
+          
 };
 
 
@@ -487,114 +502,38 @@ private:
 // utils
 //
 
-// find ads data in data_vec_all for id_src_att and id_rec_att 
-inline DataInfo& get_data_src_rec(const int id_src_att, const int id_rec_att){
-    // return the first element in the vector with data_type == DATA_TYPE_ABS
-    int data_begin = src_map_all[id_src_att].data_begin;
-    int data_end   = src_map_all[id_src_att].data_end;
+// inline void set_cr_dif_to_src_pair(std::map<std::string, std::map< std::string, std::vector<DataInfo>>>& v,
+//                                    std::string& name_src1,
+//                                    std::string& name_src2,
+//                                    std::string& name_rec,
+//                                    CUSTOMREAL& cr_dif){
+//     // return the first element in the vector with data_type == DATA_TYPE_CRDIF
 
-    for (int i = data_begin; i < data_end; i++){
-        if (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].data_type == DATA_TYPE_ABS)
-            return data_vec_all[i];
-    }
+//     std::vector<DataInfo>& vdata = v[name_src1][name_rec];
 
-    // error if no rec pair is found
-    std::cerr << "Error: no src/rec is found in get_data_src_rec" << std::endl;
-    exit(1);
-
-    // return the first element in the vector as a dummy
-    return data_vec_all[data_begin];
-}
-
-// find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att
-inline DataInfo& get_data_rec_pair(const int id_src_att,
-                                   const int id_rec1_att,
-                                   const int id_rec2_att){
-    // return the first element in the vector with data_type == DATA_TYPE_CSDIF
-    int data_begin = src_map_all[id_src_att].data_begin;
-    int data_end   = src_map_all[id_src_att].data_end;
-
-    for (int i = data_begin; i < data_end; i++){
-        if (data_vec_all[i].data_type == DATA_TYPE_CSDIF
-        && ( (data_vec_all[i].id_rec_att == id_rec1_att && data_vec_all[i].id_pair_att == id_rec2_att)
-         ||  (data_vec_all[i].id_rec_att == id_rec2_att && data_vec_all[i].id_pair_att == id_rec1_att) ))
-            return data_vec_all[i];
-    }
-
-    // error if no rec pair is found
-    std::cerr << "Error: no rec pair is found in get_data_rec_pair" << std::endl;
-    exit(1);
-
-    // return the first element in the vector as a dummy
-    return data_vec_all[data_begin];
-}
-
-// find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att
-inline DataInfo& get_data_src_pair(const int id_src1_att,
-                                   const int id_src2_att,
-                                   const int id_rec_att){
-
-    // first source 
-    int data_begin = src_map_all[id_src1_att].data_begin;
-    int data_end   = src_map_all[id_src1_att].data_end;
-
-    // return the first element in the vector with data_type == DATA_TYPE_CRDIF
-    for (int i = data_begin; i < data_end; i++){
-        if (data_vec_all[i].data_type == DATA_TYPE_CRDIF
-        && ( (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].id_pair_att == id_src2_att))
-            return data_vec_all[i];
-    }
-
-    int data_begin = src_map_all[id_src2_att].data_begin;
-    int data_end   = src_map_all[id_src2_att].data_end;
-
-    for (int i = data_begin; i < data_end; i++){
-        if (data_vec_all[i].data_type == DATA_TYPE_CRDIF
-        && (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].id_pair_att == id_src1_att))
-            return data_vec_all[i];
-    }
-
-    // error if no src pair is found
-    std::cerr << "Error: no src pair is found in get_data_src_pair" << std::endl;
-    exit(1);
-
-    // return the first element in the vector as a dummy
-    return data_vec_all[data_begin];
-}
+//     for (auto it = vdata.begin(); it != vdata.end(); it++){
+//         if (it->data_type == DATA_TYPE_CRDIF
+//         && ( (it->name_src_pair[0] == name_src1 && it->name_src_pair[1] == name_src2)
+//          ||  (it->name_src_pair[0] == name_src2 && it->name_src_pair[1] == name_src1) )) {
+//             it->dif_travel_time = cr_dif;
+//         }
+//     }
+// }
 
 
-inline void set_cr_dif_to_src_pair(std::map<std::string, std::map< std::string, std::vector<DataInfo>>>& v,
-                                   std::string& name_src1,
-                                   std::string& name_src2,
-                                   std::string& name_rec,
-                                   CUSTOMREAL& cr_dif){
-    // return the first element in the vector with data_type == DATA_TYPE_CRDIF
+// inline bool get_if_any_src_pair(std::vector<DataInfo>& v){
+//     // return the first element in the vector with data_type == DATA_TYPE_CRDIF
+//     for (auto it = v.begin(); it != v.end(); it++){
+//         if (it->data_type == DATA_TYPE_CRDIF)
+//             return true;
+//     }
 
-    std::vector<DataInfo>& vdata = v[name_src1][name_rec];
+//     // or maybe this will be enough
+//     //return v.size() > 1;
 
-    for (auto it = vdata.begin(); it != vdata.end(); it++){
-        if (it->data_type == DATA_TYPE_CRDIF
-        && ( (it->name_src_pair[0] == name_src1 && it->name_src_pair[1] == name_src2)
-         ||  (it->name_src_pair[0] == name_src2 && it->name_src_pair[1] == name_src1) )) {
-            it->dif_travel_time = cr_dif;
-        }
-    }
-}
-
-
-inline bool get_if_any_src_pair(std::vector<DataInfo>& v){
-    // return the first element in the vector with data_type == DATA_TYPE_CRDIF
-    for (auto it = v.begin(); it != v.end(); it++){
-        if (it->data_type == DATA_TYPE_CRDIF)
-            return true;
-    }
-
-    // or maybe this will be enough
-    //return v.size() > 1;
-
-    // return false if no rec pair is found
-    return false;
-}
+//     // return false if no rec pair is found
+//     return false;
+// }
 
 
 #endif

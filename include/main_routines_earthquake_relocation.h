@@ -58,7 +58,7 @@ void calculate_traveltime_for_all_src_rec(InputParams& IP, Grid& grid, IO_utils&
         }
 
         // set simu group id and source name for output files/dataset names
-        io.reset_source_info(id_sim_src, name_sim_src);
+        io.reset_source_info(name_sim_src);
 
         // set source position
         src.set_source_position(IP, grid, is_teleseismic, name_sim_src);
@@ -107,7 +107,7 @@ std::vector<CUSTOMREAL> calculate_gradient_objective_function(InputParams& IP, G
         const int         id_sim_src   = IP.get_src_id(name_sim_src); // global source id
 
         // set simu group id and source name for output files/dataset names
-        io.reset_source_info(id_sim_src, name_sim_src);
+        io.reset_source_info(name_sim_src);
 
         // load travel time field on grid.T_loc
         io.read_T_tmp(grid);
