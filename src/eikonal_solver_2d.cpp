@@ -21,13 +21,18 @@ void prepare_teleseismic_boundary_conditions(InputParams& IP, Grid& grid, IO_uti
     // pre calculation of 2d travel time fields
     //
 
+    // i_src (1:N) -> id_src_att (key of src_map) -> src info
+    id_src_att_vector_2d = srcrec_id_2_id_att(IP.src_map_2d); // main of level 2 and 3
+
     for (int i_src = 0; i_src < IP.n_src_2d_this_sim_group; i_src++){
 
-        std::string name_sim_src;
+        // std::string name_sim_src;
 
-        if (proc_store_srcrec)
-            name_sim_src = IP.src_id2name_2d[i_src];
-        broadcast_str(name_sim_src, 0);
+        // if (proc_store_srcrec)
+        //     name_sim_src = IP.src_id2name_2d[i_src];
+        // broadcast_str(name_sim_src, 0);
+
+        int         id_src_att  = IP.get_id_src_att(i_src, id_src_att_vector_2d);
 
         // get source info
         bool is_teleseismic = true; // the object in src_id2name_2d is always teleseismic
@@ -35,12 +40,12 @@ void prepare_teleseismic_boundary_conditions(InputParams& IP, Grid& grid, IO_uti
         bool for_2d_solver = true;
 
         Source src;
-        src.set_source_position(IP, grid, is_teleseismic, name_sim_src, for_2d_solver);
+        src.set_source_position(IP, grid, is_teleseismic, id_src_att, for_2d_solver);
 
         // run 2d eikonal solver for teleseismic boundary conditions if teleseismic event
-        if (proc_store_srcrec){
+        if (proc_store_srcrec){     // only for main of level 2 and 3, and only for the process which stores source receiver information
             if (myrank==0)
-                std::cout << "solve 2d eikonal equation for src: " << name_sim_src << std::endl;
+                std::cout << "solve 2d eikonal equation for src: " << IP.src_map_2d[id_src_att].name << std::endl;
             run_2d_solver(IP, src, io);
         }
     }

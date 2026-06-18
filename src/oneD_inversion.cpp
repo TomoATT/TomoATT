@@ -180,23 +180,40 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
     // initialize misfit kernel
     initialize_kernel_1d();
 
+    // i_src (1:N) -> id_src_att
+    std::vector<int> id_src_att_vector = srcrec_id_2_id_att(IP.src_map);      // main of level 2 and 3
     // iterate over sources
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
         
-        const std::string name_sim_src  = IP.get_src_name(i_src);
+        int         id_src_att    = IP.get_id_src_att(i_src, id_src_att_vector);  // get id_src_att for the i-th source
+        std::string name_src  = IP.get_src_name(i_src, id_src_att_vector);
+        bool        is_teleseismic = IP.get_if_src_teleseismic(id_src_att); // get is_teleseismic flag
 
-        if (myrank == 0){    
+        if (is_teleseismic) {
+            if (myrank == 0){  // main of level 2 and level 3
+                std::cout << "id_sim: " << id_sim << ", source (" << i_src+1 << "/" << IP.n_src_this_sim_group
+                        << "), name: "
+                        << name_src << ", lat: " << IP.src_map[name_src].lat
+                        << ", lon: " << IP.src_map[name_src].lon << ", dep: " << IP.src_map[name_src].dep
+                        << "is teleseismic, skip"
+                        << std::endl;
+            }
+            continue;
+        }
+
+
+        if (myrank == 0){    // main of level 2 and level 3
             std::cout << "id_sim: " << id_sim << ", calculating source (" << i_src+1 << "/" << IP.n_src_this_sim_group
                     << "), name: "
-                    << name_sim_src << ", lat: " << IP.src_map[name_sim_src].lat
-                    << ", lon: " << IP.src_map[name_sim_src].lon << ", dep: " << IP.src_map[name_sim_src].dep
+                    << name_src << ", lat: " << IP.src_map[name_src].lat
+                    << ", lon: " << IP.src_map[name_src].lon << ", dep: " << IP.src_map[name_src].dep
                     << std::endl;
         }
 
         ///////////////// run forward //////////////////
 
         // solver 2d eikonal equation for the i-th source for traveltime field
-        eikonal_solver_2d(IP, i_src);   // now traveltime field has been stored in T_1dinv.
+        eikonal_solver_2d(IP, id_src_att);   // now traveltime field has been stored in T_1dinv.
 
         // calculate synthetic traveltime and adjoint source
         calculate_synthetic_traveltime_and_adjoint_source(IP, i_src);  // now data in data_map, the data.traveltime has been updated.
@@ -238,11 +255,10 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
 }
 
 
-void OneDInversion::eikonal_solver_2d(InputParams& IP, int& i_src){
+void OneDInversion::eikonal_solver_2d(InputParams& IP, int& id_src_att){
 
     // get the source r 
-    const std::string name_sim_src  = IP.get_src_name(i_src);
-    CUSTOMREAL src_r                = IP.get_src_radius(name_sim_src);
+    CUSTOMREAL src_r                = IP.get_src_radius(id_src_att);
     // source in the 2D grid is r = src_r, t = 0;
 
     // initialize T0v_1dinv, T0r_1dinv, T0t_1dinv, tau_1dinv, tau_old_1dinv is_changed_1dinv

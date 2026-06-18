@@ -290,8 +290,8 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
             IP.write_src_rec_file(0,i_iter);
         }
 
-        // modify the receiver's location for output
-        IP.modify_swapped_source_location();
+        // modify the receiver's location for output  (seems no need. in write_src_rec_file, has been modified.)
+        // IP.modify_swapped_source_location();
 
 
         if (finished)
@@ -301,8 +301,8 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
         i_iter++;
     }
 
-    // modify the receiver's location
-    IP.modify_swapped_source_location();
+    // modify the receiver's location   (seems no need. in write_src_rec_file, has been modified.)
+    // IP.modify_swapped_source_location();
     // write out new src_rec_file
     IP.write_src_rec_file(0,i_iter);
     // close xdmf file
@@ -597,8 +597,8 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                     IP.write_src_rec_file(model_update_step,relocation_step);
                 }
 
-                // modify the receiver's location for output
-                IP.modify_swapped_source_location();
+                // modify the receiver's location for output (back is updated in write_src_rec_file)
+                // IP.modify_swapped_source_location();
 
                 relocation_step += 1;
             } // end relocation loop
@@ -763,7 +763,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             }
 
             // modify the receiver's location for output
-            IP.modify_swapped_source_location();
+            // IP.modify_swapped_source_location();  // back is updated in write_src_rec_file
 
             // wait for all processes to finish
             synchronize_all_world();

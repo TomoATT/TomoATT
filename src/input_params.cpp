@@ -944,19 +944,24 @@ InputParams::~InputParams(){
     if (lon_inv_ani != nullptr) delete [] lon_inv_ani;
 
     // clear all src, rec, data
-    src_map.clear();
-    src_map_tele.clear();
     src_map_all.clear();
-    src_map_back.clear();
+    src_map.clear();
+    src_map_comm_rec.clear();
+    src_map_2d.clear();
     src_map_tele.clear();
+    src_map_back.clear();
+    
+    rec_map_all.clear();
     rec_map.clear();
     rec_map_tele.clear();
-    rec_map_all.clear();
     rec_map_back.clear();
-    data_map.clear();
-    data_map_tele.clear();
-    data_map_all.clear();
-    data_map_back.clear();
+
+    data_vec_all.clear();
+    data_vec.clear();
+    data_vec_tele.clear();
+
+    src_id_in_file.clear();
+    rec_id_in_file.clear();
 }
 
 
@@ -2232,31 +2237,16 @@ void InputParams::gather_rec_info_to_main(){
         int nrec_total = rec_map_all.size();
         broadcast_i_single_inter_sim(nrec_total, 0);
 
-        std::vector<std::string> name_rec_all;
-
-        if (id_sim==0){
-            // assigne tau_opt to rec_map_all from its own rec_map
-            for (auto iter = rec_map.begin(); iter != rec_map.end(); iter++){
-                rec_map_all[iter->first].tau_opt = iter->second.tau_opt;
-                rec_map_all[iter->first].dep = iter->second.dep;
-                rec_map_all[iter->first].lat = iter->second.lat;
-                rec_map_all[iter->first].lon = iter->second.lon;
-            }
-
-            // make a list of receiver names
-            for (auto iter = rec_map_all.begin(); iter != rec_map_all.end(); iter++){
-                name_rec_all.push_back(iter->first);
-            }
-        }
-
+        // i_rec -> id_rec_att
+        std::vector<int> id_rec_att_vec = srcrec_id_2_id_att(rec_map_all);  // only main of level 1 is valid.
         for (int irec =  0; irec < nrec_total; irec++){
 
             // broadcast name of receiver
-            std::string name_rec;
+            int id_rec_att = 0;
             if (id_sim==0){
-                name_rec = name_rec_all[irec];
+                id_rec_att = id_rec_att_vec[irec];
             }
-            broadcast_str_inter_sim(name_rec, 0);
+            broadcast_i_single_inter_sim(id_rec_att, 0);
 
             int        rec_counter = 0;
             CUSTOMREAL tau_tmp=0.0;
@@ -3291,7 +3281,7 @@ void InputParams::station_correction_update(CUSTOMREAL stepsize){
 }
 
 void InputParams::modify_swapped_source_location() {
-    if (proc_store_srcrec) {
+    if (proc_store_srcrec) {    // main of level 2 and 3
         for(auto iter = rec_map.begin(); iter != rec_map.end(); iter++){
             src_map_back[iter->first].lat   =   iter->second.lat;
             src_map_back[iter->first].lon   =   iter->second.lon;
@@ -3338,36 +3328,30 @@ void InputParams::allreduce_rec_map_var(T& var){
 
 
 void InputParams::allreduce_rec_map_vobj_src_reloc(){
-    if(proc_store_srcrec){
+    if(proc_store_srcrec){  // main of level 2 and 3
         // send total number of rec_map_all.size() to all processors
-        int n_rec_all;
-        std::vector<std::string> name_rec_all;
-        if (proc_read_srcrec){
-            n_rec_all = rec_map_all.size();
-            for (auto iter = rec_map_all.begin(); iter != rec_map_all.end(); iter++){
-                name_rec_all.push_back(iter->first);
-            }
-        }
-
+        int n_rec_all = rec_map_all.size();
         // broadcast n_rec_all to all processors
         broadcast_i_single_inter_sim(n_rec_all,0);
 
-        for (int i_rec = 0; i_rec < n_rec_all; i_rec++){
-            // broadcast name_rec_all[i_rec] to all processors
-            std::string name_rec;
-            if (id_sim == 0)
-                name_rec = name_rec_all[i_rec];
 
-            broadcast_str_inter_sim(name_rec,0);
+        std::vector<int> id_rec_att_vec = srcrec_id_2_id_att(rec_map_all);  // only main of level 1 is valid.
+        // loop over all receivers
+        for (int i_rec = 0; i_rec < n_rec_all; i_rec++){
+            // broadcast id_rec_att_vec[i_rec] to all processors
+            int id_rec_att;
+            if (id_sim == 0)    // for rank0, get info from rec_map_all (main of level 1)
+                id_rec_att = id_rec_att_vec[i_rec];
+
+            broadcast_i_single_inter_sim(id_rec_att,0);
 
             // allreduce the vobj_src_reloc of rec_map_all[name_rec] to all processors
-            if (rec_map.find(name_rec) != rec_map.end()){
-                allreduce_rec_map_var(rec_map[name_rec].vobj_src_reloc);
+            if (rec_map.find(id_rec_att) != rec_map.end()){
+                allreduce_rec_map_var(rec_map[id_rec_att].vobj_src_reloc);
 
             } else {
                 CUSTOMREAL dummy = 0;
                 allreduce_rec_map_var(dummy);
-
             }
         }
     }
@@ -3377,33 +3361,26 @@ void InputParams::allreduce_rec_map_vobj_src_reloc(){
 void InputParams::allreduce_rec_map_grad_src(){
     if(proc_store_srcrec){
         // send total number of rec_map_all.size() to all processors
-        int n_rec_all;
-        std::vector<std::string> name_rec_all;
-        if (proc_read_srcrec){
-            n_rec_all = rec_map_all.size();
-            for (auto iter = rec_map_all.begin(); iter != rec_map_all.end(); iter++){
-                name_rec_all.push_back(iter->first);
-            }
-        }
-
+        int n_rec_all = rec_map_all.size();
         // broadcast n_rec_all to all processors
         broadcast_i_single_inter_sim(n_rec_all,0);
 
+        std::vector<int> id_rec_att_vec = srcrec_id_2_id_att(rec_map_all);  // only main of level 1 is valid.
         for (int i_rec = 0; i_rec < n_rec_all; i_rec++){
-            // broadcast name_rec_all[i_rec] to all processors
-            std::string name_rec;
+            // broadcast id_rec_att_vec[i_rec] to all processors
+            int id_rec_att;
             if (id_sim == 0)
-                name_rec = name_rec_all[i_rec];
+                id_rec_att = id_rec_att_vec[i_rec];
 
-            broadcast_str_inter_sim(name_rec,0);
+            broadcast_i_single_inter_sim(id_rec_att,0);
 
-            // allreduce the grad_chi_ijk of rec_map_all[name_rec] to all processors
-            if (rec_map.find(name_rec) != rec_map.end()){
-                allreduce_rec_map_var(rec_map[name_rec].grad_chi_i);
-                allreduce_rec_map_var(rec_map[name_rec].grad_chi_j);
-                allreduce_rec_map_var(rec_map[name_rec].grad_chi_k);
-                allreduce_rec_map_var(rec_map[name_rec].grad_tau);
-                allreduce_rec_map_var(rec_map[name_rec].Ndata);
+            // allreduce the grad_chi_ijk of rec_map_all[id_rec_att] to all processors
+            if (rec_map.find(id_rec_att) != rec_map.end()){
+                allreduce_rec_map_var(rec_map[id_rec_att].grad_chi_i);
+                allreduce_rec_map_var(rec_map[id_rec_att].grad_chi_j);
+                allreduce_rec_map_var(rec_map[id_rec_att].grad_chi_k);
+                allreduce_rec_map_var(rec_map[id_rec_att].grad_tau);
+                allreduce_rec_map_var(rec_map[id_rec_att].Ndata);
             } else {
                 CUSTOMREAL dummy = 0;
                 allreduce_rec_map_var(dummy);

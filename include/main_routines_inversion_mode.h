@@ -368,8 +368,8 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     if(world_rank == 0)
         std::cout << "computing traveltime field, adjoint field and kernel ..." << std::endl;
 
-    // i_src (1:N) -> id_src_att (key of src_map_comm_rec)
-    std::vector<int> id_src_att_vector = srcrec_id_2_id_att(IP.src_map_comm_rec);      // main of level 2 and 3
+    // i_src (1:N) -> id_src_att (key of src_map)
+    std::vector<int> id_src_att_vector = srcrec_id_2_id_att(IP.src_map);      // main of level 2 and 3
 
     // iterate over sources
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){

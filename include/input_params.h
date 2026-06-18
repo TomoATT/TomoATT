@@ -200,7 +200,7 @@ public:
     CUSTOMREAL* get_azimuthal_weight_cr_reloc()   {return azimuthal_weight_cr_reloc;};
 
     // get if the T field is written into the file
-    bool get_is_T_written_into_file(const std::string&);
+    bool get_is_T_written_into_file(const int id_src_att);
 
     // prepare source list for this simulation group
     void prepare_src_map();
@@ -237,13 +237,11 @@ public:
     std::map< int, SrcRecInfo> src_map_comm_rec;     // (id_att -> SrcRecInfo) map of sources with common receiver
     std::map< int, SrcRecInfo> src_map_2d;           // (id_att -> SrcRecInfo) map of sources assigned for 2d solver
     std::map< int, SrcRecInfo> src_map_tele;         // (id_att -> SrcRecInfo) source list for teleseismic
-
     std::map< int, SrcRecInfo> src_map_back;         // (id_att -> SrcRecInfo) backup map of sources (before swap)
 
     std::map< int, SrcRecInfo> rec_map_all;     // (id_att -> SrcRecInfo) map of all receivers (full information is only stored by the main process)
     std::map< int, SrcRecInfo> rec_map;         // (id_att -> SrcRecInfo) map of receivers belonging to this simultaneous group
     std::map< int, SrcRecInfo> rec_map_tele;    // (id_att -> SrcRecInfo) rec list for teleseismic
-
     std::map< int, SrcRecInfo> rec_map_back;     // (id_att -> SrcRecInfo) backup map of receivers (before swap)
 
     // datainfo-vector maps <src_name, rec_name>

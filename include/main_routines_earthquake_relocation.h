@@ -43,14 +43,12 @@ void calculate_traveltime_for_all_src_rec(InputParams& IP, Grid& grid, IO_utils&
     Source src;
 
     // iterate over sources
+    std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
 
-        const std::string name_sim_src = IP.get_src_name(i_src);
-        const int         id_sim_src   = IP.get_src_id(name_sim_src); // global source id
-
-        // check if the source is teleseismic or not
-        // because teleseismic source is not supported in this mode
-        bool is_teleseismic = IP.get_if_src_teleseismic(name_sim_src);
+        int         id_src_att      = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
+        std::string name_src        = IP.get_src_name(i_src, id_src_att_vec);
+        bool        is_teleseismic  = IP.get_if_src_teleseismic(id_src_att);
 
         if (is_teleseismic){
             std::cout << "Error: Teleseismic source is not supported in source relocation mode." << std::endl;
@@ -58,33 +56,33 @@ void calculate_traveltime_for_all_src_rec(InputParams& IP, Grid& grid, IO_utils&
         }
 
         // set simu group id and source name for output files/dataset names
-        io.reset_source_info(name_sim_src);
+        io.reset_source_info(name_src);
 
         // set source position
-        src.set_source_position(IP, grid, is_teleseismic, name_sim_src);
+        src.set_source_position(IP, grid, is_teleseismic, id_src_att, false);
 
         // initialize iterator object
         bool first_init = (i_src==0);
 
         // initialize iterator object
         std::unique_ptr<Iterator> It;
-        select_iterator(IP, grid, src, io, name_sim_src, first_init, is_teleseismic, It, false);
+        select_iterator(IP, grid, src, io, id_src_att, first_init, is_teleseismic, It, false);
 
         /////////////////////////
         // run forward simulation
         /////////////////////////
 
         if (proc_store_srcrec){
-            auto srcmap_this = IP.get_src_point(name_sim_src);
+            auto srcmap_this = IP.get_src_point(id_src_att);
 
             std::cout << "calculating source (" << i_src+1 << "/" << IP.n_src_this_sim_group << "), name: "
-                      << name_sim_src << ", lat: " << srcmap_this.lat
+                      << srcmap_this.name << ", lat: " << srcmap_this.lat
                       << ", lon: " << srcmap_this.lon << ", dep: " << srcmap_this.dep
                       << std::endl;
         }
 
         bool write_tmp_T = true;
-        calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It, name_sim_src, write_tmp_T);
+        calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It, id_src_att, write_tmp_T);
 
     }
 
@@ -97,26 +95,28 @@ std::vector<CUSTOMREAL> calculate_gradient_objective_function(InputParams& IP, G
 
     Receiver recs; // here the source is swapped to receiver
 
-    // initialize source parameters (obj, kernel, )
+    // initialize source parameters (obj, kernel for each source for reloc )
     recs.init_vars_src_reloc(IP);
 
     // iterate over sources (to obtain gradient of traveltime field T and absolute traveltime, common source differential traveltime, and common receiver differential traveltime)
+    std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
 
-        const std::string name_sim_src = IP.get_src_name(i_src);
-        const int         id_sim_src   = IP.get_src_id(name_sim_src); // global source id
+        int         id_src_att      = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
+        std::string name_src        = IP.get_src_name(i_src, id_src_att_vec);
+        // bool        is_teleseismic  = IP.get_if_src_teleseismic(id_src_att);
 
         // set simu group id and source name for output files/dataset names
-        io.reset_source_info(name_sim_src);
+        io.reset_source_info(name_src);
 
         // load travel time field on grid.T_loc
         io.read_T_tmp(grid);
 
         // calculate travel time at the actual source location (absolute traveltime, common source differential traveltime)
-        recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, name_sim_src);
+        recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, id_src_att);
 
         // calculate gradient at the actual source location
-        recs.calculate_T_gradient(IP, grid, name_sim_src);
+        recs.calculate_T_gradient(IP, grid, id_src_att);
     }
 
     // wait for all processes to finish
@@ -129,10 +129,10 @@ std::vector<CUSTOMREAL> calculate_gradient_objective_function(InputParams& IP, G
 
     // iterate over sources for calculating gradient of objective function
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-        const std::string name_sim_src = IP.get_src_name(i_src);
+        int         id_src_att      = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
              
         // calculate gradient of objective function with respect to location and ortime
-        recs.calculate_grad_obj_src_reloc(IP, name_sim_src);
+        recs.calculate_grad_reloc(IP, id_src_att);
     }
 
     // compute the objective function
