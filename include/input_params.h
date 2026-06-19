@@ -232,17 +232,17 @@ public:
     // std::map<std::string, SrcRecInfo> rec_map;         // map of receivers belonging to this simultaneous group
     // std::map<std::string, SrcRecInfo> rec_map_tele;    // rec list for teleseismic
 
-    std::map< int, SrcRecInfo> src_map_all;          // (id_att -> SrcRecInfo) map of all sources (full information is only stored by the main process)
-    std::map< int, SrcRecInfo> src_map;              // (id_att -> SrcRecInfo) map of sources belonging to this simultaneous group
-    std::map< int, SrcRecInfo> src_map_comm_rec;     // (id_att -> SrcRecInfo) map of sources with common receiver
-    std::map< int, SrcRecInfo> src_map_2d;           // (id_att -> SrcRecInfo) map of sources assigned for 2d solver
-    std::map< int, SrcRecInfo> src_map_tele;         // (id_att -> SrcRecInfo) source list for teleseismic
-    std::map< int, SrcRecInfo> src_map_back;         // (id_att -> SrcRecInfo) backup map of sources (before swap)
+    std::map< int, SrcRecInfo> src_map_all;          // (id_att -> SrcRecInfo) (main of level 1, 2, 3) map of all sources (full information is only stored by the main process)
+    std::map< int, SrcRecInfo> src_map;              // (id_att -> SrcRecInfo) (main of level 2, 3   ) map of sources belonging to this simultaneous group
+    std::map< int, SrcRecInfo> src_map_comm_rec;     // (id_att -> SrcRecInfo) (main of level 2, 3   ) map of sources with common receiver
+    std::map< int, SrcRecInfo> src_map_2d;           // (id_att -> SrcRecInfo) (main of level 2, 3   ) map of sources assigned for 2d solver
+    std::map< int, SrcRecInfo> src_map_tele;         // (id_att -> SrcRecInfo) (main of level 2, 3   ) source list for teleseismic
+    std::map< int, SrcRecInfo> src_map_back;         // (id_att -> SrcRecInfo) (main of level 1, 2, 3) backup map of sources (before swap)
 
-    std::map< int, SrcRecInfo> rec_map_all;     // (id_att -> SrcRecInfo) map of all receivers (full information is only stored by the main process)
-    std::map< int, SrcRecInfo> rec_map;         // (id_att -> SrcRecInfo) map of receivers belonging to this simultaneous group
-    std::map< int, SrcRecInfo> rec_map_tele;    // (id_att -> SrcRecInfo) rec list for teleseismic
-    std::map< int, SrcRecInfo> rec_map_back;     // (id_att -> SrcRecInfo) backup map of receivers (before swap)
+    std::map< int, SrcRecInfo> rec_map_all;     // (id_att -> SrcRecInfo) (main of level 1, 2, 3) map of all receivers (full information is only stored by the main process)
+    std::map< int, SrcRecInfo> rec_map;         // (id_att -> SrcRecInfo) (main of level 2, 3   ) map of receivers belonging to this simultaneous group
+    std::map< int, SrcRecInfo> rec_map_tele;    // (id_att -> SrcRecInfo) (main of level 2, 3   ) rec list for teleseismic
+    std::map< int, SrcRecInfo> rec_map_back;    // (id_att -> SrcRecInfo) (main of level 1, 2, 3) backup map of receivers (before swap)
 
     // datainfo-vector maps <src_name, rec_name>
     // std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map_all;     // data list for all data (full information is only stored by the main process)
@@ -256,10 +256,10 @@ public:
     // std::map< int, std::string> data_map_level1_id2name; // map the first level id (src id) to src name
     // std::map< int, std::string> data_map_level2_id2name; // map the second level id (rec id) to rec name
 
-    std::vector<DataInfo> data_vec_all;     // data list for all data (full information is only stored by the main process)
-    std::vector<DataInfo> data_vec;         // data list for this simultaneous group (including the data whose sources are in ths simultaneous group)
-    std::vector<DataInfo> data_vec_tele;    // data list for teleseismic (tele is not swapped, and will be aggregated to data_vec_all in merge_region_and_tele_src)
-
+    std::vector<DataInfo> data_vec_all;     // (main of level 1, 2, 3) data list for all data (full information is only stored by the main process)
+    std::vector<DataInfo> data_vec_tele;    // (main of level 1, 2, 3) (clear after merge) data list for teleseismic (tele is not swapped, and will be aggregated to data_vec_all in merge_region_and_tele_src)
+    std::vector<DataInfo> data_vec;         // (main of level 2, 3) data list for this simultaneous group (including the data whose sources are in ths simultaneous group)
+    
     
     // std::vector<std::string> name_for_reloc;    // name list of receivers (swarpped sources) for location
 
@@ -292,6 +292,11 @@ public:
 
     // gather traveltimes and calculate differences of synthetic data
     void gather_traveltimes_and_calc_syn_diff();
+
+    // get travel time given data_vec, src_map, id_src_att, id_rec_att
+    CUSTOMREAL get_travel_time_from_src_rec( std::vector<DataInfo>& data_vec, 
+                                             std::map<int, SrcRecInfo>& src_map, 
+                                             const int id_src_att, const int id_rec_att);
 
     // reduce necessary data in rec_map, which has differed elements in each sim group.
     template <typename T>
@@ -442,15 +447,15 @@ private:
     // gather rec info to main process
     void gather_rec_info_to_main();
 
-    // find ads data in data_vec_all for id_src_att and id_rec_att 
+    // find ads data in data_vec_all for id_src_att and id_rec_att (not used now)
     DataInfo& get_data_src_rec_from_all(const int id_src_att, const int id_rec_att);
 
-    // find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att
+    // find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att (not used now)
     DataInfo& get_data_rec_pair_from_all(const int id_src_att,
                                          const int id_rec1_att,
                                          const int id_rec2_att);
 
-    // find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att
+    // find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att (not used now)
     DataInfo& get_data_src_pair_from_all(const int id_src1_att,
                                          const int id_src2_att,
                                          const int id_rec_att);        

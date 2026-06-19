@@ -308,11 +308,9 @@ void Optimizer::set_new_model(InputParams& IP, Grid& grid, CUSTOMREAL step_lengt
 
     // since model is update. The written traveltime field should be discraded
     // initialize is_T_written_into_file
-    for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-        const std::string name_sim_src = IP.get_src_name(i_src);
-
+    for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
         if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
-            IP.src_map[name_sim_src].is_T_written_into_file = false;
+            iter->second.is_T_written_into_file = false;
     }
 }
 
@@ -348,11 +346,9 @@ void Optimizer::reverse_to_original_model(InputParams& IP, Grid& grid, CUSTOMREA
 
     // since model is update. The written traveltime field should be discraded
     // initialize is_T_written_into_file
-    for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-        const std::string name_sim_src = IP.get_src_name(i_src);
-
+    for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
         if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
-            IP.src_map[name_sim_src].is_T_written_into_file = false;
+            iter->second.is_T_written_into_file = false;
     }
 }
 

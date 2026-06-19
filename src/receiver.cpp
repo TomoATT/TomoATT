@@ -1332,7 +1332,7 @@ void Receiver::calculate_grad_reloc(InputParams& IP, int id_src_att) {
                 IP.rec_map[id_rec_att].grad_tau   += (syn_time - obs_time + IP.rec_map[id_rec_att].tau_opt)                    * data.weight_reloc * local_weight;
 
                 // count the data
-                IP.rec_map[name_rec].Ndata      += 1;
+                IP.rec_map[id_rec_att].Ndata      += 1;
             // case 2: common receiver (swapped source) double difference (double source, or double swapped receiver) for reloc
             } else if (data.data_type == DATA_TYPE_CSDIF && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
                 int id_rec1_att = data.id_rec_att;
@@ -1573,7 +1573,7 @@ void Receiver::update_source_location(InputParams& IP, Grid& grid) {
                     std::isnan(IP.rec_map[id_rec_att].lon) || std::isinf(IP.rec_map[id_rec_att].lon)){
                     std::cout << "Error: nan or inf detected in source relocation!" << std::endl;
                     std::cout << "id_sim: " << id_sim
-                            << ", src name: " << name_rec
+                            << ", src name: " << IP.rec_map[id_rec_att].name
                             << ", obj: " << IP.rec_map[id_rec_att].vobj_src_reloc
                             << ", lat: " << IP.rec_map[id_rec_att].lat
                             << ", lon: " << IP.rec_map[id_rec_att].lon

@@ -2190,7 +2190,7 @@ void InputParams::gather_all_arrival_times_to_main(){
                         recv_cr_single_sim(&(data_vec_all[data_begin_all + i_data].dif_travel_time), dst_id_sim);
                     }
 
-                } else if (id_sim == id_sim_group) {  // this simultaneous run group has the source, send the arrival time to main group
+                } else if (id_sim == dst_id_sim) {  // this simultaneous run group has the source, send the arrival time to main group
                     // send number of receivers
                     int data_begin      = src_map[id_src_att].data_begin;    // idx for data_vec. they contain all data related to this source (id_src_att);
                     int data_end        = src_map[id_src_att].data_end;
@@ -2244,11 +2244,11 @@ void InputParams::gather_rec_info_to_main(){
             CUSTOMREAL lon_tmp=0.0;
 
             // copy value if rec_map[name_rec] exists
-            if (rec_map.find(name_rec) != rec_map.end()){
-                tau_tmp = rec_map[name_rec].tau_opt;
-                dep_tmp = rec_map[name_rec].dep;
-                lat_tmp = rec_map[name_rec].lat;
-                lon_tmp = rec_map[name_rec].lon;
+            if (rec_map.find(id_rec_att) != rec_map.end()){
+                tau_tmp = rec_map[id_rec_att].tau_opt;
+                dep_tmp = rec_map[id_rec_att].dep;
+                lat_tmp = rec_map[id_rec_att].lat;
+                lon_tmp = rec_map[id_rec_att].lon;
                 rec_counter = 1;
             }
 
@@ -2261,10 +2261,10 @@ void InputParams::gather_rec_info_to_main(){
 
             // assign tau_opt to rec_map_all
             if (rec_counter > 0){
-                rec_map_all[name_rec].tau_opt = tau_tmp / (CUSTOMREAL)rec_counter;
-                rec_map_all[name_rec].dep = dep_tmp / (CUSTOMREAL)rec_counter;
-                rec_map_all[name_rec].lat = lat_tmp / (CUSTOMREAL)rec_counter;
-                rec_map_all[name_rec].lon = lon_tmp / (CUSTOMREAL)rec_counter;
+                rec_map_all[id_rec_att].tau_opt = tau_tmp / (CUSTOMREAL)rec_counter;
+                rec_map_all[id_rec_att].dep = dep_tmp / (CUSTOMREAL)rec_counter;
+                rec_map_all[id_rec_att].lat = lat_tmp / (CUSTOMREAL)rec_counter;
+                rec_map_all[id_rec_att].lon = lon_tmp / (CUSTOMREAL)rec_counter;
             }
 
         } // end for irec
@@ -2318,14 +2318,18 @@ void InputParams::gather_traveltimes_and_calc_syn_diff(){
         if (id_sim==0){     // main of level 1
             for (auto& data: data_vec_all){
                 if (data.data_type == DATA_TYPE_CRDIF) {
+                    // int id_src_att = data.id_src_att;
+                    int id_src2_att = data.id_pair_att;
+                    int id_rec_att = data.id_rec_att;
                     CUSTOMREAL time1 = data.travel_time; // time from id_src_att to id_rec_att
-                    CUSTOMREAL time2 = get_travel_time_from_src_rec(data_vec_all, src_map_all, id_src_att, id_rec_att); // time from id_src_att2 to id_rec_att
+                    CUSTOMREAL time2 = get_travel_time_from_src_rec(data_vec_all, src_map_all, id_src2_att, id_rec_att); // time from id_src_att2 to id_rec_att
 
                     data.dif_travel_time = time1 - time2;
                 }
             }
         }
 
+        // rank 0 distribute the correct data to other sim groups 
         // detemine id_src corresponding to which id_src_att in src_map_all 
         std::vector<int> id_src_att_vector;
         if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
@@ -2452,7 +2456,7 @@ void InputParams::write_station_correction_file(int i_inv){
     }
 }
 
-// find ads data in data_vec_all for id_src_att and id_rec_att 
+// find ads data in data_vec_all for id_src_att and id_rec_att (not used now)
 DataInfo& InputParams::get_data_src_rec_from_all(const int id_src_att, const int id_rec_att){
     // return the first element in the vector with data_type == DATA_TYPE_ABS
     int data_begin = src_map_all[id_src_att].data_begin;
@@ -2471,7 +2475,7 @@ DataInfo& InputParams::get_data_src_rec_from_all(const int id_src_att, const int
     return data_vec_all[data_begin];
 }
 
-// find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att
+// find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att (not used now)
 DataInfo& InputParams::get_data_rec_pair_from_all(const int id_src_att,
                                                   const int id_rec1_att,
                                                   const int id_rec2_att){
@@ -2494,7 +2498,7 @@ DataInfo& InputParams::get_data_rec_pair_from_all(const int id_src_att,
     return data_vec_all[data_begin];
 }
 
-// find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att
+// find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att (not used now)
 DataInfo& InputParams::get_data_src_pair_from_all(const int id_src1_att,
                                                   const int id_src2_att,
                                                   const int id_rec_att){
@@ -2506,12 +2510,12 @@ DataInfo& InputParams::get_data_src_pair_from_all(const int id_src1_att,
     // return the first element in the vector with data_type == DATA_TYPE_CRDIF
     for (int i = data_begin; i < data_end; i++){
         if (data_vec_all[i].data_type == DATA_TYPE_CRDIF
-        && ( (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].id_pair_att == id_src2_att))
+        && ( (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].id_pair_att == id_src2_att)))
             return data_vec_all[i];
     }
 
-    int data_begin = src_map_all[id_src2_att].data_begin;
-    int data_end   = src_map_all[id_src2_att].data_end;
+    data_begin = src_map_all[id_src2_att].data_begin;
+    data_end   = src_map_all[id_src2_att].data_end;
 
     for (int i = data_begin; i < data_end; i++){
         if (data_vec_all[i].data_type == DATA_TYPE_CRDIF
@@ -2604,7 +2608,7 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
 
 
         // write only by the main processor of subdomain && the first id of subdoumains
-        if (proc_read_srcrec){
+        if (proc_read_srcrec){   // main of level 1, 2, 3
 
             if (run_mode == ONLY_FORWARD)
                 src_rec_file_out = output_dir + "/src_rec_file_forward.dat";
@@ -2661,32 +2665,33 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                     bool rec_pair_data = false;
 
                     // store reference of data to be written
+                    DataInfo data;
 
                     if (info_data.size() == 2 && info_data.at(1) == DATA_TYPE_ABS){   // abs data
                         id_rec_att = info_data.at(0);
                         src_rec_data = true;
                         if (get_is_srcrec_swap() && !is_tele)
-                            data = get_data_src_rec(data_vec_all, id_rec_att, id_src_att);   // src-rec data -> rec-src data
+                            data = get_data_src_rec_from_all(id_rec_att, id_src_att);   // src-rec data -> rec-src data
                         else
-                            data = get_data_src_rec(data_vec_all, id_src_att, id_rec_att);
+                            data = get_data_src_rec_from_all(id_src_att, id_rec_att);
 
-                    } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CS){  // cs_dif data
+                    } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CSDIF){  // cs_dif data
                         id_rec_att  = info_data.at(0);
                         id_rec2_att = info_data.at(1);
                         rec_pair_data = true;
                         if (get_is_srcrec_swap() && !is_tele)       // cs_dif data -> cr_dif data
-                            data = get_data_src_pair(data_vec_all, id_rec_att, id_rec2_att, id_src_att);
+                            data = get_data_src_pair_from_all(id_rec_att, id_rec2_att, id_src_att);
                         else                            // cs_dif data
-                            data = get_data_rec_pair(data_vec_all, id_src_att, id_rec_att, id_rec2_att);
+                            data = get_data_rec_pair_from_all(id_src_att, id_rec_att, id_rec2_att);
 
-                    } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CR){   // cr_dif data
+                    } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CRDIF){   // cr_dif data
                         id_rec_att = info_data.at(0);
                         id_src2_att = info_data.at(1);
                         src_pair_data = true;
                         if (get_is_srcrec_swap() && !is_tele)       // cr_dif -> cs_dif
-                            data = get_data_rec_pair(data_vec_all, id_rec_att, id_src_att, id_src2_att);
+                            data = get_data_rec_pair_from_all(id_rec_att, id_src_att, id_src2_att);
                         else                            // cr_dif
-                            data = get_data_src_pair(data_vec_all, id_src_att, id_src2_att, id_rec_att);
+                            data = get_data_src_pair_from_all(id_src_att, id_src2_att, id_rec_att);
 
                     } else{     // error data type
                         std::cerr << "Error: incorrect data type in rec_id2name_back" << std::endl;
@@ -2824,31 +2829,34 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                         bool src_rec_data  = false;
                         bool src_pair_data = false;
                         bool rec_pair_data = false;
+                        
+                        // store reference of data to be written
+                        DataInfo data;
 
                         // store reference of data to be written
                         if (info_data.size() == 2 && info_data.at(1) == DATA_TYPE_ABS){   // abs data
                             id_rec_att = info_data.at(0);
                             src_rec_data = true;
                             if (get_is_srcrec_swap() && !is_tele)
-                                data = get_data_src_rec(data_vec_all, id_rec_att, id__att);         // valid, for relocation, sources and receivers are always swapped
+                                data = get_data_src_rec_from_all(id_rec_att, id_src_att);         // valid, for relocation, sources and receivers are always swapped
                             else
-                                data = get_data_src_rec(data_vec_all, id_src_att, id_rec_att);         // invalid
-                        } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CS){  // cs_dif data
+                                data = get_data_src_rec_from_all(id_src_att, id_rec_att);         // invalid
+                        } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CSDIF){  // cs_dif data
                             id_rec_att = info_data.at(0);
                             id_rec2_att = info_data.at(1);
                             rec_pair_data = true;
                             if (get_is_srcrec_swap() && !is_tele)       // cs_dif data -> cr_dif data
-                                data = get_data_src_pair(data_vec_all, id_rec_att, id_rec2_att, id_src_att);     // valid, swapped
+                                data = get_data_src_pair_from_all(id_rec_att, id_rec2_att, id_src_att);     // valid, swapped
                             else                            // cs_dif data
-                                data = get_data_rec_pair(data_vec_all, id_src_att, id_rec_att, id_rec2_att);     // invalid
-                        } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CR){   // cr_dif data
+                                data = get_data_rec_pair_from_all(id_src_att, id_rec_att, id_rec2_att);     // invalid
+                        } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CRDIF){   // cr_dif data
                             id_rec_att = info_data.at(0);
                             id_src2_att = info_data.at(1);
                             src_pair_data = true;
                             if (get_is_srcrec_swap() && !is_tele)       // cr_dif -> cs_dif
-                                data = get_data_rec_pair(data_vec_all, id_rec_att, id_src_att, id_src2_att);     // These data are not inverted in relocation. But we need to print them out.
+                                data = get_data_rec_pair_from_all(id_rec_att, id_src_att, id_src2_att);     // These data are not inverted in relocation. But we need to print them out.
                             else                            // cr_dif
-                                data = get_data_src_pair(data_vec_all, id_src_att, id_src2_att, id_rec_att);     // invalid
+                                data = get_data_src_pair_from_all(id_src_att, id_src2_att, id_rec_att);     // invalid
 
                         } else{     // error data type
                             std::cerr << "Error: incorrect data type in rec_id2name_back" << std::endl;
@@ -2890,7 +2898,7 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                             }
 
                             // common source differential traveltime data
-                            SrcRecInfo& rec1 = rec_map_back[id_rec1_att];
+                            SrcRecInfo& rec1 = rec_map_back[id_rec_att];
                             SrcRecInfo& rec2 = rec_map_back[id_rec2_att];
                             CUSTOMREAL  cs_dif_travel_time_obs = data.time_observation;
 
@@ -2920,7 +2928,7 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                             }
 
                             // common receiver differential traveltime data
-                            SrcRecInfo& rec1 = rec_map_back[id_rec1_att];
+                            SrcRecInfo& rec1 = rec_map_back[id_rec_att];
                             SrcRecInfo& src2 = src_map_back[id_src2_att];
                             CUSTOMREAL  cr_dif_travel_time_obs = data.time_observation - rec_map_all[id_src_att].tau_opt + rec_map_all[id_src2_att].tau_opt;
 
@@ -3095,7 +3103,6 @@ void InputParams::station_correction_update(CUSTOMREAL stepsize){
 
     // step 5, send the station correction to all procesors. So they can consider station correction when calculating obj and adj source.
     if (proc_store_srcrec){
-        CUSTOMREAL sta_correct = 0.0;
         std::vector<std::string> rec_map_all_name;
         std::string sta_name;
         int Nsta = rec_map_all.size();
@@ -3106,6 +3113,8 @@ void InputParams::station_correction_update(CUSTOMREAL stepsize){
         // loop over all receivers
         for (int i = 0; i < Nsta; i++){
             // broadcast sta_name and sta_correction to all processors
+            int id_rec_att;
+            CUSTOMREAL sta_correct = 0.0;
             if (id_sim == 0){
                 id_rec_att = id_rec_att_vec[i];
                 sta_correct = rec_map_all[id_rec_att].sta_correct;

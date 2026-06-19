@@ -688,8 +688,8 @@ void separate_region_and_tele_src_rec_data(std::map<int, SrcRecInfo>            
                 data_type["tele"]                        = 1;
 
             // if both sources is in the region
-            } else if (src_map.find(id_src_att1) != src_map.end() \
-                    && src_map.find(id_src_att2) != src_map.end() ) {
+            } else if (src_map_all.find(id_src_att1) != src_map_all.end() \
+                    && src_map_all.find(id_src_att2) != src_map_all.end() ) {
                 total_cr_dif_local_data_weight          += data.data_weight;
                 total_cr_dif_local_data_weight_reloc    += data.data_weight;
                 data_vec_tmp.push_back(data);
@@ -832,13 +832,13 @@ void separate_region_and_tele_src_rec_data(std::map<int, SrcRecInfo>            
     if (if_verbose){
         std::cout << "local data: " << std::endl;
 
-        for(auto iter = src_map.begin(); iter != src_map.end(); iter++){
+        for(auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++){
             std::cout   << "source id: "     << iter->second.id
                         << ", source name: " << iter->second.name
                         << std::endl;
         }
 
-        for(auto iter = rec_map.begin(); iter != rec_map.end(); iter++){
+        for(auto iter = rec_map_all.begin(); iter != rec_map_all.end(); iter++){
             std::cout   << "receiver id: "     << iter->second.id
                         << ", receiver name: " << iter->second.name
                         << std::endl;
