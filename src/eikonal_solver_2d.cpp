@@ -22,7 +22,7 @@ void prepare_teleseismic_boundary_conditions(InputParams& IP, Grid& grid, IO_uti
     //
 
     // i_src (1:N) -> id_src_att (key of src_map) -> src info
-    id_src_att_vector_2d = srcrec_id_2_id_att(IP.src_map_2d); // main of level 2 and 3
+    std::vector<int> id_src_att_vector_2d = srcrec_id_2_id_att(IP.src_map_2d); // main of level 2 and 3
 
     for (int i_src = 0; i_src < IP.n_src_2d_this_sim_group; i_src++){
 

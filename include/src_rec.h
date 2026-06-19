@@ -187,7 +187,7 @@ void parse_src_rec_file(std::string& src_rec_file,
 
 // parse sta_correctoion_file
 void parse_sta_correction_file(std::string& sta_correction_file,
-                               std::map<std::string, SrcRecInfo>& rec_map);
+                               std::map<int, SrcRecInfo>& rec_map);
 
 // swap the sources and receivers
 void do_swap_src_rec(std::map<int, SrcRecInfo> &src_map_all,
@@ -202,10 +202,9 @@ void do_not_swap_src_rec(std::map<int, SrcRecInfo> &src_map_all,
 // tele seismic source management
 void separate_region_and_tele_src_rec_data(std::map<int, SrcRecInfo>            &src_map_back,
                                            std::map<int, SrcRecInfo>            &rec_map_back,
-                                           std::vector<DataInfo>                &data_vec_back,
-                                           std::map<int, SrcRecInfo>            &src_map,
-                                           std::map<int, SrcRecInfo>            &rec_map,
-                                           std::vector<DataInfo>                &data_vec,
+                                           std::map<int, SrcRecInfo>            &src_map_all,
+                                           std::map<int, SrcRecInfo>            &rec_map_all,
+                                           std::vector<DataInfo>                &data_vec_all,
                                            std::map<int, SrcRecInfo>            &src_map_tele,
                                            std::map<int, SrcRecInfo>            &rec_map_tele,
                                            std::vector<DataInfo>                &data_vec_tele,
@@ -240,7 +239,7 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
                              std::vector<DataInfo>&         data_vec_this_sim);
 
 // generate a list of events which involve common receiver double difference traveltime
-void generate_src_map_with_common_receiver(std::vector<DataInfo>&       data_map,
+void generate_src_map_with_common_receiver(std::vector<DataInfo>&       data_vec,
                                            std::map<int, SrcRecInfo>&   src_map,
                                            std::map<int, SrcRecInfo>&   src_map_comm_recp);
 
@@ -254,10 +253,10 @@ std::vector<int> srcrec_id_2_id_att(std::map<int, SrcRecInfo>& srcrec_map);
 
 void send_src_info_inter_sim(SrcRecInfo&, int);
 void recv_src_info_inter_sim(SrcRecInfo&, int);
-void broadcast_src_info_intra_sim(SrcRecInfo&, int);
+void broadcast_src_info(SrcRecInfo&, int);
 void send_rec_info_inter_sim(SrcRecInfo&, int);
 void recv_rec_info_inter_sim(SrcRecInfo&, int);
-void broadcast_rec_info_intra_sim(SrcRecInfo&, int);
+void broadcast_rec_info(SrcRecInfo&, int);
 void send_data_info_inter_sim(DataInfo&, int);
 void recv_data_info_inter_sim(DataInfo&, int);
 

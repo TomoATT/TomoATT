@@ -28,7 +28,7 @@ public:
     void update_source_location(InputParams&, Grid&);
 
 private:
-    CUSTOMREAL interpolate_travel_time(Grid&, InputParams&, std::string, std::string);
+    CUSTOMREAL interpolate_travel_time(Grid&, InputParams&, int id_rec_att);
     std::vector<CUSTOMREAL> calculate_T_gradient_one_rec(Grid&, InputParams&, const int);
     bool check_if_receiver_is_in_this_subdomain(Grid&, const CUSTOMREAL&, const CUSTOMREAL&, const CUSTOMREAL&);
 };

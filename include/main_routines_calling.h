@@ -815,7 +815,8 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
 
 
 // run 1D inversion mode
-// run mode: 4
+// run mode: 4 
+// (only level 1 is allowed.)
 inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
     OneDInversion oneDInv(IP, grid);
 
