@@ -719,7 +719,9 @@ void separate_region_and_tele_src_rec_data(std::map<int, SrcRecInfo>            
                 data_type["cr_dif"]                      = 1;
 
             } else {
-                std::cout << "ERROR data: common receiver differential time, but one teleseismic source, one local source";
+                std::cout << "src1 name: " << src_map_back[id_src_att1].name << ", src1 lat: " << src_map_back[id_src_att1].lat << ", src1 lon: " << src_map_back[id_src_att1].lon << ", src1 dep: " << src_map_back[id_src_att1].dep << std::endl;
+                std::cout << "src2 name: " << src_map_back[id_src_att2].name << ", src2 lat: " << src_map_back[id_src_att2].lat << ", src2 lon: " << src_map_back[id_src_att2].lon << ", src2 dep: " << src_map_back[id_src_att2].dep << std::endl;
+                std::cout << "ERROR data: common receiver differential time, but one teleseismic source, one local source" << std::endl;
                 exit(1);
             }
 

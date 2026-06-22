@@ -64,10 +64,10 @@ public:
     CUSTOMREAL                  get_src_radius_2d(const int id_src_att);
     CUSTOMREAL                  get_src_lat_2d(   const int id_src_att);
     CUSTOMREAL                  get_src_lon_2d(   const int id_src_att);
-    int                         get_id_src_att(const int&, const std::vector<int>&);                   // return id_src_att from src_map
-    std::string                 get_src_name(const int&, const std::vector<int>&);                     // return source name from src_map
-    int                         get_id_rec_att(const int&, const std::vector<int>&);                   // return id_rec_att from rec_map    
-    std::string                 get_rec_name(const int&, const std::vector<int>&);                     // return receiver name from rec_map
+    int                         get_id_src_att(const int, const std::vector<int>&, bool for_2d_solver=false);                   // return id_src_att from src_map
+    std::string                 get_src_name(const int, const std::vector<int>&);                     // return source name from src_map
+    int                         get_id_rec_att(const int, const std::vector<int>&);  // return id_rec_att from rec_map    
+    std::string                 get_rec_name(const int, const std::vector<int>&);                     // return receiver name from rec_map
     bool                        get_if_src_teleseismic(const int id_src_att); // return true if the source is teleseismic
 
     //

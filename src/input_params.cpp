@@ -1637,15 +1637,13 @@ void InputParams::setup_uniform_inv_grid() {
 }
 
 
-
-// return radious
+// get source info
 CUSTOMREAL InputParams::get_src_radius(const int id_src_att) {
     if (src_rec_file_exist)
         return depth2radius(get_src_point_bcast(id_src_att).dep);
     else
         return depth2radius(src_dep);
 }
-
 
 CUSTOMREAL InputParams::get_src_lat(const int id_src_att) {
     if (src_rec_file_exist)
@@ -1654,7 +1652,6 @@ CUSTOMREAL InputParams::get_src_lat(const int id_src_att) {
         return src_lat*DEG2RAD;
 }
 
-
 CUSTOMREAL InputParams::get_src_lon(const int id_src_att) {
     if (src_rec_file_exist)
         return get_src_point_bcast(id_src_att).lon*DEG2RAD;
@@ -1662,6 +1659,8 @@ CUSTOMREAL InputParams::get_src_lon(const int id_src_att) {
         return src_lon*DEG2RAD;
 }
 
+
+// get source info for 2d solver
 CUSTOMREAL InputParams::get_src_radius_2d(const int id_src_att) {
     if (src_rec_file_exist)
         return depth2radius(get_src_point_bcast_2d(id_src_att).dep);
@@ -1669,14 +1668,12 @@ CUSTOMREAL InputParams::get_src_radius_2d(const int id_src_att) {
         return depth2radius(src_dep);
 }
 
-
 CUSTOMREAL InputParams::get_src_lat_2d(const int id_src_att) {
     if (src_rec_file_exist)
         return get_src_point_bcast_2d(id_src_att).lat*DEG2RAD;
     else
         return src_lat*DEG2RAD;
 }
-
 
 CUSTOMREAL InputParams::get_src_lon_2d(const int id_src_att) {
     if (src_rec_file_exist)
@@ -1686,6 +1683,7 @@ CUSTOMREAL InputParams::get_src_lon_2d(const int id_src_att) {
 }
 
 
+// 
 SrcRecInfo& InputParams::get_src_point(const int id_src_att){
     if (proc_store_srcrec){
         auto iter = src_map.find(id_src_att);
@@ -1768,10 +1766,6 @@ SrcRecInfo InputParams::get_src_point_bcast_2d(const int id_src_att){
 
 }
 
-
-
-
-
 SrcRecInfo InputParams::get_rec_point_bcast(const int id_rec_att) {
     //
     // This function returns copy of a SrcRecInfo object
@@ -1798,45 +1792,81 @@ SrcRecInfo InputParams::get_rec_point_bcast(const int id_rec_att) {
 
 
 // return id_src_att
-int InputParams::get_id_src_att(const int& i_src, const std::vector<int>& id_src_att_vector){
+int InputParams::get_id_src_att(const int i_src, const std::vector<int>& id_src_att_vector, bool for_2d_solver){
 
     int id_src_att;
-    if (proc_store_srcrec)
-        id_src_att = src_map[id_src_att_vector[i_src]].id_att;
+    if (proc_store_srcrec){
+        if (for_2d_solver){
+            auto iter = src_map_2d.find(id_src_att_vector[i_src]);
+            if (iter == src_map_2d.end()){
+                std::cout << "Error: id_src_att " << id_src_att_vector[i_src] << " not found in src_map_2d." << std::endl;
+                exit(1);
+            }
+            id_src_att = iter->second.id_att;
+        } else {
+            auto iter = src_map.find(id_src_att_vector[i_src]);
+            if (iter == src_map.end()){
+                std::cout << "Error: id_src_att " << id_src_att_vector[i_src] << " not found in src_map." << std::endl;
+                exit(1);
+            }
+            id_src_att = iter->second.id_att;
+        }
+    }
 
     // broadcast
     broadcast_i_single_intra_sim(id_src_att, 0);        // level 2 and level 3
     return id_src_att;
 }
 
-std::string InputParams::get_src_name(const int& i_src, const std::vector<int>& id_src_att_vector){
+
+
+std::string InputParams::get_src_name(const int i_src, const std::vector<int>& id_src_att_vector){
 
     std::string src_name;
-    if (proc_store_srcrec)
-        src_name = src_map[id_src_att_vector[i_src]].name;
-
+    if (proc_store_srcrec){
+        auto iter = src_map.find(id_src_att_vector[i_src]);
+        if (iter == src_map.end()){
+            std::cout << "Error: id_src_att " << id_src_att_vector[i_src] << " not found in src_map." << std::endl;
+            exit(1);    
+        } else {
+            src_name = iter->second.name;
+        }
+    }
     // broadcast
     broadcast_str_intra_sim(src_name, 0);       // level 2 and level 3
     return src_name;
 }
 
 // return id_rec_att
-int InputParams::get_id_rec_att(const int& i_rec, const std::vector<int>& id_rec_att_vector){
+int InputParams::get_id_rec_att(const int i_rec, const std::vector<int>& id_rec_att_vector){
 
     int id_rec_att;
-    if (proc_store_srcrec)
-        id_rec_att = rec_map[id_rec_att_vector[i_rec]].id_att;
+    if (proc_store_srcrec){
+        auto iter = rec_map.find(id_rec_att_vector[i_rec]);
+        if (iter == rec_map.end()){
+            std::cout << "Error: id_rec_att " << id_rec_att_vector[i_rec] << " not found in rec_map." << std::endl;
+            exit(1);
+        }
+        id_rec_att = iter->second.id_att;
+    }
 
     // broadcast
     broadcast_i_single_intra_sim(id_rec_att, 0);        // level 2 and level 3
     return id_rec_att;
 }
 
-std::string InputParams::get_rec_name(const int& i_rec, const std::vector<int>& id_rec_att_vector){
+std::string InputParams::get_rec_name(const int i_rec, const std::vector<int>& id_rec_att_vector){
 
     std::string rec_name;
-    if (proc_store_srcrec)
-        rec_name = rec_map[id_rec_att_vector[i_rec]].name;
+    if (proc_store_srcrec){
+        auto iter = rec_map.find(id_rec_att_vector[i_rec]);
+        if (iter == rec_map.end()){
+            std::cout << "Error: id_rec_att " << id_rec_att_vector[i_rec] << " not found in rec_map." << std::endl;
+            exit(1);
+        } else {
+            rec_name = iter->second.name;
+        }
+    }
 
     // broadcast
     broadcast_str_intra_sim(rec_name, 0);       // level 2 and level 3
