@@ -402,7 +402,6 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
     if (proc_store_srcrec) {
 
         for(auto& data : IP.data_vec){
-
             if (data.dual_data) continue; // dual data is not used for calculating obj and residual
 
             //
@@ -414,12 +413,10 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
                 int id_rec_att      = data.id_rec_att;
                 CUSTOMREAL syn_time       = data.travel_time;
                 CUSTOMREAL obs_time       = data.time_observation;
-
                 bool is_tele = (IP.get_src_point(id_src_att).is_out_of_region || IP.get_rec_point(id_rec_att).is_out_of_region);
                 if (is_tele){
                     syn_time = syn_time + IP.rec_map[id_rec_att].sta_correct; // station correction for teleseismic data
                 }
-
                 // contribute misfit of specific type of data
                 res     += 1.0 *          (syn_time - obs_time + IP.rec_map[id_rec_att].tau_opt);
                 res_sq  += 1.0 * my_square(syn_time - obs_time + IP.rec_map[id_rec_att].tau_opt);
@@ -522,7 +519,6 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
         } // end of loop over data
 
     } // end proc_store_srcrec
-
     broadcast_cr_single_sub(obj,0);
     broadcast_cr_single_sub(obj_abs,0);
     broadcast_cr_single_sub(obj_cs_dif,0);

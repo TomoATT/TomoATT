@@ -45,8 +45,8 @@ public:
 
     // data vector id (the id of data associated with the source)
     // data id from data_begin to data_end-1 (inclusive)
-    int data_begin;  
-    int data_end;
+    int data_begin = 0;  
+    int data_end = 0;
 
 
 

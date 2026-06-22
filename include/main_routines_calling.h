@@ -107,6 +107,22 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         ///////////////////////////////////////////////////////
         // run (forward and adjoint) simulation for each source
         ///////////////////////////////////////////////////////
+        if (proc_store_srcrec) {
+            std::cout << "id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+            for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
+                std::cout   << "id_sim: " << id_sim 
+                            << ", id_src_att: " << iter->second.id_att
+                            << ", src_name: " << iter->second.name
+                            << ", data_begin: " << iter->second.data_begin
+                            << ", data_end: " << iter->second.data_end
+                            << ", n_data: " << iter->second.n_data
+                            << ", map_key: " << iter->first
+                            << std::endl;
+            }
+        }
+        synchronize_all_world();
+        
+
 
         // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
         // line_search_mode = false;
@@ -129,6 +145,19 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
                 std::cout << "v_obj is nan, stop inversion" << std::endl;
             // stop inversion
             break;
+        }
+
+        if (proc_store_srcrec) {
+            for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
+                std::cout   << "id_sim: " << id_sim 
+                            << ", id_src_att: " << iter->second.id_att
+                            << ", src_name: " << iter->second.name
+                            << ", data_begin: " << iter->second.data_begin
+                            << ", data_end: " << iter->second.data_end
+                            << ", n_data: " << iter->second.n_data
+                            << ", map_key: " << iter->first
+                            << std::endl;
+            }
         }
 
         // output src rec file with the result arrival times

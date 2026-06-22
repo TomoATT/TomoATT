@@ -50,7 +50,7 @@ void parse_src_rec_file(std::string& src_rec_file,
     std::string src_name;
     CUSTOMREAL src_weight = 1.0;
     CUSTOMREAL rec_weight = 1.0;
-    int src_id = -1;    // src id in the file
+    // int src_id;    // src id in the file
     int src_id_att = -1; // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att. --- IGNORE ---
 
     // temporary receiver name list for each source
@@ -164,12 +164,12 @@ void parse_src_rec_file(std::string& src_rec_file,
 
                 // src_map[src.name] = src;
 
-                src_id      = src.id;
+                // src_id      = src.id;
                 src_id_att  = src.id_att;
                 src_name = src.name;
 
                 ndata_tmp = src.n_data;
-                src_id_in_file.push_back(src_id); // store order of sources in the file
+                src_id_in_file.push_back(src_id_att); // store order of sources in the file
 
                 // source with no receiver is allowed (cc = 1, ndata_tmp = 0)
                 if (cc > ndata_tmp) {
@@ -409,18 +409,40 @@ void parse_src_rec_file(std::string& src_rec_file,
     // indicate elapsed time
     std::cout << "Total elapsed time for reading src_rec_file: " << timer.get_t() << " seconds.\n";
 
+    if(src_id_in_file.size() != rec_id_in_file.size()){
+        std::cout << "Error: size of src_id_in_file is not equal to size of rec_id_in_file. Please check the Ndata of the last event in the src_rec_file." << std::endl;
+        exit(1);
+    }
+
     // check new version of src rec data
-    if (if_verbose){
+    // if (if_verbose){
+    if (true){
         for(auto iter = src_map.begin(); iter != src_map.end(); iter++){
-            std::cout   << "source id: "     << iter->second.id
+            std::cout   << "source id_att: "     << iter->second.id_att
                         << ", source name: " << iter->second.name
+                        << ", map_key: " << iter->first
                         << std::endl;
         }
 
         for(auto iter = rec_map.begin(); iter != rec_map.end(); iter++){
-            std::cout   << "receiver id: "     << iter->second.id
+            std::cout   << "receiver id_att: "     << iter->second.id_att
                         << ", receiver name: " << iter->second.name
+                        << ", map_key: " << iter->first
                         << std::endl;
+        }
+
+        std::cout << "size of src_id_in_file: " << src_id_in_file.size() << std::endl;
+        std::cout << "size of rec_id_in_file: " << rec_id_in_file.size() << std::endl;
+
+        for(int i_src=0; i_src<(int)src_id_in_file.size(); i_src++){
+            std::cout << "source id in file: " << src_id_in_file[i_src] << ", size of rec_id_in_file[i_src]: " << rec_id_in_file[i_src].size() << std::endl;
+            for(int i_rec=0; i_rec<(int)rec_id_in_file[i_src].size(); i_rec++){
+                if (rec_id_in_file[i_src][i_rec].size() == 2) {
+                    std::cout << "receiver id in file: " << rec_id_in_file[i_src][i_rec][0] << ", data type: " << rec_id_in_file[i_src][i_rec][1] << std::endl;
+                } else {
+                    std::cout << "receiver id in file: " << rec_id_in_file[i_src][i_rec][0] << ", pair id in file: " << rec_id_in_file[i_src][i_rec][1] << ", data type: " << rec_id_in_file[i_src][i_rec][2] << std::endl;
+                }
+            }
         }
 
         for (auto& data : data_vec) {
@@ -1411,14 +1433,62 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
     } // end of if (proc_store_srcrec)
 
     // check IP.src_ids_this_sim for this rank
-    if (myrank==0 && if_verbose) {
-        std::cout << id_sim << "assigned src id(name) : ";
-        for (auto iter = src_map_this_sim.begin(); iter != src_map_this_sim.end(); iter++){
-            std::cout << iter->second.id << "(" << iter->second.name << ") ";
+    // if (myrank==0 && if_verbose) {
+    if (myrank==0 && true) {
+        if (id_sim == 0) {
+            for (auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++){
+                std::cout << "CHECK src_map_all: id_sim: " << id_sim 
+                            << ", id_src_att: " << iter->second.id_att
+                            << ", src_name: " << iter->second.name
+                            << ", data_begin: " << iter->second.data_begin
+                            << ", data_end: " << iter->second.data_end
+                            << ", n_data: " << iter->second.n_data
+                            << ", map_key: " << iter->first
+                            << std::endl;
+            }
+            int n_data_all = data_vec_all.size();
+            std::cout << "CHECK data_vec_all: id_sim: " << id_sim 
+                        << ", n_data: " << n_data_all
+                        << std::endl;
+            for (int i=0; i < n_data_all; i++){
+                DataInfo& data = data_vec_all[i];
+                std::cout << "CHECK data_vec_all: id_sim: " << id_sim 
+                            << ", data_index: " << i
+                            << ", data_type: " << data.data_type
+                            << ", id_src_att: " << data.id_src_att
+                            << ", id_rec_att: " << data.id_rec_att
+                            << ", id_pair_att: " << data.id_pair_att
+                            << std::endl;
+            }
         }
-        std::cout << std::endl;
-    }
 
+
+        for (auto iter = src_map_this_sim.begin(); iter != src_map_this_sim.end(); iter++){
+            std::cout << "CHECK src_map_this_sim: id_sim: " << id_sim 
+                        << ", id_src_att: " << iter->second.id_att
+                        << ", src_name: " << iter->second.name
+                        << ", data_begin: " << iter->second.data_begin
+                        << ", data_end: " << iter->second.data_end
+                        << ", n_data: " << iter->second.n_data
+                        << ", map_key: " << iter->first
+                        << std::endl;
+        }
+
+        int n_data_this_sim = data_vec_this_sim.size();
+        std::cout << "CHECK data_vec_this_sim: id_sim: " << id_sim 
+                    << ", n_data: " << n_data_this_sim
+                    << std::endl;
+        for (int i=0; i < n_data_this_sim; i++){
+            DataInfo& data = data_vec_this_sim[i];
+            std::cout << "CHECK data_vec_this_sim: id_sim: " << id_sim 
+                        << ", data_index: " << i
+                        << ", data_type: " << data.data_type
+                        << ", id_src_att: " << data.id_src_att
+                        << ", id_rec_att: " << data.id_rec_att
+                        << ", id_pair_att: " << data.id_pair_att
+                        << std::endl;
+        }
+    }
 }
 
 
@@ -1568,8 +1638,10 @@ void send_src_info_inter_sim(SrcRecInfo &src, int dest){
     send_i_single_sim(&src.n_data, dest);
     send_str_sim(src.name, dest);
     send_bool_single_sim(&src.is_out_of_region, dest);
+    
     send_i_single_sim(&src.data_begin, dest);
     send_i_single_sim(&src.data_end, dest);
+    send_i_single_sim(&src.id_att, dest);
 
 }
 
@@ -1589,6 +1661,10 @@ void recv_src_info_inter_sim(SrcRecInfo &src, int orig){
     recv_i_single_sim(&src.n_data, orig);
     recv_str_sim(src.name, orig);
     recv_bool_single_sim(&src.is_out_of_region, orig);
+
+    recv_i_single_sim(&src.data_begin, orig);
+    recv_i_single_sim(&src.data_end, orig);
+    recv_i_single_sim(&src.id_att, orig);
 }
 
 
@@ -1607,6 +1683,10 @@ void broadcast_src_info(SrcRecInfo& src, int orig){
         broadcast_i_single(src.n_data, orig);
         broadcast_str(src.name, orig);
         broadcast_bool_single(src.is_out_of_region, orig);
+
+        broadcast_i_single(src.data_begin, orig);
+        broadcast_i_single(src.data_end, orig);
+        broadcast_i_single(src.id_att, orig);
 }
 
 
@@ -1617,6 +1697,8 @@ void send_rec_info_inter_sim(SrcRecInfo &rec, int dest){
     send_cr_single_sim(&rec.lon, dest);
     send_cr_single_sim(&rec.lat, dest);
     send_cr_single_sim(&rec.dep, dest);
+
+    send_i_single_sim(&rec.id_att, dest);
 }
 
 
@@ -1627,18 +1709,22 @@ void recv_rec_info_inter_sim(SrcRecInfo &rec, int orig){
     recv_cr_single_sim(&rec.lon, orig);
     recv_cr_single_sim(&rec.lat, orig);
     recv_cr_single_sim(&rec.dep, orig);
+
+    recv_i_single_sim(&rec.id_att, orig);
 }
 
 
 void broadcast_rec_info(SrcRecInfo& rec, int orig){
-        broadcast_i_single(rec.id, orig);
-        broadcast_str(rec.name, orig);
-        broadcast_cr_single(rec.lon, orig);
-        broadcast_cr_single(rec.lat, orig);
-        broadcast_cr_single(rec.dep, orig);
-        broadcast_cr_single(rec.adjoint_source, orig);
-        broadcast_cr_single(rec.adjoint_source_density, orig);
-        broadcast_bool_single(rec.is_stop, orig);
+    broadcast_i_single(rec.id, orig);
+    broadcast_str(rec.name, orig);
+    broadcast_cr_single(rec.lon, orig);
+    broadcast_cr_single(rec.lat, orig);
+    broadcast_cr_single(rec.dep, orig);
+    broadcast_cr_single(rec.adjoint_source, orig);
+    broadcast_cr_single(rec.adjoint_source_density, orig);
+    broadcast_bool_single(rec.is_stop, orig);
+
+    broadcast_i_single(rec.id_att, orig);
 }
 
 void send_data_info_inter_sim(DataInfo &data, int dest){

@@ -2129,6 +2129,18 @@ void InputParams::gather_all_arrival_times_to_main(){
             id_src_att_vector = srcrec_id_2_id_att(src_map_all);
         }
         
+        for (auto iter = src_map.begin(); iter != src_map.end(); iter++){
+            std::cout   << "id_sim: " << id_sim 
+                        << ", id_src_att: " << iter->second.id_att
+                        << ", src_name: " << iter->second.name
+                        << ", data_begin: " << iter->second.data_begin
+                        << ", data_end: " << iter->second.data_end
+                        << ", n_data: " << iter->second.n_data
+                        << ", map_key: " << iter->first
+                        << std::endl;
+        }
+
+
         for (int id_src = 0; id_src < nsrc_total; id_src++){
 
             // id of simulation group for this source
@@ -2306,7 +2318,6 @@ CUSTOMREAL InputParams::get_travel_time_from_src_rec( std::vector<DataInfo>& dat
 
 // gather traveltimes and calculate synthetic common receiver differential traveltime
 void InputParams::gather_traveltimes_and_calc_syn_diff(){
-
     if (!src_pair_exists) return; // nothing to share
 
     // gather all synthetic traveltimes to main simultaneous run group
@@ -2469,6 +2480,7 @@ DataInfo& InputParams::get_data_src_rec_from_all(const int id_src_att, const int
 
     // error if no rec pair is found
     std::cerr << "Error: no src/rec is found in get_data_src_rec" << std::endl;
+    std::cerr << "id_src_att = " << id_src_att << ", id_rec_att = " << id_rec_att << std::endl;
     exit(1);
 
     // return the first element in the vector as a dummy
