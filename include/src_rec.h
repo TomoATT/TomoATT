@@ -90,7 +90,7 @@ public:
     
     // if true, this data is a dual data, used for generating kernel, but not for obj estimation (if true, data type = 2 or 3)
     bool dual_data   = false;   
-
+    
     // three types of data, infomation is conbined together to reduce RAM:
 
     // data_type: replace 

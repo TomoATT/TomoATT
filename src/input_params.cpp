@@ -1687,9 +1687,14 @@ CUSTOMREAL InputParams::get_src_lon_2d(const int id_src_att) {
 
 
 SrcRecInfo& InputParams::get_src_point(const int id_src_att){
-    if (proc_store_srcrec)
-        return src_map[id_src_att];
-    else  {
+    if (proc_store_srcrec){
+        auto iter = src_map.find(id_src_att);
+        if (iter == src_map.end()){
+            std::cout << "Error: id_src_att " << id_src_att << " not found in src_map." << std::endl;
+            exit(1);
+        }
+        return iter->second;
+    } else  {
         // exit with error
         std::cout << "Error: non-proc_store_srcrec process should not call the function get_src_point." << std::endl;
         exit(1);
@@ -1698,9 +1703,14 @@ SrcRecInfo& InputParams::get_src_point(const int id_src_att){
 
 
 SrcRecInfo& InputParams::get_rec_point(const int id_rec_att){
-    if (proc_store_srcrec)
-        return rec_map[id_rec_att];
-    else  {
+    if (proc_store_srcrec){
+        auto iter = rec_map.find(id_rec_att);
+        if (iter == rec_map.end()){
+            std::cout << "Error: id_rec_att " << id_rec_att << " not found in rec_map." << std::endl;
+            exit(1);
+        }
+        return iter->second;
+    } else  {
         // exit with error
         std::cout << "Error: non-proc_store_srcrec process should not call the function get_rec_point." << std::endl;
         exit(1);
@@ -1716,9 +1726,14 @@ SrcRecInfo InputParams::get_src_point_bcast(const int id_src_att){
 
     SrcRecInfo src_tmp;
 
-    if (proc_store_srcrec)
-        src_tmp = src_map[id_src_att];
-
+    if (proc_store_srcrec){
+        auto iter = src_map.find(id_src_att);
+        if (iter == src_map.end()){
+            std::cout << "Error: id_src_att " << id_src_att << " not found in src_map." << std::endl;
+            exit(1);
+        }
+        src_tmp = iter->second;
+    }
     // broadcast
     broadcast_src_info(src_tmp, 0); // level 2
 
@@ -1736,8 +1751,14 @@ SrcRecInfo InputParams::get_src_point_bcast_2d(const int id_src_att){
 
     SrcRecInfo src_tmp;
 
-    if (proc_store_srcrec)
-        src_tmp = src_map_2d[id_src_att];
+    if (proc_store_srcrec){
+        auto iter = src_map_2d.find(id_src_att);
+        if (iter == src_map_2d.end()){
+            std::cout << "Error: id_src_att " << id_src_att << " not found in src_map_2d." << std::endl;
+            exit(1);
+        }
+        src_tmp = iter->second;
+    }
 
     // broadcast
     broadcast_src_info(src_tmp, 0); // level 2
@@ -1759,8 +1780,14 @@ SrcRecInfo InputParams::get_rec_point_bcast(const int id_rec_att) {
 
     SrcRecInfo rec_tmp;
 
-    if (proc_store_srcrec)
-        rec_tmp = rec_map[id_rec_att];
+    if (proc_store_srcrec){
+        auto iter = rec_map.find(id_rec_att);
+        if (iter == rec_map.end()){
+            std::cout << "Error: id_rec_att " << id_rec_att << " not found in rec_map." << std::endl;
+            exit(1);
+        }
+        rec_tmp = iter->second;
+    }
 
     // broadcast
     broadcast_rec_info(rec_tmp, 0); // level 2
@@ -2129,16 +2156,16 @@ void InputParams::gather_all_arrival_times_to_main(){
             id_src_att_vector = srcrec_id_2_id_att(src_map_all);
         }
         
-        for (auto iter = src_map.begin(); iter != src_map.end(); iter++){
-            std::cout   << "id_sim: " << id_sim 
-                        << ", id_src_att: " << iter->second.id_att
-                        << ", src_name: " << iter->second.name
-                        << ", data_begin: " << iter->second.data_begin
-                        << ", data_end: " << iter->second.data_end
-                        << ", n_data: " << iter->second.n_data
-                        << ", map_key: " << iter->first
-                        << std::endl;
-        }
+        // for (auto iter = src_map.begin(); iter != src_map.end(); iter++){
+        //     std::cout   << "id_sim: " << id_sim 
+        //                 << ", id_src_att: " << iter->second.id_att
+        //                 << ", src_name: " << iter->second.name
+        //                 << ", data_begin: " << iter->second.data_begin
+        //                 << ", data_end: " << iter->second.data_end
+        //                 << ", n_data: " << iter->second.n_data
+        //                 << ", map_key: " << iter->first
+        //                 << std::endl;
+        // }
 
 
         for (int id_src = 0; id_src < nsrc_total; id_src++){

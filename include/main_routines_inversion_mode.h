@@ -335,6 +335,22 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     // line_search_mode: if true, time field and adjoint field will not be written into file
     // is_save_T: if true, save temperory traveltime field into file (just for earthquake)
 
+    int n_src_map_size = IP.src_map.size();
+    int n_rec_map_size = IP.rec_map.size();
+
+    if (proc_store_srcrec) {
+        std::cout << "ckp1, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+        for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
+            std::cout   << "id_sim: " << id_sim 
+                        << ", id_src_att: " << iter->second.id_att
+                        << ", src_name: " << iter->second.name
+                        << ", data_begin: " << iter->second.data_begin
+                        << ", data_end: " << iter->second.data_end
+                        << ", n_data: " << iter->second.n_data
+                        << ", map_key: " << iter->first
+                        << std::endl;
+        }
+    }
 
     // initialize kernel arrays
     if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC)
@@ -361,6 +377,20 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     //
     // loop over all sources
     //
+
+    if (proc_store_srcrec) {
+        std::cout << "ckp2, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+        for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
+            std::cout   << "id_sim: " << id_sim 
+                        << ", id_src_att: " << iter->second.id_att
+                        << ", src_name: " << iter->second.name
+                        << ", data_begin: " << iter->second.data_begin
+                        << ", data_end: " << iter->second.data_end
+                        << ", n_data: " << iter->second.n_data
+                        << ", map_key: " << iter->first
+                        << std::endl;
+        }
+    }
 
     Source src;
     Receiver recs;
@@ -481,6 +511,20 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     // synchronize all processes
     synchronize_all_world();
 
+    if (proc_store_srcrec) {
+        std::cout << "ckp3, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+        for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
+            std::cout   << "id_sim: " << id_sim 
+                        << ", id_src_att: " << iter->second.id_att
+                        << ", src_name: " << iter->second.name
+                        << ", data_begin: " << iter->second.data_begin
+                        << ", data_end: " << iter->second.data_end
+                        << ", n_data: " << iter->second.n_data
+                        << ", map_key: " << iter->first
+                        << std::endl;
+        }
+    }
+
     // gather all the traveltime to the main process and distribute to all processes
     // for calculating the synthetic common receiver differential traveltime
     if ( IP.get_run_mode()==ONLY_FORWARD ||                 // case 1. if we are doing forward modeling, traveltime is not prepared for computing cr_dif data. Now we need to compute it
@@ -488,13 +532,54 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         (!IP.get_use_cs() &&  IP.get_is_srcrec_swap())){     // case 2-2, we do inversion, but we do not use cr data (cs +    swap)
         IP.gather_traveltimes_and_calc_syn_diff();
     }
+
+    if (proc_store_srcrec) {
+        std::cout << "ckp4, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+        // for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
+        //     std::cout   << "id_sim: " << id_sim 
+        //                 << ", id_src_att: " << iter->second.id_att
+        //                 << ", src_name: " << iter->second.name
+        //                 << ", data_begin: " << iter->second.data_begin
+        //                 << ", data_end: " << iter->second.data_end
+        //                 << ", n_data: " << iter->second.n_data
+        //                 << ", map_key: " << iter->first
+        //                 << std::endl;
+        // }
+    }
+
     // compute all residual and obj
     std::vector<CUSTOMREAL> obj_residual = recs.calculate_obj_and_residual(IP);
+
+    if (proc_store_srcrec) {
+        std::cout << "ckp5, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+        // for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
+        //     std::cout   << "id_sim: " << id_sim 
+        //                 << ", id_src_att: " << iter->second.id_att
+        //                 << ", src_name: " << iter->second.name
+        //                 << ", data_begin: " << iter->second.data_begin
+        //                 << ", data_end: " << iter->second.data_end
+        //                 << ", n_data: " << iter->second.n_data
+        //                 << ", map_key: " << iter->first
+        //                 << std::endl;
+        // }
+    }
 
     // check kernel density and sum up kernels from all simulateous group (level 1)
     if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC){
         check_kernel_density(IP, grid);     // check kernel density
         sumup_kernels(grid); // allreduce kernels from all simulateous group (level 1) Ks_loc, Ks_density_loc
+    }
+
+    // check src_map and rec_map are not changed after the simulation
+    if (proc_store_srcrec) {
+       if(n_src_map_size != (int)IP.src_map.size()){
+            std::cout << "ERROR, id_sim: " << id_sim << ", size of src_map has been changed after simulation, before: " << n_src_map_size << ", after: " << IP.src_map.size() << std::endl;
+            exit(1);
+        }
+        if(n_rec_map_size != (int)IP.rec_map.size()){
+            std::cout << "ERROR, id_sim: " << id_sim << ", size of rec_map has been changed after simulation, before: " << n_rec_map_size << ", after: " << IP.rec_map.size() << std::endl;
+            exit(1);
+        }
     }
 
     // return current objective function value

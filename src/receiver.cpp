@@ -400,6 +400,10 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
     std::vector<CUSTOMREAL> obj_residual;
 
     if (proc_store_srcrec) {
+        std::cout << "ckp4.1, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+    }
+
+    if (proc_store_srcrec) {
 
         for(auto& data : IP.data_vec){
             if (data.dual_data) continue; // dual data is not used for calculating obj and residual
@@ -444,15 +448,16 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
             } else if (data.data_type == DATA_TYPE_CRDIF) {  // common receiver differential traveltime
 
                 int id_src1_att = data.id_src_att;
-                int id_src2_att = data.id_pair_att;
+                // int id_src2_att = data.id_pair_att;
                 int id_rec_att  = data.id_rec_att;
 
                 CUSTOMREAL syn_dif_time   = data.dif_travel_time;
                 CUSTOMREAL obs_dif_time   = data.time_observation;
 
-                bool is_tele = (IP.get_src_point(id_src1_att).is_out_of_region || \
-                                IP.get_src_point(id_src2_att).is_out_of_region || \
-                                IP.get_rec_point(id_rec_att).is_out_of_region);
+                bool is_tele = (IP.get_src_point(id_src1_att).is_out_of_region ||
+                                IP.get_rec_point(id_rec_att).is_out_of_region);     
+                //  no need to check the second src. 1. this src may not at the processor, 
+                //  2. src1 is out of the region, then, so does src2. one tele and one local is not allowed in "separate_region_and_tele_src_rec_data"
 
                 // contribute misfit of specific type of data
                 res     += 1.0 *          (syn_dif_time - obs_dif_time);
@@ -485,8 +490,8 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
                 CUSTOMREAL syn_dif_time = data.dif_travel_time;
                 CUSTOMREAL obs_dif_time = data.time_observation;
 
-                bool is_tele = (IP.get_src_point(id_src_att).is_out_of_region || \
-                                IP.get_rec_point(id_rec1_att).is_out_of_region || \
+                bool is_tele = (IP.get_src_point(id_src_att).is_out_of_region || 
+                                IP.get_rec_point(id_rec1_att).is_out_of_region || 
                                 IP.get_rec_point(id_rec2_att).is_out_of_region);
                 if(is_tele){
                     syn_dif_time = syn_dif_time + IP.rec_map[id_rec1_att].sta_correct - IP.rec_map[id_rec2_att].sta_correct; // station correction for teleseismic data
@@ -519,6 +524,11 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
         } // end of loop over data
 
     } // end proc_store_srcrec
+
+    if (proc_store_srcrec) {
+        std::cout << "ckp4.9, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
+    }
+
     broadcast_cr_single_sub(obj,0);
     broadcast_cr_single_sub(obj_abs,0);
     broadcast_cr_single_sub(obj_cs_dif,0);

@@ -148,6 +148,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         }
 
         if (proc_store_srcrec) {
+            std::cout << "id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
             for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
                 std::cout   << "id_sim: " << id_sim 
                             << ", id_src_att: " << iter->second.id_att

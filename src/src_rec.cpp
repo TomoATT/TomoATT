@@ -1433,8 +1433,8 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
     } // end of if (proc_store_srcrec)
 
     // check IP.src_ids_this_sim for this rank
-    // if (myrank==0 && if_verbose) {
-    if (myrank==0 && true) {
+    if (myrank==0 && if_verbose) {
+    // if (myrank==0 && true) {
         if (id_sim == 0) {
             for (auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++){
                 std::cout << "CHECK src_map_all: id_sim: " << id_sim 
