@@ -24,27 +24,6 @@ void prepare_teleseismic_boundary_conditions(InputParams& IP, Grid& grid, IO_uti
     // i_src (1:N) -> id_src_att (key of src_map) -> src info
     std::vector<int> id_src_att_vector_2d = srcrec_id_2_id_att(IP.src_map_2d); // main of level 2 and 3
 
-    if(proc_store_srcrec && id_sim == 0) { // only for main of level 2 and 3, and only for the process which stores source receiver information
-        for (auto iter = IP.src_map_2d.begin(); iter != IP.src_map_2d.end(); iter++){
-            std::cout   << "id_sim: " << id_sim
-                        << ", src_map_2d, id_src_att: " << iter->second.id_att
-                        << ", map_key: " << iter->first
-                        << std::endl;
-        }
-
-        for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
-            std::cout   << "id_sim: " << id_sim
-                        << ", src_map, id_src_att: " << iter->second.id_att
-                        << ", map_key: " << iter->first
-                        << std::endl;
-        }
-
-        std::cout << "id_sim: " << id_sim << ", IP.n_src_2d_this_sim_group: " << IP.n_src_2d_this_sim_group << std::endl;
-
-        for (int i_src = 0; i_src < IP.n_src_2d_this_sim_group; i_src++){
-            std::cout << "id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att_vector_2d[i_src] << std::endl;
-        }
-    }
 
     for (int i_src = 0; i_src < IP.n_src_2d_this_sim_group; i_src++){
 
@@ -54,9 +33,6 @@ void prepare_teleseismic_boundary_conditions(InputParams& IP, Grid& grid, IO_uti
         bool for_2d_solver = true;
         int  id_src_att  = IP.get_id_src_att(i_src, id_src_att_vector_2d, for_2d_solver);
         
-        if(proc_store_srcrec && id_sim == 0) {
-            std::cout << "Final check id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
-        }
         // get source info
         bool is_teleseismic = true; // the object in src_id2name_2d is always teleseismic
 

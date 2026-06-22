@@ -415,8 +415,8 @@ void parse_src_rec_file(std::string& src_rec_file,
     }
 
     // check new version of src rec data
-    // if (if_verbose){
-    if (true){
+    if (if_verbose){
+    // if (true){
         for(auto iter = src_map.begin(); iter != src_map.end(); iter++){
             std::cout   << "source id_att: "     << iter->second.id_att
                         << ", source name: " << iter->second.name

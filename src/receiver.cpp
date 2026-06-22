@@ -400,10 +400,6 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
     std::vector<CUSTOMREAL> obj_residual;
 
     if (proc_store_srcrec) {
-        std::cout << "ckp4.1, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
-    }
-
-    if (proc_store_srcrec) {
 
         for(auto& data : IP.data_vec){
             if (data.dual_data) continue; // dual data is not used for calculating obj and residual
@@ -525,9 +521,6 @@ std::vector<CUSTOMREAL> Receiver:: calculate_obj_and_residual(InputParams& IP) {
 
     } // end proc_store_srcrec
 
-    if (proc_store_srcrec) {
-        std::cout << "ckp4.9, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
-    }
 
     broadcast_cr_single_sub(obj,0);
     broadcast_cr_single_sub(obj_abs,0);

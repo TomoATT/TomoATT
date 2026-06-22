@@ -338,19 +338,6 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     int n_src_map_size = IP.src_map.size();
     int n_rec_map_size = IP.rec_map.size();
 
-    if (proc_store_srcrec) {
-        std::cout << "ckp1, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
-        for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
-            std::cout   << "id_sim: " << id_sim 
-                        << ", id_src_att: " << iter->second.id_att
-                        << ", src_name: " << iter->second.name
-                        << ", data_begin: " << iter->second.data_begin
-                        << ", data_end: " << iter->second.data_end
-                        << ", n_data: " << iter->second.n_data
-                        << ", map_key: " << iter->first
-                        << std::endl;
-        }
-    }
 
     // initialize kernel arrays
     if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC)
@@ -378,19 +365,6 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     // loop over all sources
     //
 
-    if (proc_store_srcrec) {
-        std::cout << "ckp2, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
-        for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
-            std::cout   << "id_sim: " << id_sim 
-                        << ", id_src_att: " << iter->second.id_att
-                        << ", src_name: " << iter->second.name
-                        << ", data_begin: " << iter->second.data_begin
-                        << ", data_end: " << iter->second.data_end
-                        << ", n_data: " << iter->second.n_data
-                        << ", map_key: " << iter->first
-                        << std::endl;
-        }
-    }
 
     Source src;
     Receiver recs;
@@ -511,19 +485,6 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     // synchronize all processes
     synchronize_all_world();
 
-    if (proc_store_srcrec) {
-        std::cout << "ckp3, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
-        for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
-            std::cout   << "id_sim: " << id_sim 
-                        << ", id_src_att: " << iter->second.id_att
-                        << ", src_name: " << iter->second.name
-                        << ", data_begin: " << iter->second.data_begin
-                        << ", data_end: " << iter->second.data_end
-                        << ", n_data: " << iter->second.n_data
-                        << ", map_key: " << iter->first
-                        << std::endl;
-        }
-    }
 
     // gather all the traveltime to the main process and distribute to all processes
     // for calculating the synthetic common receiver differential traveltime
@@ -533,36 +494,10 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         IP.gather_traveltimes_and_calc_syn_diff();
     }
 
-    if (proc_store_srcrec) {
-        std::cout << "ckp4, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
-        // for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
-        //     std::cout   << "id_sim: " << id_sim 
-        //                 << ", id_src_att: " << iter->second.id_att
-        //                 << ", src_name: " << iter->second.name
-        //                 << ", data_begin: " << iter->second.data_begin
-        //                 << ", data_end: " << iter->second.data_end
-        //                 << ", n_data: " << iter->second.n_data
-        //                 << ", map_key: " << iter->first
-        //                 << std::endl;
-        // }
-    }
 
     // compute all residual and obj
     std::vector<CUSTOMREAL> obj_residual = recs.calculate_obj_and_residual(IP);
 
-    if (proc_store_srcrec) {
-        std::cout << "ckp5, id_sim: " << id_sim << ", size of src_map: " << IP.src_map.size() << std::endl;
-        // for (auto iter = IP.src_map.begin(); iter != IP.src_map.end(); iter++){
-        //     std::cout   << "id_sim: " << id_sim 
-        //                 << ", id_src_att: " << iter->second.id_att
-        //                 << ", src_name: " << iter->second.name
-        //                 << ", data_begin: " << iter->second.data_begin
-        //                 << ", data_end: " << iter->second.data_end
-        //                 << ", n_data: " << iter->second.n_data
-        //                 << ", map_key: " << iter->first
-        //                 << std::endl;
-        // }
-    }
 
     // check kernel density and sum up kernels from all simulateous group (level 1)
     if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC){
