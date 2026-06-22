@@ -449,16 +449,16 @@ private:
 
     // find ads data in data_vec_all for id_src_att and id_rec_att (not used now)
     DataInfo& get_data_src_rec_from_all(const int id_src_att, const int id_rec_att);
-
+    
     // find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att (not used now)
     DataInfo& get_data_rec_pair_from_all(const int id_src_att,
                                          const int id_rec1_att,
-                                         const int id_rec2_att);
+                                         const int id_rec2_att);                                   
 
     // find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att (not used now)
     DataInfo& get_data_src_pair_from_all(const int id_src1_att,
-                                         const int id_src2_att,
-                                         const int id_rec_att);        
+                                         const int id_rec_att,
+                                         const int id_src2_att);   
 
     // generate a map of sources which include common receiver double difference data
     // void generate_src_map_with_common_receiver(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,

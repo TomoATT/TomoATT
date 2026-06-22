@@ -2373,6 +2373,10 @@ CUSTOMREAL InputParams::get_travel_time_from_src_rec( std::vector<DataInfo>& dat
     return -1.0;
 }
 
+
+
+
+
 // gather traveltimes and calculate synthetic common receiver differential traveltime
 void InputParams::gather_traveltimes_and_calc_syn_diff(){
     if (!src_pair_exists) return; // nothing to share
@@ -2489,8 +2493,6 @@ void InputParams::gather_traveltimes_and_calc_syn_diff(){
 
 }
 
-
-
 void InputParams::write_station_correction_file(int i_inv){
     if(use_sta_correction && run_mode == DO_INVERSION) {  // if apply station correction
         station_correction_file_out = output_dir + "/station_correction_file_step_" + int2string_zero_fill(i_inv) +".dat";
@@ -2524,44 +2526,79 @@ void InputParams::write_station_correction_file(int i_inv){
     }
 }
 
-// find ads data in data_vec_all for id_src_att and id_rec_att (not used now)
-DataInfo& InputParams::get_data_src_rec_from_all(const int id_src_att, const int id_rec_att){
-    // return the first element in the vector with data_type == DATA_TYPE_ABS
+// find ads data in data_vec_all for id_src_att and id_rec_att
+DataInfo& InputParams::get_data_src_rec_from_all(const int id_src_att, const int id_rec_att) {
+    // find the travel time from data_vec and src_map
     int data_begin = src_map_all[id_src_att].data_begin;
     int data_end   = src_map_all[id_src_att].data_end;
 
-    for (int i = data_begin; i < data_end; i++){
-        if (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].data_type == DATA_TYPE_ABS)
-            return data_vec_all[i];
-    }
+    // search range (within this range, id_src_att is the target)
+    const auto range_begin = data_vec_all.begin() + data_begin;
+    const auto range_end   = data_vec_all.begin() + data_end;
 
-    // error if no rec pair is found
-    std::cerr << "Error: no src/rec is found in get_data_src_rec" << std::endl;
-    std::cerr << "id_src_att = " << id_src_att << ", id_rec_att = " << id_rec_att << std::endl;
-    exit(1);
+    // use binary search to find the target data with id_rec_att
+    const auto target = std::pair<int, int>{id_src_att, id_rec_att};
+    const auto iter = std::lower_bound(
+        range_begin,
+        range_end,
+        target,
+        [](const DataInfo& data, const std::pair<int, int>& target) {
+            return std::tie(data.id_src_att, data.id_rec_att) < std::tie(target.first, target.second);
+        }
+    );
+
+    if (iter != range_end && iter->id_src_att == id_src_att && iter->id_rec_att == id_rec_att && iter->data_type == DATA_TYPE_ABS) {
+        return *iter;
+    } else {
+        std::cerr << "Error: data not found for source ID " << id_src_att
+                  << " and receiver ID " << id_rec_att << std::endl;
+        std::cerr << "data found: id_src_att = " << iter->id_src_att 
+                  << ", id_rec_att = " << iter->id_rec_att 
+                  << ", id_pair_att = " << iter->id_pair_att
+                  << ", data_type = " << iter->data_type << std::endl;
+        exit(1);
+    }
 
     // return the first element in the vector as a dummy
     return data_vec_all[data_begin];
 }
 
-// find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att (not used now)
+// find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att
 DataInfo& InputParams::get_data_rec_pair_from_all(const int id_src_att,
                                                   const int id_rec1_att,
-                                                  const int id_rec2_att){
-    // return the first element in the vector with data_type == DATA_TYPE_CSDIF
+                                                  const int id_rec2_att) {
+    // find the travel time from data_vec and src_map
     int data_begin = src_map_all[id_src_att].data_begin;
     int data_end   = src_map_all[id_src_att].data_end;
 
-    for (int i = data_begin; i < data_end; i++){
-        if (data_vec_all[i].data_type == DATA_TYPE_CSDIF
-        && ( (data_vec_all[i].id_rec_att == id_rec1_att && data_vec_all[i].id_pair_att == id_rec2_att)
-         ||  (data_vec_all[i].id_rec_att == id_rec2_att && data_vec_all[i].id_pair_att == id_rec1_att) ))
-            return data_vec_all[i];
-    }
+    // search range (within this range, id_src_att is the target)
+    const auto range_begin = data_vec_all.begin() + data_begin;
+    const auto range_end   = data_vec_all.begin() + data_end;
 
-    // error if no rec pair is found
-    std::cerr << "Error: no rec pair is found in get_data_rec_pair_from_all" << std::endl;
-    exit(1);
+    // use binary search to find the target data with id_rec1_att and id_rec2_att
+    const auto target = std::tuple<int, int, int>{id_src_att, id_rec1_att, id_rec2_att};
+    const auto iter = std::lower_bound(
+        range_begin,
+        range_end,
+        target,
+        [](const DataInfo& data, const std::tuple<int, int, int>& target) {
+            return std::tie(data.id_src_att,data.id_rec_att,data.id_pair_att) < target;
+        }
+    );
+
+    if (iter != range_end && iter->id_src_att == id_src_att &&
+        ((iter->id_rec_att == id_rec1_att && iter->id_pair_att == id_rec2_att)) &&
+        iter->data_type == DATA_TYPE_CSDIF) {
+        return *iter;
+    } else {
+        std::cerr << "Error: data not found for id_src_att: " << id_src_att
+                  << " and id_rec1_att: " << id_rec1_att << ", id_rec2_att: " << id_rec2_att << std::endl;
+        std::cerr << "data found: id_src_att = " << iter->id_src_att 
+                  << ", id_rec_att = " << iter->id_rec_att 
+                  << ", id_pair_att = " << iter->id_pair_att
+                  << ", data_type = " << iter->data_type << std::endl;
+        exit(1);
+    }
 
     // return the first element in the vector as a dummy
     return data_vec_all[data_begin];
@@ -2569,37 +2606,44 @@ DataInfo& InputParams::get_data_rec_pair_from_all(const int id_src_att,
 
 // find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att (not used now)
 DataInfo& InputParams::get_data_src_pair_from_all(const int id_src1_att,
-                                                  const int id_src2_att,
-                                                  const int id_rec_att){
-
-    // first source 
+                                                  const int id_rec_att,
+                                                  const int id_src2_att){
+    // find the travel time from data_vec and src_map
     int data_begin = src_map_all[id_src1_att].data_begin;
     int data_end   = src_map_all[id_src1_att].data_end;
 
-    // return the first element in the vector with data_type == DATA_TYPE_CRDIF
-    for (int i = data_begin; i < data_end; i++){
-        if (data_vec_all[i].data_type == DATA_TYPE_CRDIF
-        && ( (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].id_pair_att == id_src2_att)))
-            return data_vec_all[i];
+    // search range (within this range, id_src_att is the target)
+    const auto range_begin = data_vec_all.begin() + data_begin;
+    const auto range_end   = data_vec_all.begin() + data_end;
+
+    // use binary search to find the target data with id_rec1_att and id_rec2_att
+    const auto target = std::tuple<int, int, int>{id_src1_att, id_rec_att, id_src2_att};
+    const auto iter = std::lower_bound(
+        range_begin,
+        range_end,
+        target,
+        [](const DataInfo& data, const std::tuple<int, int, int>& target) {
+            return std::tie(data.id_src_att,data.id_rec_att,data.id_pair_att) < target;
+        }
+    );
+
+    if (iter != range_end && iter->id_src_att == id_src1_att &&
+        ((iter->id_rec_att == id_rec_att && iter->id_pair_att == id_src2_att)) &&
+        iter->data_type == DATA_TYPE_CRDIF) {
+        return *iter;
+    } else {
+        std::cerr << "Error: data not found for id_src1_att: " << id_src1_att
+                  << " and id_rec_att: " << id_rec_att << ", id_src2_att: " << id_src2_att << std::endl;
+        std::cerr << "data found: id_src_att = " << iter->id_src_att 
+                  << ", id_rec_att = " << iter->id_rec_att
+                  << ", id_pair_att = " << iter->id_pair_att
+                  << ", data_type = " << iter->data_type << std::endl;
+        exit(1);
     }
-
-    data_begin = src_map_all[id_src2_att].data_begin;
-    data_end   = src_map_all[id_src2_att].data_end;
-
-    for (int i = data_begin; i < data_end; i++){
-        if (data_vec_all[i].data_type == DATA_TYPE_CRDIF
-        && (data_vec_all[i].id_rec_att == id_rec_att && data_vec_all[i].id_pair_att == id_src1_att))
-            return data_vec_all[i];
-    }
-
-    // error if no src pair is found
-    std::cerr << "Error: no src pair is found in get_data_src_pair" << std::endl;
-    exit(1);
 
     // return the first element in the vector as a dummy
     return data_vec_all[data_begin];
 }
-
 
 void InputParams::write_src_rec_file(int i_inv, int i_iter) {
 
@@ -2675,7 +2719,6 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
         }
 
 
-
         // write only by the main processor of subdomain && the first id of subdoumains
         if (proc_read_srcrec){   // main of level 1, 2, 3
 
@@ -2748,19 +2791,19 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                         id_rec_att  = info_data.at(0);
                         id_rec2_att = info_data.at(1);
                         rec_pair_data = true;
-                        if (get_is_srcrec_swap() && !is_tele)       // cs_dif data -> cr_dif data
-                            data = get_data_src_pair_from_all(id_rec_att, id_rec2_att, id_src_att);
-                        else                            // cs_dif data
+                        if (get_is_srcrec_swap() && !is_tele){       // cs_dif data -> cr_dif data
+                            data = get_data_src_pair_from_all(id_rec_att, id_src_att, id_rec2_att);
+                        } else                            // cs_dif data
                             data = get_data_rec_pair_from_all(id_src_att, id_rec_att, id_rec2_att);
 
                     } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CRDIF){   // cr_dif data
                         id_rec_att = info_data.at(0);
                         id_src2_att = info_data.at(1);
                         src_pair_data = true;
-                        if (get_is_srcrec_swap() && !is_tele)       // cr_dif -> cs_dif
+                        if (get_is_srcrec_swap() && !is_tele){       // cr_dif -> cs_dif
                             data = get_data_rec_pair_from_all(id_rec_att, id_src_att, id_src2_att);
-                        else                            // cr_dif
-                            data = get_data_src_pair_from_all(id_src_att, id_src2_att, id_rec_att);
+                        } else                            // cr_dif
+                            data = get_data_src_pair_from_all(id_src_att, id_rec_att, id_src2_att);
 
                     } else{     // error data type
                         std::cerr << "Error: incorrect data type in rec_id2name_back" << std::endl;
@@ -2915,7 +2958,7 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                             id_rec2_att = info_data.at(1);
                             rec_pair_data = true;
                             if (get_is_srcrec_swap() && !is_tele)       // cs_dif data -> cr_dif data
-                                data = get_data_src_pair_from_all(id_rec_att, id_rec2_att, id_src_att);     // valid, swapped
+                                data = get_data_src_pair_from_all(id_rec_att, id_src_att, id_rec2_att);     // valid, swapped
                             else                            // cs_dif data
                                 data = get_data_rec_pair_from_all(id_src_att, id_rec_att, id_rec2_att);     // invalid
                         } else if (info_data.size() == 3 && info_data.at(2) == DATA_TYPE_CRDIF){   // cr_dif data
@@ -2925,7 +2968,7 @@ void InputParams::write_src_rec_file(int i_inv, int i_iter) {
                             if (get_is_srcrec_swap() && !is_tele)       // cr_dif -> cs_dif
                                 data = get_data_rec_pair_from_all(id_rec_att, id_src_att, id_src2_att);     // These data are not inverted in relocation. But we need to print them out.
                             else                            // cr_dif
-                                data = get_data_src_pair_from_all(id_src_att, id_src2_att, id_rec_att);     // invalid
+                                data = get_data_src_pair_from_all(id_src_att, id_rec_att, id_src2_att);     // invalid
 
                         } else{     // error data type
                             std::cerr << "Error: incorrect data type in rec_id2name_back" << std::endl;

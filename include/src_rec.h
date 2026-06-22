@@ -104,9 +104,10 @@ public:
     int data_type = -1; 
 
     // before swap, source id is positive int; receiver id is negative id.
-    int id_src_att = 0;    // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att.
-    int id_rec_att = 0;    // the index of receivers in TomoATT, used to identify this receiver. Each receiver has a unique id_rec_att.
-    int id_pair_att = 0; // the index of the second source or receiver in TomoATT. valid only for data_type = 1 or 2. For data_type = 0, id_pari_att = -1.
+    // "std::numeric_limits<int>::min();" is necessary, because data is sorted by id_src_att, id_rec_att, id_pair_att.
+    int id_src_att  = std::numeric_limits<int>::min();    // the index of sources in TomoATT, used to identify this source. Each source has a unique id_src_att.
+    int id_rec_att  = std::numeric_limits<int>::min();    // the index of receivers in TomoATT, used to identify this receiver. Each receiver has a unique id_rec_att.
+    int id_pair_att = std::numeric_limits<int>::min();    // the index of the second source or receiver in TomoATT. valid only for data_type = 1 or 2. For data_type = 0, id_pari_att = -1.
 
     // source information
     // for data_type = 0, id_srcs[0] is the source id; 
