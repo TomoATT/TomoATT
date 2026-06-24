@@ -1838,13 +1838,13 @@ std::string InputParams::get_src_name(const int i_src, const std::vector<int>& i
 }
 
 // return id_rec_att
-int InputParams::get_id_rec_att(const int i_rec, const std::vector<int>& id_rec_att_vector){
+int InputParams::get_id_rec_att(const int i_rec, const std::vector<int>& id_rec_att_vec){
 
     int id_rec_att;
     if (proc_store_srcrec){
-        auto iter = rec_map.find(id_rec_att_vector[i_rec]);
+        auto iter = rec_map.find(id_rec_att_vec[i_rec]);
         if (iter == rec_map.end()){
-            std::cout << "Error: id_rec_att " << id_rec_att_vector[i_rec] << " not found in rec_map." << std::endl;
+            std::cout << "Error: id_rec_att " << id_rec_att_vec[i_rec] << " not found in rec_map." << std::endl;
             exit(1);
         }
         id_rec_att = iter->second.id_att;
@@ -1855,13 +1855,13 @@ int InputParams::get_id_rec_att(const int i_rec, const std::vector<int>& id_rec_
     return id_rec_att;
 }
 
-std::string InputParams::get_rec_name(const int i_rec, const std::vector<int>& id_rec_att_vector){
+std::string InputParams::get_rec_name(const int i_rec, const std::vector<int>& id_rec_att_vec){
 
     std::string rec_name;
     if (proc_store_srcrec){
-        auto iter = rec_map.find(id_rec_att_vector[i_rec]);
+        auto iter = rec_map.find(id_rec_att_vec[i_rec]);
         if (iter == rec_map.end()){
-            std::cout << "Error: id_rec_att " << id_rec_att_vector[i_rec] << " not found in rec_map." << std::endl;
+            std::cout << "Error: id_rec_att " << id_rec_att_vec[i_rec] << " not found in rec_map." << std::endl;
             exit(1);
         } else {
             rec_name = iter->second.name;

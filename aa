@@ -1,0 +1,317 @@
+ckp1, id_sim: 1, id_subdomain: 1, subdom_main: 0, i_src: 0
+ckp2, id_sim: 1, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp1, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0
+ckp2, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp1, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0
+ckp2, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+computing traveltime field, adjoint field and kernel ...
+ckp1, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0
+ckp2, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp1, id_sim: 0, id_subdomain: 0, subdom_main: 0, i_src: 0
+ckp2, id_sim: 0, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp1, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0
+ckp2, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp1, id_sim: 0, id_subdomain: 1, subdom_main: 0, i_src: 0
+ckp2, id_sim: 0, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp1, id_sim: 1, id_subdomain: 0, subdom_main: 0, i_src: 0
+ckp2, id_sim: 1, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp3, id_sim: 0, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp3, id_sim: 0, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -25
+id_sim: 0, reading source (1/13), name: JC24, lat: 1.8, lon: 1.8, dep: -0
+ckp3, id_sim: 1, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp3, id_sim: 1, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -24
+id_sim: 1, reading source (1/12), name: JC23, lat: 1.8, lon: 1.4, dep: -0
+ckp3, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp3, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp3, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp3, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp4, id_sim: 1, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp5, id_sim: 1, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp4, id_sim: 1, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp5, id_sim: 1, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp4, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp5, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp4, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp5, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp6, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp6.1, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6, id_sim: 1, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp6.1, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.2, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.3, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp6.1, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6, id_sim: 1, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -24
+ckp6.1, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.2, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.3, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.2, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.2, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.3, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.3, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp4, id_sim: 0, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp5, id_sim: 0, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp4, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp5, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp4, id_sim: 0, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp5, id_sim: 0, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp4, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp5, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp6, id_sim: 0, id_subdomain: 0, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp6.1, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.2, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.3, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6, id_sim: 0, id_subdomain: 1, subdom_main: 0, i_src: 0, id_src_att: -25
+ckp6.1, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.2, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.3, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp6.1, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp6.1, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.2, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.3, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.2, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.3, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.9, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp7, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp6.1, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.9, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp7, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp6.1, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.2, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.3, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.2, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.3, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.9, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp7, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp6.1, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.9, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp7, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp6.1, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.2, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.3, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.2, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.3, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.8, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp6.9, id_sim: 1, id_subdomain: 0, subdom_main: 1
+ckp8, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp6.8, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp6.9, id_sim: 1, id_subdomain: 1, subdom_main: 1
+ckp8, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp9, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp10, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp1, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 1
+ckp9, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp10, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -24
+ckp1, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 1
+ckp2, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 1, id_src_att: -22
+ckp2, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 1, id_src_att: -22
+id_sim: 1, reading source (2/12), name: JC21, lat: 1.8, lon: 0.6, dep: -0
+ckp3, id_sim: 1, id_subdomain: 1, subdom_main: 1, i_src: 1, id_src_att: -22
+ckp3, id_sim: 1, id_subdomain: 0, subdom_main: 1, i_src: 1, id_src_att: -22
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 0
+ckp6.5, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.5, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.6, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.7, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.8, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp6.9, id_sim: 0, id_subdomain: 1, subdom_main: 1
+ckp8, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp6.8, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp6.9, id_sim: 0, id_subdomain: 0, subdom_main: 1
+ckp8, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp9, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp10, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp1, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 1
+ckp9, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp10, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 0, id_src_att: -25
+ckp1, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 1
+ckp2, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 1, id_src_att: -23
+ckp2, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 1, id_src_att: -23
+id_sim: 0, reading source (2/13), name: JC22, lat: 1.8, lon: 1, dep: -0
+ckp3, id_sim: 0, id_subdomain: 1, subdom_main: 1, i_src: 1, id_src_att: -23
+ckp3, id_sim: 0, id_subdomain: 0, subdom_main: 1, i_src: 1, id_src_att: -23

@@ -862,13 +862,13 @@ void OneDInversion::initialize_adjoint_array(InputParams& IP, const int& id_src_
     CUSTOMREAL src_lat = IP.get_src_lat(   id_src_att); // in radian
 
     // i_rec (1:N) -> id_rec_att (key of rec_map)
-    std::vector<int> id_rec_att_vector = srcrec_id_2_id_att(IP.rec_map);      // main of level 2 and 3
+    std::vector<int> id_rec_att_vec = srcrec_id_2_id_att(IP.rec_map);      // main of level 2 and 3
 
     // loop all receivers
     for (int irec = 0; irec < IP.n_rec_this_sim_group; irec++) {
 
         // get receiver information
-        int id_rec_att = id_rec_att_vector[irec];
+        int id_rec_att = id_rec_att_vec[irec];
         CUSTOMREAL adjoint_source; 
         if (adj_type == 0){
             adjoint_source = IP.rec_map[id_rec_att].adjoint_source;

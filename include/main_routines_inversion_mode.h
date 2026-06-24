@@ -387,9 +387,6 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     }
     // iterate over sources
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
-            std::cout << "ckp1, id_sim: " << id_sim << ", i_src: " << i_src << std::endl;
-        }
 
         // check if this is the first iteration of entire inversion process
         bool first_init = (i_inv == 0 && i_src==0);
@@ -413,9 +410,11 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         // initialize iterator object
         std::unique_ptr<Iterator> It;
 
-        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
-            std::cout << "ckp2, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
-        }
+                std::cout   << "ckp2, id_sim: " << id_sim 
+                    << ", id_subdomain: " << id_subdomain
+                    << ", subdom_main: " << subdom_main
+                    << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+        synchronize_all_world();
 
         if (!hybrid_stencil_order){
             select_iterator(IP, grid, src, io, first_init, is_teleseismic, It, false);
@@ -441,9 +440,11 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
             calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It, id_src_att, is_save_T);
         }
 
-        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
-            std::cout << "ckp3, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
-        }
+        std::cout   << "ckp3, id_sim: " << id_sim 
+                    << ", id_subdomain: " << id_subdomain
+                    << ", subdom_main: " << subdom_main
+                    << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+        synchronize_all_world();
 
         // output the result of forward simulation
         // ignored for inversion mode.
@@ -466,9 +467,11 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         // calculate the arrival times at each receivers
         recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, id_src_att);
 
-        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
-            std::cout << "ckp4, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
-        }
+        std::cout   << "ckp4, id_sim: " << id_sim 
+                    << ", id_subdomain: " << id_subdomain
+                    << ", subdom_main: " << subdom_main
+                    << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+        synchronize_all_world();
 
         /////////////////////////
         // run adjoint simulation
@@ -476,21 +479,45 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
 
         if (IP.get_run_mode()==DO_INVERSION || IP.get_run_mode()==INV_RELOC){
             // calculate adjoint source
-            if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
-                std::cout << "ckp5, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
-            }
+            std::cout   << "ckp5, id_sim: " << id_sim 
+            << ", id_subdomain: " << id_subdomain
+            << ", subdom_main: " << subdom_main
+            << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+            synchronize_all_world();
+
             recs.calculate_adjoint_source(IP, id_src_att);
             // run iteration for adjoint field calculation
-            if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
-                std::cout << "ckp6, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
-            }
+                    std::cout   << "ckp6, id_sim: " << id_sim 
+                    << ", id_subdomain: " << id_subdomain
+                    << ", subdom_main: " << subdom_main
+                    << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+                    synchronize_all_world();
+
             int adj_type = 0;   // compute adjoint field
             It->run_iteration_adjoint(IP, grid, io, adj_type);
+                    std::cout   << "ckp7, id_sim: " << id_sim 
+                    << ", id_subdomain: " << id_subdomain
+                    << ", subdom_main: " << subdom_main
+                    << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+                    synchronize_all_world();
+
             // run iteration for density of the adjoint field
             adj_type = 1;   // compute adjoint field
             It->run_iteration_adjoint(IP, grid, io, adj_type);
+                    std::cout   << "ckp8, id_sim: " << id_sim 
+                    << ", id_subdomain: " << id_subdomain
+                    << ", subdom_main: " << subdom_main
+                    << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+                    synchronize_all_world();
+
             // calculate sensitivity kernel
             calculate_sensitivity_kernel(grid, IP, id_src_att);
+                    std::cout   << "ckp9, id_sim: " << id_sim 
+                    << ", id_subdomain: " << id_subdomain
+                    << ", subdom_main: " << subdom_main
+                    << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+                    synchronize_all_world();
+
             if (subdom_main && !line_search_mode && IP.get_if_output_source_field()) {
                 // adjoint field will be output only at the end of subiteration
                 // output the result of adjoint simulation
@@ -508,10 +535,11 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
 
         } // end if run_mode == DO_INVERSION
 
-        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
-            std::cout << "ckp7, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
-        }
-
+        std::cout   << "ckp10, id_sim: " << id_sim 
+                    << ", id_subdomain: " << id_subdomain
+                    << ", subdom_main: " << subdom_main
+                    << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+        synchronize_all_world();
         // wait for all processes to finish
         // this should not be called here, for the case that the simultaneous run group has different number of sources
         //synchronize_all_world();
