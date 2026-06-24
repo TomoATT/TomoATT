@@ -1851,7 +1851,10 @@ int InputParams::get_id_rec_att(const int i_rec, const std::vector<int>& id_rec_
     }
 
     // broadcast
-    broadcast_i_single_intra_sim(id_rec_att, 0);        // level 2 and level 3
+    // broadcast_i_single_intra_sim(id_rec_att, 0);        // level 2 and level 3
+    // only level 2 (Otherwise bug)
+    broadcast_i_single(id_rec_att, 0);  // level 2
+
     return id_rec_att;
 }
 
@@ -1869,7 +1872,9 @@ std::string InputParams::get_rec_name(const int i_rec, const std::vector<int>& i
     }
 
     // broadcast
-    broadcast_str_intra_sim(rec_name, 0);       // level 2 and level 3
+    // broadcast_str_intra_sim(rec_name, 0);       // level 2 and level 3
+    // only level 2 (Otherwise bug)
+    broadcast_str(rec_name, 0);  // level 2
     return rec_name;
 }
 

@@ -669,17 +669,17 @@ void Iterator::run_iteration_forward(InputParams& IP, Grid& grid, IO_utils& io, 
         //if (cur_diff_L1 < IP.get_conv_tol() && cur_diff_Linf < IP.get_conv_tol()) { // MNMN: let us use only L1 because Linf stop decreasing when using numbers of subdomains.
         if (cur_diff_L1 < IP.get_conv_tol()) {
             //stdout_by_main("--- iteration converged. ---");
-            goto iter_end;
+            break;
         } else if (IP.get_max_iter() <= iter_count) {
             stdout_by_main("--- iteration reached to the maximum number of iterations. ---");
-            goto iter_end;
+            break;
         } else {
             if(myrank==0 && if_verbose)
                 std::cout << "iteration " << iter_count << ": " << cur_diff_L1 << ", " << cur_diff_Linf << ", " << timer_iter.get_t_delta() << "\n";
         }
     }
 
-iter_end:
+    // iteration finished
     if (myrank==0){
         if (if_verbose){
             std::cout << "Converged at iteration " << iter_count << ": " << cur_diff_L1 << ", " << cur_diff_Linf << std::endl;
@@ -712,11 +712,6 @@ iter_end:
 
 void Iterator::run_iteration_adjoint(InputParams& IP, Grid& grid, IO_utils& io, int adj_type) {
 
-    std::cout   << "ckp6.1, id_sim: " << id_sim 
-    << ", id_subdomain: " << id_subdomain
-    << ", subdom_main: " << subdom_main
-    << std::endl;
-
     if(if_verbose) stdout_by_main("--- start iteration adjoint. ---");
     iter_count = 0;
     cur_diff_L1     = HUGE_VAL;
@@ -728,22 +723,12 @@ void Iterator::run_iteration_adjoint(InputParams& IP, Grid& grid, IO_utils& io, 
         if (adj_type == 1)  init_delta_and_Tadj_density(grid, IP);  // run iteration for the density of adjoint field (adjoint source -> abs(adjoint source))
     }
 
-    std::cout   << "ckp6.2, id_sim: " << id_sim 
-    << ", id_subdomain: " << id_subdomain
-    << ", subdom_main: " << subdom_main
-    << std::endl;
-
     if(if_verbose) std::cout << "checker point 1, myrank: " << myrank << ", id_sim: " << id_sim << ", id_subdomain: " << id_subdomain
                << ", subdom_main:" << subdom_main << ", world_rank: " << world_rank << std::endl;
     // fix the boundary of the adjoint field
     if (subdom_main){
         fix_boundary_Tadj(grid);
     }
-
-    std::cout   << "ckp6.3, id_sim: " << id_sim 
-    << ", id_subdomain: " << id_subdomain
-    << ", subdom_main: " << subdom_main
-    << std::endl;
 
     // start timer
     std::string iter_str = "iteration_adjoint";
@@ -768,76 +753,33 @@ void Iterator::run_iteration_adjoint(InputParams& IP, Grid& grid, IO_utils& io, 
         if (subdom_main)
             grid.send_recev_boundary_data(grid.tau_loc);
 #endif
-        std::cout   << "ckp6.5, id_sim: " << id_sim 
-        << ", id_subdomain: " << id_subdomain
-        << ", subdom_main: " << subdom_main
-        << std::endl;
+
         // calculate the objective function
         // if converged, break the loop
         if (subdom_main) {
             if(adj_type == 0)   grid.calc_L1_and_Linf_diff_adj(cur_diff_L1, cur_diff_Linf);
             if(adj_type == 1)   grid.calc_L1_and_Linf_diff_adj_density(cur_diff_L1, cur_diff_Linf);
         }
-        synchronize_all_sub();
-        synchronize_all_inter();
 
-        std::cout   << "ckp6.6, id_sim: " << id_sim 
-        << ", id_subdomain: " << id_subdomain
-        << ", subdom_main: " << subdom_main
-        << ", cur_diff_Linf: " << cur_diff_Linf
-        << std::endl;
         // broadcast the diff values
         //broadcast_cr_single_sub(cur_diff_L1, 0);
-        // broadcast_cr_single_sub(cur_diff_Linf, 0);  // level 3
-
-        bool if_converged = false;
-        std::cout   << "ckp6.61, id_sim: " << id_sim 
-        << ", id_subdomain: " << id_subdomain
-        << ", subdom_main: " << subdom_main
-        << ", if_converged: " << if_converged
-        << std::endl;
-
-        if_converged = (cur_diff_Linf < IP.get_conv_tol());
-        std::cout   << "ckp6.62, id_sim: " << id_sim 
-        << ", id_subdomain: " << id_subdomain
-        << ", subdom_main: " << subdom_main
-        << ", if_converged: " << if_converged
-        << std::endl;
-
-        broadcast_bool_single_sub(if_converged, 0);
-        std::cout   << "ckp6.63, id_sim: " << id_sim 
-        << ", id_subdomain: " << id_subdomain
-        << ", subdom_main: " << subdom_main
-        << ", if_converged: " << if_converged
-        << std::endl;
-
-        synchronize_all_sub();
-        synchronize_all_inter();
+        broadcast_cr_single_sub(cur_diff_Linf, 0);  // level 3
 
         // debug store temporal T fields
         //io.write_tmp_tau_h5(grid, iter_count);
-        std::cout   << "ckp6.7, id_sim: " << id_sim 
-        << ", id_subdomain: " << id_subdomain
-        << ", subdom_main: " << subdom_main
-        << ", cur_diff_Linf: " << cur_diff_Linf
-        << std::endl;
 
         // store tau -> Tadj
         if (subdom_main){
             if(adj_type == 0)   grid.update_Tadj();
             if(adj_type == 1)   grid.update_Tadj_density();
         }
-        std::cout   << "ckp6.8, id_sim: " << id_sim 
-        << ", id_subdomain: " << id_subdomain
-        << ", subdom_main: " << subdom_main
-        << std::endl;
+
         if (cur_diff_Linf < IP.get_conv_tol()) {
+        // if (if_converged) {
             //stdout_by_main("--- adjoint iteration converged. ---");
-            // goto iter_end;
             break;
         } else if (IP.get_max_iter() <= iter_count) {
             stdout_by_main("--- adjoint iteration reached the maximum number of iterations. ---");
-            // goto iter_end;
             break;
         } else {
             if(myrank==0 && if_verbose)
@@ -847,13 +789,7 @@ void Iterator::run_iteration_adjoint(InputParams& IP, Grid& grid, IO_utils& io, 
 
 
     }
-    
-// iter_end:
 
-    std::cout   << "ckp6.9, id_sim: " << id_sim 
-        << ", id_subdomain: " << id_subdomain
-        << ", subdom_main: " << subdom_main
-        << std::endl;
     if (myrank==0){
         if (if_verbose)
             std::cout << "Converged at adjoint iteration " << iter_count << ": "  << cur_diff_Linf << std::endl;
@@ -888,9 +824,11 @@ void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
 
     // i_rec (1:N) -> id_rec_att (key of rec_map)
     std::vector<int> id_rec_att_vec = srcrec_id_2_id_att(IP.rec_map);      // main of level 2 and 3
-    if ((int)id_rec_att_vec.size() != IP.n_rec_this_sim_group) {
-        std::cerr << "Error: id_rec_att_vec.size() != IP.n_rec_this_sim_group" << std::endl;
-        exit(1);
+    if(proc_store_srcrec){
+        if ((int)id_rec_att_vec.size() != IP.n_rec_this_sim_group) {
+            std::cerr << "Error: id_rec_att_vec.size() != IP.n_rec_this_sim_group" << std::endl;
+            exit(1);
+        }
     }
     // loop all receivers
     for (int irec = 0; irec < IP.n_rec_this_sim_group; irec++) {
