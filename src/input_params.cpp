@@ -1792,21 +1792,21 @@ SrcRecInfo InputParams::get_rec_point_bcast(const int id_rec_att) {
 
 
 // return id_src_att
-int InputParams::get_id_src_att(const int i_src, const std::vector<int>& id_src_att_vector, bool for_2d_solver){
+int InputParams::get_id_src_att(const int i_src, const std::vector<int>& id_src_att_vec, bool for_2d_solver){
 
     int id_src_att;
     if (proc_store_srcrec){
         if (for_2d_solver){
-            auto iter = src_map_2d.find(id_src_att_vector[i_src]);
+            auto iter = src_map_2d.find(id_src_att_vec[i_src]);
             if (iter == src_map_2d.end()){
-                std::cout << "Error: id_src_att " << id_src_att_vector[i_src] << " not found in src_map_2d." << std::endl;
+                std::cout << "Error: id_src_att " << id_src_att_vec[i_src] << " not found in src_map_2d." << std::endl;
                 exit(1);
             }
             id_src_att = iter->second.id_att;
         } else {
-            auto iter = src_map.find(id_src_att_vector[i_src]);
+            auto iter = src_map.find(id_src_att_vec[i_src]);
             if (iter == src_map.end()){
-                std::cout << "Error: id_src_att " << id_src_att_vector[i_src] << " not found in src_map." << std::endl;
+                std::cout << "Error: id_src_att " << id_src_att_vec[i_src] << " not found in src_map." << std::endl;
                 exit(1);
             }
             id_src_att = iter->second.id_att;
@@ -1820,13 +1820,13 @@ int InputParams::get_id_src_att(const int i_src, const std::vector<int>& id_src_
 
 
 
-std::string InputParams::get_src_name(const int i_src, const std::vector<int>& id_src_att_vector){
+std::string InputParams::get_src_name(const int i_src, const std::vector<int>& id_src_att_vec){
 
     std::string src_name;
     if (proc_store_srcrec){
-        auto iter = src_map.find(id_src_att_vector[i_src]);
+        auto iter = src_map.find(id_src_att_vec[i_src]);
         if (iter == src_map.end()){
-            std::cout << "Error: id_src_att " << id_src_att_vector[i_src] << " not found in src_map." << std::endl;
+            std::cout << "Error: id_src_att " << id_src_att_vec[i_src] << " not found in src_map." << std::endl;
             exit(1);    
         } else {
             src_name = iter->second.name;
@@ -2110,10 +2110,25 @@ void InputParams::prepare_src_map(){
 
         // count the number of sources in this simultaneous run group
         if (proc_store_srcrec) {
-            n_src_this_sim_group          = (int) src_map.size();
-            n_src_comm_rec_this_sim_group = (int) src_map_comm_rec.size();
-            n_src_2d_this_sim_group       = (int) src_map_2d.size();
-            n_rec_this_sim_group          = (int) rec_map.size();
+            n_src_this_sim_group = 0;
+            for (auto iter = src_map.begin(); iter != src_map.end(); iter++){
+                if (iter->second.only_store_info) continue; // skip the source that is only used for storing info
+                n_src_this_sim_group++;
+            }
+            n_src_comm_rec_this_sim_group = 0;
+            for (auto iter = src_map_comm_rec.begin(); iter != src_map_comm_rec.end(); iter++){
+                if (iter->second.only_store_info) continue; // skip the source that is only used for storing info
+                n_src_comm_rec_this_sim_group++;
+            }
+            n_src_2d_this_sim_group = 0;
+            for (auto iter = src_map_2d.begin(); iter != src_map_2d.end(); iter++){
+                if (iter->second.only_store_info) continue; // skip the source that is only used for storing info
+                n_src_2d_this_sim_group++;
+            }
+            for (auto iter = rec_map.begin(); iter != rec_map.end(); iter++){
+                if (iter->second.only_store_info) continue; // skip the receiver that is only used for storing info
+                n_rec_this_sim_group++;
+            }
         }
         // broadcast the number of sources to all the processes in this simultaneous run group
         broadcast_i_single_intra_sim(n_src_this_sim_group, 0);
@@ -2180,10 +2195,10 @@ void InputParams::gather_all_arrival_times_to_main(){
 
     if (proc_store_srcrec) {    // main of level 2, 3
 
-        std::vector<int> id_src_att_vector;
+        std::vector<int> id_src_att_vec;
         // detemine id_src corresponding to which id_src_att in src_map_all 
-        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
-            id_src_att_vector = srcrec_id_2_id_att(src_map_all);
+        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vec
+            id_src_att_vec = srcrec_id_2_id_att(src_map_all);
         }
         
         // for (auto iter = src_map.begin(); iter != src_map.end(); iter++){
@@ -2206,7 +2221,7 @@ void InputParams::gather_all_arrival_times_to_main(){
             // broadcast source id
             int id_src_att = 0;
             if (proc_read_srcrec){ // euqal to di_sim == 0, under proc_store_srcrec
-                id_src_att = id_src_att_vector[id_src];
+                id_src_att = id_src_att_vec[id_src];
             }
             broadcast_i_single_inter_sim(id_src_att, 0);
 
@@ -2403,9 +2418,9 @@ void InputParams::gather_traveltimes_and_calc_syn_diff(){
 
         // rank 0 distribute the correct data to other sim groups 
         // detemine id_src corresponding to which id_src_att in src_map_all 
-        std::vector<int> id_src_att_vector;
-        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
-            id_src_att_vector = srcrec_id_2_id_att(src_map_all);
+        std::vector<int> id_src_att_vec;
+        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vec
+            id_src_att_vec = srcrec_id_2_id_att(src_map_all);
         }
 
         // loop all source
@@ -2417,7 +2432,7 @@ void InputParams::gather_traveltimes_and_calc_syn_diff(){
             // get the id_src_att
             int id_src_att = 0;
             if (proc_read_srcrec){
-                id_src_att = id_src_att_vector[id_src];
+                id_src_att = id_src_att_vec[id_src];
             }
             broadcast_i_single_inter_sim(id_src_att, 0);
 

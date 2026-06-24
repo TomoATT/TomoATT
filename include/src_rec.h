@@ -48,6 +48,8 @@ public:
     int data_begin = 0;  
     int data_end = 0;
 
+    // some data with true "only_store_info" for cr dif data. The processor needs the other src info, but the other src is not included in the processor.
+    bool only_store_info = false; // if true, only store the information location info of the source or receiver, but do not calculate time field for this source.
 
 
     // kernel
@@ -242,7 +244,7 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
 // generate a list of events which involve common receiver double difference traveltime
 void generate_src_map_with_common_receiver(std::vector<DataInfo>&       data_vec,
                                            std::map<int, SrcRecInfo>&   src_map,
-                                           std::map<int, SrcRecInfo>&   src_map_comm_recp);
+                                           std::map<int, SrcRecInfo>&   src_map_comm_rec);
 
 void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
                                    std::map<int, SrcRecInfo>& src_map,

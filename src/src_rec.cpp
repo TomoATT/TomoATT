@@ -1312,12 +1312,10 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
         // store the total number of sources
         nsrc_total = n_src;
 
-        
-
         // detemine id_src corresponding to which id_src_att in src_map_all 
-        std::vector<int> id_src_att_vector;
-        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
-            id_src_att_vector = srcrec_id_2_id_att(src_map_all);
+        std::vector<int> id_src_att_vec;
+        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vec
+            id_src_att_vec = srcrec_id_2_id_att(src_map_all);
         }
 
         // assign sources to each simulutaneous run group
@@ -1328,7 +1326,7 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
             // broadcast the source name
             int id_src_att;
             if (id_sim == 0 && subdom_main){            // for rank 0, get the key of src_map_all
-                id_src_att = id_src_att_vector[i_src];
+                id_src_att = id_src_att_vec[i_src];
             }
 
             broadcast_i_single_inter_sim(id_src_att, 0); // (level 1) broadcast the source id to all the simulutaneous run groups
@@ -1356,6 +1354,17 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
                         if (data.data_type == DATA_TYPE_CSDIF){
                             rec_map_this_sim[data.id_pair_att] = rec_map_all[data.id_pair_att];
                         }
+
+                        // store the second source for src_pair
+                        if (data.data_type == DATA_TYPE_CRDIF){
+                            if (src_map_this_sim.find(data.id_pair_att) == src_map_this_sim.end()){    // if this source is not in the src_map_this_sim, add it to the src_map_this_sim
+                                src_map_this_sim[data.id_pair_att] = src_map_all[data.id_pair_att];
+                                src_map_this_sim[data.id_pair_att].data_begin = -1; // no data for this source
+                                src_map_this_sim[data.id_pair_att].data_end   = -1; // no data for this source
+                                src_map_this_sim[data.id_pair_att].n_data     = 0;  // no data for this source
+                                src_map_this_sim[data.id_pair_att].only_store_info = true; // this source do not calculate tie field.
+                            }
+                        }
                     }
 
 
@@ -1366,6 +1375,7 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
                     // 2. send data first
                     int n_data = src_map_all[id_src_att].n_data;
                     std::map<int, bool> rec_id_to_be_sent; // store the receiver id to be sent
+                    std::map<int, bool> src_id_to_be_sent; // store the second source id to be sent (only for source pair data. only_store_info is true for the second source. this source do not calculate tie field.)
                     
                     int data_begin = src_map_all[id_src_att].data_begin;
                     int data_end   = src_map_all[id_src_att].data_end;
@@ -1379,6 +1389,9 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
                             if (data.data_type == DATA_TYPE_CSDIF){
                                 rec_id_to_be_sent[data.id_pair_att] = true; // mark the second receiver id to be sent
                             }
+                            if (data.data_type == DATA_TYPE_CRDIF){
+                                src_id_to_be_sent[data.id_pair_att] = true; // mark the second source id to be sent
+                            }
                         }
                     }
 
@@ -1388,6 +1401,13 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
 
                     for (auto iter = rec_id_to_be_sent.begin(); iter != rec_id_to_be_sent.end(); iter++){
                         send_rec_info_inter_sim(rec_map_all[iter->first], dst_id_sim);
+                    }
+
+                    // 4. send the second source for source pair data
+                    int n_src = src_id_to_be_sent.size();
+                    send_i_single_sim(&n_src, dst_id_sim);  // send the number of second sources (level 1, inter sim)
+                    for (auto iter = src_id_to_be_sent.begin(); iter != src_id_to_be_sent.end(); iter++){
+                        send_src_info_inter_sim(src_map_all[iter->first], dst_id_sim);
                     }
                 }
 
@@ -1424,6 +1444,25 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
                         rec_map_this_sim[tmp_RecInfo.id_att] = tmp_RecInfo;
                     }
 
+                    // 4. receive the second source for source pair data
+                    int n_src = 0;
+                    recv_i_single_sim(&n_src, 0);  // receive the number of second sources (level 1, inter sim)
+                    for (int i_src = 0; i_src < n_src; i_src++){
+                        // receive src_info from the main process of dst_id_sim
+                        SrcRecInfo tmp_second_SrcInfo;
+                        recv_src_info_inter_sim(tmp_second_SrcInfo, 0);
+                         
+                        if (src_map_this_sim.find(tmp_second_SrcInfo.id_att) == src_map_this_sim.end()){    // if this source is not in the src_map_this_sim, add it to the src_map_this_sim
+                            tmp_second_SrcInfo.data_begin       = -1; // no data for this source
+                            tmp_second_SrcInfo.data_end         = -1; // no data for this source
+                            tmp_second_SrcInfo.n_data           = 0;  // no data for this source
+                            tmp_second_SrcInfo.only_store_info  = true; // this source do not calculate tie field. only store the info for common receiver differential traveltime data
+                            src_map_this_sim[tmp_second_SrcInfo.id_att] = tmp_second_SrcInfo;
+                        } else {
+                            // do nothing. this source is already in the src_map_this_sim
+                        }   
+                    }
+
                 } else {
                     // do nothing
                 }
@@ -1445,6 +1484,7 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
                             << ", data_begin: " << iter->second.data_begin
                             << ", data_end: " << iter->second.data_end
                             << ", n_data: " << iter->second.n_data
+                            << ", only_store_info: " << iter->second.only_store_info
                             << ", map_key: " << iter->first
                             << std::endl;
             }
@@ -1472,6 +1512,7 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
                         << ", data_begin: " << iter->second.data_begin
                         << ", data_end: " << iter->second.data_end
                         << ", n_data: " << iter->second.n_data
+                        << ", only_store_info: " << iter->second.only_store_info
                         << ", map_key: " << iter->first
                         << std::endl;
         }
@@ -1497,19 +1538,19 @@ void distribute_src_rec_data(std::map<int, SrcRecInfo>&     src_map_all,
 // generate a list of events which involve common receiver double difference traveltime
 void generate_src_map_with_common_receiver(std::vector<DataInfo>&       data_map,
                                            std::map<int, SrcRecInfo>&   src_map,
-                                           std::map<int, SrcRecInfo>&   src_map_comm_recp){
+                                           std::map<int, SrcRecInfo>&   src_map_comm_rec){
 
     if (proc_store_srcrec) {
 
         for(auto& data : data_map){
             if (data.data_type == DATA_TYPE_CRDIF) {
                 // add this source and turn to the next source
-                src_map_comm_recp[data.id_src_att] = src_map[data.id_src_att];
+                src_map_comm_rec[data.id_src_att] = src_map[data.id_src_att];
             }
         }
 
         // check if this sim group has common source double difference traveltime
-        if (src_map_comm_recp.size() > 0){
+        if (src_map_comm_rec.size() > 0){
             src_pair_exists = true;
         }
 
@@ -1566,17 +1607,16 @@ void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
         } 
         broadcast_i_single_inter_sim(n_src_unique, 0); // inter simulutaneous run group
 
-        std::vector<int> id_src_att_vector;
-        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vector
-            id_src_att_vector = srcrec_id_2_id_att(tmp_src_map_unique);
+        std::vector<int> id_src_att_vec;
+        if (id_sim == 0) {  // for rank 0, src_map_all -> id_src_att_vec
+            id_src_att_vec = srcrec_id_2_id_att(tmp_src_map_unique);
         }
-
         // iterate over all the unique sources
         for (int i_src_unique = 0; i_src_unique < n_src_unique; i_src_unique++){
             int dst_id_sim = select_id_sim_for_src(i_src_unique, n_sims);
 
             if (id_sim==0){   // sender
-                int id_src_att = id_src_att_vector[i_src_unique];
+                int id_src_att = id_src_att_vec[i_src_unique];
                 if (dst_id_sim==id_sim){    // if the destination is itself (rank 0), directly get the info from src_map_all, rec_map_all, and data_map_all.
                     // store
                     src_map_2d[id_src_att] = tmp_src_map_unique[id_src_att];
@@ -1612,6 +1652,10 @@ std::vector<int> srcrec_id_2_id_att(std::map<int, SrcRecInfo>& srcrec_map){
     std::vector<int> id_srcrec_att_vector;
     if (proc_store_srcrec) {
         for (auto iter = srcrec_map.begin(); iter != srcrec_map.end(); iter++) {
+            if (iter->second.only_store_info) {
+                // skip this source/receiver if it is only for storing info
+                continue;
+            }
             id_srcrec_att_vector.push_back(iter->first); // store the source id
         }
     }
@@ -1644,6 +1688,7 @@ void send_src_info_inter_sim(SrcRecInfo &src, int dest){
     send_i_single_sim(&src.data_begin, dest);
     send_i_single_sim(&src.data_end, dest);
     send_i_single_sim(&src.id_att, dest);
+    send_bool_single_sim(&src.only_store_info, dest);
 
 }
 
@@ -1667,6 +1712,7 @@ void recv_src_info_inter_sim(SrcRecInfo &src, int orig){
     recv_i_single_sim(&src.data_begin, orig);
     recv_i_single_sim(&src.data_end, orig);
     recv_i_single_sim(&src.id_att, orig);
+    recv_bool_single_sim(&src.only_store_info, orig);
 }
 
 
@@ -1689,6 +1735,8 @@ void broadcast_src_info(SrcRecInfo& src, int orig){
         broadcast_i_single(src.data_begin, orig);
         broadcast_i_single(src.data_end, orig);
         broadcast_i_single(src.id_att, orig);
+
+        broadcast_bool_single(src.only_store_info, orig);
 }
 
 
@@ -1701,6 +1749,7 @@ void send_rec_info_inter_sim(SrcRecInfo &rec, int dest){
     send_cr_single_sim(&rec.dep, dest);
 
     send_i_single_sim(&rec.id_att, dest);
+    send_bool_single_sim(&rec.only_store_info, dest);
 }
 
 
@@ -1713,6 +1762,7 @@ void recv_rec_info_inter_sim(SrcRecInfo &rec, int orig){
     recv_cr_single_sim(&rec.dep, orig);
 
     recv_i_single_sim(&rec.id_att, orig);
+    recv_bool_single_sim(&rec.only_store_info, orig);
 }
 
 
@@ -1727,6 +1777,7 @@ void broadcast_rec_info(SrcRecInfo& rec, int orig){
     broadcast_bool_single(rec.is_stop, orig);
 
     broadcast_i_single(rec.id_att, orig);
+    broadcast_bool_single(rec.only_store_info, orig);
 }
 
 void send_data_info_inter_sim(DataInfo &data, int dest){

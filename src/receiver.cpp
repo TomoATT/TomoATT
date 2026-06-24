@@ -1407,9 +1407,9 @@ void Receiver::calculate_grad_reloc(InputParams& IP, int id_src_att) {
 
                 // evaluate distance_weight_abs
                 CUSTOMREAL  local_azi1    =   0.0;
-                Azimuth_sphere(IP.get_rec_point(id_rec_att).lat*DEG2RAD, IP.get_rec_point(id_rec_att).lon*DEG2RAD, IP.get_src_point(id_src1_att).lat*DEG2RAD, IP.get_src_point(id_src2_att).lon*DEG2RAD, local_azi1);
+                Azimuth_sphere(IP.get_rec_point(id_rec_att).lat*DEG2RAD, IP.get_rec_point(id_rec_att).lon*DEG2RAD, IP.get_src_point(id_src1_att).lat*DEG2RAD, IP.get_src_point(id_src1_att).lon*DEG2RAD, local_azi1);
                 CUSTOMREAL  local_azi2    =   0.0;
-                Azimuth_sphere(IP.get_rec_point(id_rec_att).lat*DEG2RAD, IP.get_rec_point(id_rec_att).lon*DEG2RAD, IP.get_src_point(id_src1_att).lat*DEG2RAD, IP.get_src_point(id_src2_att).lon*DEG2RAD, local_azi2);
+                Azimuth_sphere(IP.get_rec_point(id_rec_att).lat*DEG2RAD, IP.get_rec_point(id_rec_att).lon*DEG2RAD, IP.get_src_point(id_src2_att).lat*DEG2RAD, IP.get_src_point(id_src2_att).lon*DEG2RAD, local_azi2);
                 CUSTOMREAL  local_azi   = abs(local_azi1 - local_azi2)*RAD2DEG;
                 if(local_azi > 180.0)   local_azi = 360.0 - local_azi;
 

@@ -44,6 +44,12 @@ void calculate_traveltime_for_all_src_rec(InputParams& IP, Grid& grid, IO_utils&
 
     // iterate over sources
     std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec.size() != IP.n_src_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
 
         int         id_src_att      = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
@@ -100,6 +106,12 @@ std::vector<CUSTOMREAL> calculate_gradient_objective_function(InputParams& IP, G
 
     // iterate over sources (to obtain gradient of traveltime field T and absolute traveltime, common source differential traveltime, and common receiver differential traveltime)
     std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec.size() != IP.n_src_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
 
         int         id_src_att      = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3

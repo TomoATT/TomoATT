@@ -183,12 +183,18 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
     initialize_kernel_1d();
 
     // i_src (1:N) -> id_src_att
-    std::vector<int> id_src_att_vector = srcrec_id_2_id_att(IP.src_map);      // main of level 2 and 3
+    std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);      // main of level 2 and 3
     // iterate over sources
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec.size() != IP.n_src_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
         
-        int         id_src_att    = IP.get_id_src_att(i_src, id_src_att_vector);  // get id_src_att for the i-th source
-        std::string name_src  = IP.get_src_name(i_src, id_src_att_vector);
+        int         id_src_att    = IP.get_id_src_att(i_src, id_src_att_vec);  // get id_src_att for the i-th source
+        std::string name_src  = IP.get_src_name(i_src, id_src_att_vec);
         bool        is_teleseismic = IP.get_if_src_teleseismic(id_src_att); // get is_teleseismic flag
 
         if (is_teleseismic) {

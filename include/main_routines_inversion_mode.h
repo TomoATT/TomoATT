@@ -68,16 +68,21 @@ inline void pre_run_forward_only(InputParams& IP, Grid& grid, IO_utils& io, int 
     Receiver recs;
 
     // i_src (1:N) -> id_src_att (key of src_map_comm_rec)
-    std::vector<int> id_src_att_vector = srcrec_id_2_id_att(IP.src_map_comm_rec);      // main of level 2 and 3
-
+    std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map_comm_rec);      // main of level 2 and 3
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec.size() != IP.n_src_comm_rec_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     for (int i_src = 0; i_src < IP.n_src_comm_rec_this_sim_group; i_src++){
 
         // check if this is the first iteration of entire inversion process
         bool first_init = (i_inv == 0 && i_src==0);
 
         // get source info
-        int         id_src_att     = IP.get_id_src_att(i_src, id_src_att_vector);       // level 2 and level 3
-        std::string name_src       = IP.get_src_name(i_src, id_src_att_vector);         // level 2 and level 3
+        int         id_src_att     = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
+        std::string name_src       = IP.get_src_name(i_src, id_src_att_vec);         // level 2 and level 3
         bool        is_teleseismic = IP.get_if_src_teleseismic(id_src_att); // get is_teleseismic flag  (level 2 and level 3)
 
         // set source name for output files/dataset names
@@ -373,18 +378,26 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         std::cout << "computing traveltime field, adjoint field and kernel ..." << std::endl;
 
     // i_src (1:N) -> id_src_att (key of src_map)
-    std::vector<int> id_src_att_vector = srcrec_id_2_id_att(IP.src_map);      // main of level 2 and 3
-
+    std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);      // main of level 2 and 3
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec.size() != IP.n_src_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     // iterate over sources
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
+        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
+            std::cout << "ckp1, id_sim: " << id_sim << ", i_src: " << i_src << std::endl;
+        }
 
         // check if this is the first iteration of entire inversion process
         bool first_init = (i_inv == 0 && i_src==0);
 
         // get source info
-        int         id_src_att     = IP.get_id_src_att(i_src, id_src_att_vector);       // level 2 and level 3
-        std::string name_src       = IP.get_src_name(i_src, id_src_att_vector);         // level 2 and level 3
-        bool        is_teleseismic = IP.get_if_src_teleseismic(id_src_att); // get is_teleseismic flag
+        int         id_src_att     = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
+        std::string name_src       = IP.get_src_name(i_src, id_src_att_vec);         // level 2 and level 3
+        bool        is_teleseismic = IP.get_if_src_teleseismic(id_src_att);         // get is_teleseismic flag
 
         // set source name for output files/dataset names
         io.reset_source_info(name_src);
@@ -399,6 +412,10 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
 
         // initialize iterator object
         std::unique_ptr<Iterator> It;
+
+        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
+            std::cout << "ckp2, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+        }
 
         if (!hybrid_stencil_order){
             select_iterator(IP, grid, src, io, first_init, is_teleseismic, It, false);
@@ -424,6 +441,10 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
             calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It, id_src_att, is_save_T);
         }
 
+        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
+            std::cout << "ckp3, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+        }
+
         // output the result of forward simulation
         // ignored for inversion mode.
         if (!line_search_mode && IP.get_if_output_source_field()) {
@@ -445,14 +466,24 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         // calculate the arrival times at each receivers
         recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, id_src_att);
 
+        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
+            std::cout << "ckp4, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+        }
+
         /////////////////////////
         // run adjoint simulation
         /////////////////////////
 
         if (IP.get_run_mode()==DO_INVERSION || IP.get_run_mode()==INV_RELOC){
             // calculate adjoint source
+            if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
+                std::cout << "ckp5, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+            }
             recs.calculate_adjoint_source(IP, id_src_att);
             // run iteration for adjoint field calculation
+            if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
+                std::cout << "ckp6, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+            }
             int adj_type = 0;   // compute adjoint field
             It->run_iteration_adjoint(IP, grid, io, adj_type);
             // run iteration for density of the adjoint field
@@ -476,6 +507,10 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
             // }
 
         } // end if run_mode == DO_INVERSION
+
+        if (id_subdomain == 0 && subdom_main){  // main of level 2 and 3
+            std::cout << "ckp7, id_sim: " << id_sim << ", i_src: " << i_src << ", id_src_att: " << id_src_att << std::endl;
+        }
 
         // wait for all processes to finish
         // this should not be called here, for the case that the simultaneous run group has different number of sources
