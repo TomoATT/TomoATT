@@ -100,10 +100,10 @@ void calculate_traveltime_for_all_src_rec(InputParams& IP, Grid& grid, IO_utils&
 std::vector<CUSTOMREAL> calculate_gradient_objective_function(InputParams& IP, Grid& grid, IO_utils& io, int i_iter){
 
     Receiver recs; // here the source is swapped to receiver
-
+    if(world_rank == 0) std::cout << "ckp1.1" << std::endl;
     // initialize source parameters (obj, kernel for each source for reloc )
     recs.init_vars_src_reloc(IP);
-
+    if(world_rank == 0) std::cout << "ckp1.2" << std::endl;
     // iterate over sources (to obtain gradient of traveltime field T and absolute traveltime, common source differential traveltime, and common receiver differential traveltime)
     std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);
     if (proc_store_srcrec){
@@ -112,6 +112,7 @@ std::vector<CUSTOMREAL> calculate_gradient_objective_function(InputParams& IP, G
             exit(1);
         }
     }
+    if(world_rank == 0) std::cout << "ckp1.3" << std::endl;
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
 
         int         id_src_att      = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
@@ -122,37 +123,37 @@ std::vector<CUSTOMREAL> calculate_gradient_objective_function(InputParams& IP, G
         io.reset_source_info(name_src);
 
         // load travel time field on grid.T_loc
+        if(world_rank == 0) std::cout << "ckp1.30" << std::endl;
         io.read_T_tmp(grid);
-
+        if(world_rank == 0) std::cout << "ckp1.31" << std::endl;
         // calculate travel time at the actual source location (absolute traveltime, common source differential traveltime)
         recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, id_src_att);
-
+        if(world_rank == 0) std::cout << "ckp1.32" << std::endl;
         // calculate gradient at the actual source location
         recs.calculate_T_gradient(IP, grid, id_src_att);
     }
-
+    if(world_rank == 0) std::cout << "ckp1.4" << std::endl;
     // wait for all processes to finish
     synchronize_all_world();
 
     // gather all the traveltime to the main process and distribute to all processes
     // for calculating the synthetic (common receiver differential traveltime)
     IP.gather_traveltimes_and_calc_syn_diff();
-
+    if(world_rank == 0) std::cout << "ckp1.5" << std::endl;
 
     // iterate over sources for calculating gradient of objective function
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
-        int         id_src_att      = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
-             
+        int id_src_att = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
         // calculate gradient of objective function with respect to location and ortime
         recs.calculate_grad_reloc(IP, id_src_att);
     }
-
+    if(world_rank == 0) std::cout << "ckp1.6" << std::endl;
     // compute the objective function
     std::vector<CUSTOMREAL> obj_residual = recs.calculate_obj_reloc(IP, i_iter);
-
+    if(world_rank == 0) std::cout << "ckp1.7" << std::endl;
     // sum grad_tau and grad_chi_k of all simulation groups
     IP.allreduce_rec_map_grad_src();
-
+    if(world_rank == 0) std::cout << "ckp1.8" << std::endl;
     //synchronize_all_world(); // not necessary here because allreduce is already synchronizing communication
 
     return obj_residual;

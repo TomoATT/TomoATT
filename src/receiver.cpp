@@ -21,81 +21,89 @@ void Receiver::interpolate_and_store_arrival_times_at_rec_position(InputParams& 
         grid.send_recev_boundary_data_kosumi(grid.T_loc);
 
         if (proc_store_srcrec){     // main of level 2
-            
-            // 1. estimate the number of traveltime to be calculated for this source
-            int n_time = 0;
+            // 1. estimate which receivers are required for traveltime calculation for this source
+            std::map<int, CUSTOMREAL> rec_map_this_src;   // id_rec_att -> traveltime, store the receiver id which are required for traveltime calculation 
             int data_begin = IP.src_map[id_src_att].data_begin;
             int data_end   = IP.src_map[id_src_att].data_end;
             for (int i_data = data_begin; i_data < data_end; i_data++){
                 auto& data = IP.data_vec[i_data];    
                 if (data.data_type == DATA_TYPE_ABS){
-                    n_time += 1;
+                    rec_map_this_src[data.id_rec_att] = 0.0;
                 } else if (data.data_type == DATA_TYPE_CSDIF) {
-                    n_time += 2;
+                    rec_map_this_src[data.id_rec_att] = 0.0;
+                    rec_map_this_src[data.id_pair_att] = 0.0;
                 } else if (data.data_type == DATA_TYPE_CRDIF) {
-                    n_time += 1;
+                    rec_map_this_src[data.id_rec_att] = 0.0;
                 } else {
                     std::cout << "error type of data" << std::endl;
                     exit(1);
                 }
             }
-            broadcast_i_single(n_time, 0);   // (level 2) broadcast the number of traveltime to be calculated for this source
 
-            // 2. loop all data, to calculate traveltime
+            // 2. loop all receivers to calculate traveltime
+            int n_rec_this_src = rec_map_this_src.size();
+            broadcast_i_single(n_rec_this_src, 0);   // (level 2) broadcast the number of receivers for this source
+            for(auto iter = rec_map_this_src.begin(); iter != rec_map_this_src.end(); iter++){
+                // (level 2) broadcast the receiver id for traveltime calculation
+                int id_rec_att = iter->first;
+                broadcast_i_single(id_rec_att, 0);   
+                // calculate travel time
+                rec_map_this_src[id_rec_att] = interpolate_travel_time(grid, IP, id_rec_att);
+            }
+
+            // 3. loop all data, to store traveltime
             for (int i_data = data_begin; i_data < data_end; i_data++){
                 auto& data = IP.data_vec[i_data];
 
                 if (data.data_type == DATA_TYPE_ABS){   // absolute traveltime
-                    // send id_rec_att
-                    int id_rec_att = data.id_rec_att;
-                    broadcast_i_single(id_rec_att, 0);
-                    // calculate travel time
-                    data.travel_time = interpolate_travel_time(grid, IP, id_rec_att);
+                    auto iter = rec_map_this_src.find(data.id_rec_att);
+                    if (iter == rec_map_this_src.end()){
+                        std::cout << "Error: receiver id " << data.id_rec_att << " is not found in rec_map_this_src (traveltime) for source id " << id_src_att << std::endl;
+                        exit(1);
+                    }
+                    data.travel_time = iter->second;
 
                 } else if (data.data_type == DATA_TYPE_CSDIF) {     // common source differential traveltime
-                    // send id_rec_att for the first receiver
-                    int id_rec1_att = data.id_rec_att;
-                    broadcast_i_single(id_rec1_att, 0);
-                    // calculate travel time for the first receiver
-                    CUSTOMREAL travel_time_1 = interpolate_travel_time(grid, IP, id_rec1_att);
-
-                    // send id_rec_att for the second receiver
-                    int id_rec2_att = data.id_pair_att;
-                    broadcast_i_single(id_rec2_att, 0);
-                    // calculate travel time for the second receiver
-                    CUSTOMREAL travel_time_2 = interpolate_travel_time(grid, IP, id_rec2_att);
-
-                    // store travel time and differential traveltime
+                    auto iter1 = rec_map_this_src.find(data.id_rec_att);
+                    auto iter2 = rec_map_this_src.find(data.id_pair_att);
+                    if (iter1 == rec_map_this_src.end() || iter2 == rec_map_this_src.end()){
+                        std::cout << "Error: receiver id " << data.id_rec_att << " or " << data.id_pair_att << " is not found in rec_map_this_src (traveltime) for source id " << id_src_att << std::endl;
+                        exit(1);
+                    }
+                    CUSTOMREAL travel_time_1 = iter1->second;
+                    CUSTOMREAL travel_time_2 = iter2->second;
                     data.travel_time   = travel_time_1;
                     data.dif_travel_time = travel_time_1 - travel_time_2;
 
                 } else if (data.data_type == DATA_TYPE_CRDIF) {     // common receiver differential traveltime
-                    // send id_rec_att
-                    int id_rec_att = data.id_rec_att;
-                    broadcast_i_single(id_rec_att, 0);
-                    // calculate travel time
-                    data.travel_time = interpolate_travel_time(grid, IP, id_rec_att);
+                    auto iter = rec_map_this_src.find(data.id_rec_att);
+                    if (iter == rec_map_this_src.end()){
+                        std::cout << "Error: receiver id " << data.id_rec_att << " is not found in rec_map_this_src (traveltime) for source id " << id_src_att << std::endl;
+                        exit(1);
+                    }
+                    data.travel_time = iter->second;
                 } else {
                     std::cout << "error type of data" << std::endl;
                     exit(1);
                 }
             }
 
-        } else {    // other ranks which do not have src_map, rec_map, data_vec
+        } else {        // other ranks which do not have src_map, rec_map, data_vec
 
-            // 1. receive the number of traveltime to be calculated for this source
-            int n_time = 0;
-            broadcast_i_single(n_time, 0);   // (level 2) receive the number of traveltime to be calculated for this source
+            // 1. receive the number of receivers for this source
+            int n_rec_this_src = 0;
+            broadcast_i_single(n_rec_this_src, 0);   // (level 2) receive the number of receivers for this source
 
-            // 2. loop all data, to calculate traveltime
-            for (int i_time = 0; i_time < n_time; i_time++){
+            for (int i_rec = 0; i_rec < n_rec_this_src; i_rec++){
                 // receive id_rec_att
                 int id_rec_att = 0;
-                broadcast_i_single(id_rec_att, 0);
+                broadcast_i_single(id_rec_att, 0);   // (level 2) receive the receiver id for traveltime calculation
+
                 // calculate travel time
                 CUSTOMREAL dummy_time = interpolate_travel_time(grid, IP, id_rec_att);
                 (void) dummy_time; // avoid compiler warning
             }
+            
         }
     } // end subdomain
 
@@ -787,98 +795,191 @@ void Receiver::calculate_T_gradient(InputParams& IP, Grid& grid, const int id_sr
         grid.send_recev_boundary_data(grid.T_loc);
         grid.send_recev_boundary_data_kosumi(grid.T_loc);
 
-        if (proc_store_srcrec){     // main of level 2
-            
-            // 1. estimate the number of traveltime to be calculated for this source
-            int n_time = 0;
+        if (proc_store_srcrec){
+            // 1. estimate which receivers are required for traveltime calculation for this source
+            std::map<int, std::vector<CUSTOMREAL>> rec_map_this_src;   // id_rec_att -> (Tx, Ty, Tz), store the receiver id which are required for traveltime calculation 
             int data_begin = IP.src_map[id_src_att].data_begin;
             int data_end   = IP.src_map[id_src_att].data_end;
             for (int i_data = data_begin; i_data < data_end; i_data++){
                 auto& data = IP.data_vec[i_data];    
-                // case 1: absolute traveltime for reloc
-                if (data.data_type == DATA_TYPE_ABS && IP.get_use_abs_reloc()){   // abs data && we use it
-                    n_time += 1;
-                // case 2: common receiver (swapped source) double difference (double source, or double swapped receiver) for reloc
-                // in reloc, must swapped. thus, use cr mean sc here
-                } else if (data.data_type == DATA_TYPE_CSDIF && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
-                    n_time += 2;
-                } else if (data.data_type == DATA_TYPE_CRDIF && IP.get_use_cs_reloc()) {    // common source data (swapped common receiver) and we use it.
-                    n_time += 1;
+                if (data.data_type == DATA_TYPE_ABS){
+                    rec_map_this_src[data.id_rec_att] = {0.0, 0.0, 0.0};
+                } else if (data.data_type == DATA_TYPE_CSDIF) {
+                    rec_map_this_src[data.id_rec_att] = {0.0, 0.0, 0.0};
+                    rec_map_this_src[data.id_pair_att] = {0.0, 0.0, 0.0};
+                } else if (data.data_type == DATA_TYPE_CRDIF) {
+                    rec_map_this_src[data.id_rec_att] = {0.0, 0.0, 0.0};
                 } else {
-                    std::cout << "error type of data in reloc" << std::endl;
+                    std::cout << "error type of data" << std::endl;
                     exit(1);
                 }
             }
-            broadcast_i_single(n_time, 0);   // (level 2) broadcast the number of traveltime to be calculated for this source
 
-            // 2. loop all data, to calculate traveltime
+            // 2. loop all receivers to calculate traveltime
+            int n_rec_this_src = rec_map_this_src.size();
+            broadcast_i_single(n_rec_this_src, 0);   // (level 2) broadcast the number of receivers for this source
+            for(auto iter = rec_map_this_src.begin(); iter != rec_map_this_src.end(); iter++){
+                // (level 2) broadcast the receiver id for traveltime calculation
+                int id_rec_att = iter->first;
+                broadcast_i_single(id_rec_att, 0);   
+                // calculate travel time
+                rec_map_this_src[id_rec_att] = calculate_T_gradient_one_rec(grid, IP, id_rec_att);
+            }
+
+            // 3. loop all data, to store traveltime
             for (int i_data = data_begin; i_data < data_end; i_data++){
                 auto& data = IP.data_vec[i_data];
 
-                // case 1: absolute traveltime for reloc
-                if (data.data_type == DATA_TYPE_ABS && IP.get_use_abs_reloc()){   // abs data && we use it
-                    // send id_rec_att
-                    int id_rec_att = data.id_rec_att;
-                    broadcast_i_single(id_rec_att, 0);
+                if (data.data_type == DATA_TYPE_ABS){   // absolute traveltime
+                    auto iter = rec_map_this_src.find(data.id_rec_att);
+                    if (iter == rec_map_this_src.end()){
+                        std::cout << "Error: receiver id " << data.id_rec_att << " is not found in rec_map_this_src (Tgradient) for source id " << id_src_att << std::endl;
+                        exit(1);
+                    }
+                    data.DTi_pair[0] = iter->second[0];
+                    data.DTj_pair[0] = iter->second[1];
+                    data.DTk_pair[0] = iter->second[2];
 
-                    // calculate travel time gradient
-                    std::vector<CUSTOMREAL> DTijk = calculate_T_gradient_one_rec(grid, IP, id_rec_att);
-                    data.DTi_pair[0] = DTijk[0];
-                    data.DTj_pair[0] = DTijk[1];
-                    data.DTk_pair[0] = DTijk[2];
+                } else if (data.data_type == DATA_TYPE_CSDIF) {     // common source differential traveltime
+                    auto iter1 = rec_map_this_src.find(data.id_rec_att);
+                    auto iter2 = rec_map_this_src.find(data.id_pair_att);
+                    if (iter1 == rec_map_this_src.end() || iter2 == rec_map_this_src.end()){
+                        std::cout << "Error: receiver id " << data.id_rec_att << " or " << data.id_pair_att << " is not found in rec_map_this_src (Tgradient) for source id " << id_src_att << std::endl;
+                        exit(1);
+                    }
+                    data.DTi_pair[0] = iter1->second[0];
+                    data.DTj_pair[0] = iter1->second[1];
+                    data.DTk_pair[0] = iter1->second[2];
+                    data.DTi_pair[1] = iter2->second[0];
+                    data.DTj_pair[1] = iter2->second[1];
+                    data.DTk_pair[1] = iter2->second[2];
 
-                } else if (data.data_type == DATA_TYPE_CSDIF && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
-                    // send id_rec_att for the first receiver
-                    int id_rec1_att = data.id_rec_att;
-                    broadcast_i_single(id_rec1_att, 0);
-                    // calculate travel time gradient for the first receiver
-                    std::vector<CUSTOMREAL> DTijk = calculate_T_gradient_one_rec(grid, IP, id_rec1_att);
-                    data.DTi_pair[0]  = DTijk[0];
-                    data.DTj_pair[0]  = DTijk[1];
-                    data.DTk_pair[0]  = DTijk[2];
-
-                    // send id_rec_att for the second receiver
-                    int id_rec2_att = data.id_pair_att;
-                    broadcast_i_single(id_rec2_att, 0);
-                    // calculate travel time gradient for the second receiver
-                    std::vector<CUSTOMREAL> DTijk_2 = calculate_T_gradient_one_rec(grid, IP, id_rec2_att);
-                    data.DTi_pair[1]  = DTijk_2[0];
-                    data.DTj_pair[1]  = DTijk_2[1];
-                    data.DTk_pair[1]  = DTijk_2[2];
-                    
-
-                } else if (data.data_type == DATA_TYPE_CRDIF && IP.get_use_cs_reloc()) {    // common source data (swapped common receiver) and we use it.
-                    // send id_rec_att
-                    int id_rec_att = data.id_rec_att;
-                    broadcast_i_single(id_rec_att, 0);
-                    // calculate travel time gradient
-                    std::vector<CUSTOMREAL> DTijk = calculate_T_gradient_one_rec(grid, IP, id_rec_att);
-                    data.DTi_pair[0]  = DTijk[0];
-                    data.DTj_pair[0]  = DTijk[1];
-                    data.DTk_pair[0]  = DTijk[2];
-
+                } else if (data.data_type == DATA_TYPE_CRDIF) {     // common receiver differential traveltime
+                    auto iter = rec_map_this_src.find(data.id_rec_att);
+                    if (iter == rec_map_this_src.end()){
+                        std::cout << "Error: receiver id " << data.id_rec_att << " is not found in rec_map_this_src (Tgradient) for source id " << id_src_att << std::endl;
+                        exit(1);
+                    }
+                    data.DTi_pair[0] = iter->second[0];
+                    data.DTj_pair[0] = iter->second[1];
+                    data.DTk_pair[0] = iter->second[2];
                 } else {
-                    std::cout << "error type of data in reloc" << std::endl;
+                    std::cout << "error type of data" << std::endl;
                     exit(1);
                 }
             }
 
-        } else {    // other ranks which do not have src_map, rec_map, data_vec
+        } else {        // other ranks which do not have src_map, rec_map, data_vec
 
-            // 1. receive the number of traveltime to be calculated for this source
-            int n_time = 0;
-            broadcast_i_single(n_time, 0);   // (level 2) receive the number of traveltime to be calculated for this source
+            // 1. receive the number of receivers for this source
+            int n_rec_this_src = 0;
+            broadcast_i_single(n_rec_this_src, 0);   // (level 2) receive the number of receivers for this source
 
-            // 2. loop all data, to calculate traveltime
-            for (int i_time = 0; i_time < n_time; i_time++){
+            for (int i_rec = 0; i_rec < n_rec_this_src; i_rec++){
                 // receive id_rec_att
                 int id_rec_att = 0;
-                broadcast_i_single(id_rec_att, 0);
-                // calculate travel time gradient
+                broadcast_i_single(id_rec_att, 0);   // (level 2) receive the receiver id for traveltime calculation
+
+                // calculate travel time
                 std::vector<CUSTOMREAL> DTijk = calculate_T_gradient_one_rec(grid, IP, id_rec_att);
                 (void) DTijk; // avoid compiler warning
             }
+            
         }
+
+
+        // if (proc_store_srcrec){     // main of level 2
+            
+        //     // 1. estimate the number of traveltime to be calculated for this source
+        //     int n_time = 0;
+        //     int data_begin = IP.src_map[id_src_att].data_begin;
+        //     int data_end   = IP.src_map[id_src_att].data_end;
+        //     for (int i_data = data_begin; i_data < data_end; i_data++){
+        //         auto& data = IP.data_vec[i_data];    
+        //         // case 1: absolute traveltime for reloc
+        //         if (data.data_type == DATA_TYPE_ABS && IP.get_use_abs_reloc()){   // abs data && we use it
+        //             n_time += 1;
+        //         // case 2: common receiver (swapped source) double difference (double source, or double swapped receiver) for reloc
+        //         // in reloc, must swapped. thus, use cr mean sc here
+        //         } else if (data.data_type == DATA_TYPE_CSDIF && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
+        //             n_time += 2;
+        //         } else if (data.data_type == DATA_TYPE_CRDIF && IP.get_use_cs_reloc()) {    // common source data (swapped common receiver) and we use it.
+        //             n_time += 1;
+        //         } else {
+        //             std::cout << "error type of data in reloc" << std::endl;
+        //             exit(1);
+        //         }
+        //     }
+        //     broadcast_i_single(n_time, 0);   // (level 2) broadcast the number of traveltime to be calculated for this source
+
+        //     // 2. loop all data, to calculate traveltime
+        //     for (int i_data = data_begin; i_data < data_end; i_data++){
+        //         auto& data = IP.data_vec[i_data];
+
+        //         // case 1: absolute traveltime for reloc
+        //         if (data.data_type == DATA_TYPE_ABS && IP.get_use_abs_reloc()){   // abs data && we use it
+        //             // send id_rec_att
+        //             int id_rec_att = data.id_rec_att;
+        //             broadcast_i_single(id_rec_att, 0);
+
+        //             // calculate travel time gradient
+        //             std::vector<CUSTOMREAL> DTijk = calculate_T_gradient_one_rec(grid, IP, id_rec_att);
+        //             data.DTi_pair[0] = DTijk[0];
+        //             data.DTj_pair[0] = DTijk[1];
+        //             data.DTk_pair[0] = DTijk[2];
+
+        //         } else if (data.data_type == DATA_TYPE_CSDIF && IP.get_use_cr_reloc()) {  // common receiver data (swapped common source) and we use it.
+        //             // send id_rec_att for the first receiver
+        //             int id_rec1_att = data.id_rec_att;
+        //             broadcast_i_single(id_rec1_att, 0);
+        //             // calculate travel time gradient for the first receiver
+        //             std::vector<CUSTOMREAL> DTijk = calculate_T_gradient_one_rec(grid, IP, id_rec1_att);
+        //             data.DTi_pair[0]  = DTijk[0];
+        //             data.DTj_pair[0]  = DTijk[1];
+        //             data.DTk_pair[0]  = DTijk[2];
+
+        //             // send id_rec_att for the second receiver
+        //             int id_rec2_att = data.id_pair_att;
+        //             broadcast_i_single(id_rec2_att, 0);
+        //             // calculate travel time gradient for the second receiver
+        //             std::vector<CUSTOMREAL> DTijk_2 = calculate_T_gradient_one_rec(grid, IP, id_rec2_att);
+        //             data.DTi_pair[1]  = DTijk_2[0];
+        //             data.DTj_pair[1]  = DTijk_2[1];
+        //             data.DTk_pair[1]  = DTijk_2[2];
+                    
+
+        //         } else if (data.data_type == DATA_TYPE_CRDIF && IP.get_use_cs_reloc()) {    // common source data (swapped common receiver) and we use it.
+        //             // send id_rec_att
+        //             int id_rec_att = data.id_rec_att;
+        //             broadcast_i_single(id_rec_att, 0);
+        //             // calculate travel time gradient
+        //             std::vector<CUSTOMREAL> DTijk = calculate_T_gradient_one_rec(grid, IP, id_rec_att);
+        //             data.DTi_pair[0]  = DTijk[0];
+        //             data.DTj_pair[0]  = DTijk[1];
+        //             data.DTk_pair[0]  = DTijk[2];
+
+        //         } else {
+        //             std::cout << "error type of data in reloc" << std::endl;
+        //             exit(1);
+        //         }
+        //     }
+
+        // } else {    // other ranks which do not have src_map, rec_map, data_vec
+
+        //     // 1. receive the number of traveltime to be calculated for this source
+        //     int n_time = 0;
+        //     broadcast_i_single(n_time, 0);   // (level 2) receive the number of traveltime to be calculated for this source
+
+        //     // 2. loop all data, to calculate traveltime
+        //     for (int i_time = 0; i_time < n_time; i_time++){
+        //         // receive id_rec_att
+        //         int id_rec_att = 0;
+        //         broadcast_i_single(id_rec_att, 0);
+        //         // calculate travel time gradient
+        //         std::vector<CUSTOMREAL> DTijk = calculate_T_gradient_one_rec(grid, IP, id_rec_att);
+        //         (void) DTijk; // avoid compiler warning
+        //     }
+        // }
     } // end subdom_main
 
 }
