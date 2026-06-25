@@ -1,4 +1,4 @@
-# Real case of regional tomography in central California near Parkfield
+# Real case of regional tomography around the Eastern Anatolian Fault in Turkey
 
 This is a real case to invert traveltimes for velocity heterogeneity and azimuthal anisotropy around the Eastern Anatolian Fault in Turkey.
 
