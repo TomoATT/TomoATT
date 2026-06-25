@@ -250,16 +250,13 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
 
     // iterate
     while (true) {
-        if(world_rank == 0) std::cout << "ckp1" << std::endl;
         v_obj      = 0.0;
 
         // calculate gradient of objective function at sources
         v_obj_misfit = calculate_gradient_objective_function(IP, grid, io, i_iter);
         v_obj = v_obj_misfit[0];
-        if(world_rank == 0) std::cout << "ckp2" << std::endl;
         // update source location
         recs.update_source_location(IP, grid);
-        if(world_rank == 0) std::cout << "ckp3" << std::endl;
         synchronize_all_world();
 
         // check convergence
@@ -285,15 +282,12 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
             // write objective function
             std::cout << "iteration: " << i_iter << ", objective function: "              << v_obj << std::endl;
         }
-        if(world_rank == 0) std::cout << "ckp4" << std::endl;
         // write objective functions
         write_objective_function(IP, i_iter, v_obj_misfit, out_main, "relocation");
-        if(world_rank == 0) std::cout << "ckp5" << std::endl;
         // write out new src_rec_file
         if (IP.get_if_output_in_process_data() || i_iter == N_ITER_MAX_SRC_RELOC-1 || i_iter==0){
             IP.write_src_rec_file(0,i_iter);
         }
-        if(world_rank == 0) std::cout << "ckp6" << std::endl;
         // modify the receiver's location for output  (seems no need. in write_src_rec_file, has been modified.)
         // IP.modify_swapped_source_location();
 
