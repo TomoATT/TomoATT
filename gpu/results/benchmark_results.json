@@ -1,0 +1,60 @@
+{
+  "device": "NVIDIA GB200",
+  "compute_capability": "10.0",
+  "device_memory_gib": 184.0,
+  "mode": "conv",
+  "conv_tol": 1.00e-06,
+  "max_iters": 500,
+  "warmup": 3,
+  "iters": 20,
+  "results": [
+    {
+      "grid_size": 32,
+      "total_nodes": 32768,
+      "cpu_time_ms": 19.640892,
+      "gpu_time_ms": 8.140197,
+      "speedup": 2.412827,
+      "l1_error": 7.781817e-09,
+      "linf_error": 2.325333e-06,
+      "cpu_rss_mb": 216.000000,
+      "gpu_mem_mb": 34790.750000,
+      "total_mem_mb": 35006.750000,
+      "cpu_iters_done": 7,
+      "gpu_iters_done": 7,
+      "cpu_l1_final": 5.463903e-07,
+      "gpu_l1_final": 3.300313e-08
+    },
+    {
+      "grid_size": 64,
+      "total_nodes": 262144,
+      "cpu_time_ms": 417.707005,
+      "gpu_time_ms": 14.319434,
+      "speedup": 29.170637,
+      "l1_error": 1.287033e-09,
+      "linf_error": 2.049488e-06,
+      "cpu_rss_mb": 270.000000,
+      "gpu_mem_mb": 34790.750000,
+      "total_mem_mb": 35060.750000,
+      "cpu_iters_done": 12,
+      "gpu_iters_done": 12,
+      "cpu_l1_final": 5.265271e-08,
+      "gpu_l1_final": 1.583261e-07
+    },
+    {
+      "grid_size": 128,
+      "total_nodes": 2097152,
+      "cpu_time_ms": 11108.313736,
+      "gpu_time_ms": 37.542694,
+      "speedup": 295.884829,
+      "l1_error": 1.055101e-09,
+      "linf_error": 1.225655e-05,
+      "cpu_rss_mb": 431.250000,
+      "gpu_mem_mb": 34950.625000,
+      "total_mem_mb": 35381.875000,
+      "cpu_iters_done": 21,
+      "gpu_iters_done": 22,
+      "cpu_l1_final": 3.904635e-08,
+      "gpu_l1_final": 4.117644e-08
+    }
+  ]
+}

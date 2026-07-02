@@ -103,6 +103,17 @@ add_definitions(-DUSE_HDF5_IO_COLLECTIVE)
 # precision setting (uncomment for single precision. default is double precision.)
 #add_definitions(-DSINGLE_PRECISION)
 
+# ---------------------------------------------------------------------------
+# Clean-slate GPU backend (gpu/) — targets NVIDIA Blackwell GB200
+# ---------------------------------------------------------------------------
+# Enable with -DUSE_CUDA_V2=ON (requires -DUSE_CUDA=ON as well).
+# This builds the new GPU backend as a separate static library (tomogpu)
+# and is independent of the legacy cuda/ code.
+option(USE_CUDA_V2 "Build the clean-slate GPU backend (gpu/)" OFF)
+if(USE_CUDA_V2 AND CUDA_FOUND)
+    add_subdirectory(gpu)
+endif()
+
 # use SIMD (SSE/AVX/AVX2/AVX512) for vectorization, which is faster than the default but use a little more memory.
 if (USE_SIMD)
   message(STATUS "TomoATT is compiled with SIMD.")
@@ -242,6 +253,11 @@ if(BUILD_TESTING)
   list(APPEND APP_SOURCES ${APP_TEST})
 endif()
 
+# link the clean-slate GPU backend (tomogpu) when enabled
+if(USE_CUDA_V2 AND CUDA_FOUND)
+    # tomogpu is linked into each executable that uses CUDA
+endif()
+
 foreach( execsourcefile ${APP_SOURCES} )
   # get app name from file name
   get_filename_component(EXEC_NAME ${execsourcefile} NAME_WE)
@@ -287,6 +303,11 @@ foreach( execsourcefile ${APP_SOURCES} )
     target_link_libraries(${CUDA_LIBRARY_NAME} PUBLIC MPI::MPI_CXX)
     target_link_libraries(${CUDA_LIBRARY_NAME} PUBLIC ${YAML_CPP_TARGET})
     target_link_libraries(${CUDA_LIBRARY_NAME} PUBLIC ${HDF5_LIBRARIES})
+
+    # also link the clean-slate GPU backend when enabled
+    if(USE_CUDA_V2)
+        target_link_libraries(${EXEC_NAME} PRIVATE tomogpu)
+    endif()
 
   endif()
 

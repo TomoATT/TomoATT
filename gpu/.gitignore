@@ -1,0 +1,24 @@
+# Build artifacts
+build/
+build_*/
+*.o
+*.a
+*.so
+
+# Generated benchmark data (large binary files)
+benchmark_results/grid_*/
+benchmark_results/*.npy
+benchmark_results/*.raw
+benchmark_results/*.json
+benchmark_results/*/OUTPUT_FILES/*.h5
+
+# Keep benchmark scripts and reports
+!benchmark_results/*.png
+!benchmark_results/*.md
+
+# Raw T-field data (downloaded from AI4S)
+results/*.raw
+results_t/*.raw
+
+# Test output directories
+*-output/
