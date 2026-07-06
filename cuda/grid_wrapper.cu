@@ -665,6 +665,11 @@ void cuda_finalize_grid(Grid_on_device* grid_dv){
 
     print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->tau), 10087);
 
+    if (grid_dv->T0v_glob != nullptr) {
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->T0v_glob), 10089);
+        grid_dv->T0v_glob = nullptr;
+    }
+
 }
 
 
@@ -677,5 +682,15 @@ void cuda_copy_tau_to_device(Grid_on_device* grid_dv, CUSTOMREAL* tau_h){
 // copy tau from device to host
 void cuda_copy_tau_to_host(Grid_on_device* grid_dv, CUSTOMREAL* tau_h){
     print_CUDA_error_if_any(copy_device_to_host_cv(tau_h, grid_dv->tau, grid_dv->loc_I_host*grid_dv->loc_J_host*grid_dv->loc_K_host), 10088);
+}
+
+
+// copy full-grid (global) T0v to device (allocate on first call).
+void cuda_copy_T0v_glob_to_device(Grid_on_device* grid_dv, CUSTOMREAL* T0v_h){
+    int n = grid_dv->loc_I_host*grid_dv->loc_J_host*grid_dv->loc_K_host;
+    if (grid_dv->T0v_glob == nullptr) {
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->T0v_glob), n), 10090);
+    }
+    print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->T0v_glob, T0v_h, n), 10091);
 }
 

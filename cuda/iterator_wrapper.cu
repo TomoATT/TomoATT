@@ -242,6 +242,551 @@ __global__ void cuda_do_sweep_level_kernel_3rd(\
 }
 
 
+// ============================================================================
+// UPWIND solver GPU kernel
+// Ports calculate_stencil_1st_order_upwind to GPU.
+// 26 cases: 8 tetrahedron (3D) + 12 triangle (2D: r-t, r-p, t-p planes) + 6 line (1D, 2 per axis)
+// Each case solves a quadratic for tau and checks causality.
+// Final: take minimum valid candidate.
+// ============================================================================
+
+__device__ inline CUSTOMREAL cuda_calc_upwind_Hamiltonian(
+    CUSTOMREAL const& fac_a, CUSTOMREAL const& fac_b, CUSTOMREAL const& fac_c,
+    CUSTOMREAL const& T0r, CUSTOMREAL const& T0t, CUSTOMREAL const& T0p,
+    CUSTOMREAL const& T0v,
+    CUSTOMREAL const& pp1, CUSTOMREAL const& pp2,
+    CUSTOMREAL const& pt1, CUSTOMREAL const& pt2,
+    CUSTOMREAL const& pr1, CUSTOMREAL const& pr2)
+{
+    // LF Hamiltonian for T = T0 * tau (same as LF solver)
+    return sqrt(
+        fac_a * my_square_cu(T0r * T0v + T0v * (pr1+pr2)/_2_CR)  // Note: this is the LF Hamiltonian, used as fallback
+      + fac_b * my_square_cu(T0t * T0v + T0v * (pt1+pt2)/_2_CR)
+      + fac_c * my_square_cu(T0p * T0v + T0v * (pp1+pp2)/_2_CR)
+      - _2_CR * fac_c * (T0t * T0v + T0v * (pt1+pt2)/_2_CR)
+                     * (T0p * T0v + T0v * (pp1+pp2)/_2_CR)
+    );
+}
+
+// UPWIND 1st order kernel - implements the full upwind solver on GPU
+__global__ void cuda_do_sweep_level_kernel_upwind(
+    const int i__j__k__[],    // current node index
+    const int ip1j__k__[],    // i+1 neighbor
+    const int im1j__k__[],    // i-1 neighbor
+    const int i__jp1k__[],    // j+1 neighbor
+    const int i__jm1k__[],    // j-1 neighbor
+    const int i__j__kp1[],    // k+1 neighbor
+    const int i__j__km1[],    // k-1 neighbor
+    const CUSTOMREAL fac_a[],
+    const CUSTOMREAL fac_b[],
+    const CUSTOMREAL fac_c[],
+    const CUSTOMREAL fac_f[],
+    const CUSTOMREAL T0v[],
+    const CUSTOMREAL T0r[],
+    const CUSTOMREAL T0t[],
+    const CUSTOMREAL T0p[],
+    const CUSTOMREAL fun[],
+    const bool changed[],
+    CUSTOMREAL tau[],
+    const CUSTOMREAL T0v_glob[],   // global (full-grid) T0v indexed by flattened global index, for neighbor causality
+    const int loc_I,
+    const int loc_J,
+    const int loc_K,
+    const CUSTOMREAL dr,
+    const CUSTOMREAL dt,
+    const CUSTOMREAL dp,
+    const int n_nodes_this_level,
+    const int i_start)
+{
+    unsigned int i_node = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x + threadIdx.x;
+    if (i_node >= n_nodes_this_level) return;
+    i_node += i_start;
+    if (!changed[i_node]) return;
+
+    // Get 3D indices from the current node
+    int ii = i__j__k__[i_node];
+    int k = ii / (loc_I * loc_J);
+    int j = (ii - k * loc_I * loc_J) / loc_I;
+    int i = ii - k * loc_I * loc_J - j * loc_I;
+
+    // Boundary checks
+    int np = loc_I, nt = loc_J, nr = loc_K;
+
+    // Prepare forward/backward partial derivative coefficients
+    // T_p = (T0*tau)_p = T0p*tau + T0v*tau_p = ap*tau + bp
+    CUSTOMREAL ap1 = 0, bp1 = 0, ap2 = 0, bp2 = 0;
+    CUSTOMREAL at1 = 0, bt1 = 0, at2 = 0, bt2 = 0;
+    CUSTOMREAL ar1 = 0, br1 = 0, ar2 = 0, br2 = 0;
+
+    if (i > 0) {
+        ap1 = T0p[i_node] + T0v[i_node] / dp;
+        bp1 = -T0v[i_node] / dp * tau[im1j__k__[i_node]];
+    }
+    if (i < np - 1) {
+        ap2 = T0p[i_node] - T0v[i_node] / dp;
+        bp2 = T0v[i_node] / dp * tau[ip1j__k__[i_node]];
+    }
+    if (j > 0) {
+        at1 = T0t[i_node] + T0v[i_node] / dt;
+        bt1 = -T0v[i_node] / dt * tau[i__jm1k__[i_node]];
+    }
+    if (j < nt - 1) {
+        at2 = T0t[i_node] - T0v[i_node] / dt;
+        bt2 = T0v[i_node] / dt * tau[i__jp1k__[i_node]];
+    }
+    if (k > 0) {
+        ar1 = T0r[i_node] + T0v[i_node] / dr;
+        br1 = -T0v[i_node] / dr * tau[i__j__km1[i_node]];
+    }
+    if (k < nr - 1) {
+        ar2 = T0r[i_node] - T0v[i_node] / dr;
+        br2 = T0v[i_node] / dr * tau[i__j__kp1[i_node]];
+    }
+
+    CUSTOMREAL fun_loc_sq = fun[i_node] * fun[i_node];
+    CUSTOMREAL bc_f2 = fac_b[i_node] * fac_c[i_node] - fac_f[i_node] * fac_f[i_node];
+    CUSTOMREAL bc_over_b = bc_f2 / fac_b[i_node];
+    CUSTOMREAL bc_over_c = bc_f2 / fac_c[i_node];
+
+    // Candidate solutions (max 52 candidates from 26 cases × 2 solutions)
+    CUSTOMREAL cand[52];
+    int count_cand = 0;
+
+    // First catalog: 8 tetrahedron cases (3D volume)
+    for (int i_case = 0; i_case < 8; i_case++) {
+        CUSTOMREAL ap = 0, bp = 0, at = 0, bt = 0, ar = 0, br = 0;
+
+        switch (i_case) {
+            case 0: if (i == 0 || j == 0 || k == 0) continue; ap = ap1; bp = bp1; at = at1; bt = bt1; ar = ar1; br = br1; break;
+            case 1: if (i == 0 || j == 0 || k == nr-1) continue; ap = ap1; bp = bp1; at = at1; bt = bt1; ar = ar2; br = br2; break;
+            case 2: if (i == 0 || j == nt-1 || k == 0) continue; ap = ap1; bp = bp1; at = at2; bt = bt2; ar = ar1; br = br1; break;
+            case 3: if (i == 0 || j == nt-1 || k == nr-1) continue; ap = ap1; bp = bp1; at = at2; bt = bt2; ar = ar2; br = br2; break;
+            case 4: if (i == np-1 || j == 0 || k == 0) continue; ap = ap2; bp = bp2; at = at1; bt = bt1; ar = ar1; br = br1; break;
+            case 5: if (i == np-1 || j == 0 || k == nr-1) continue; ap = ap2; bp = bp2; at = at1; bt = bt1; ar = ar2; br = br2; break;
+            case 6: if (i == np-1 || j == nt-1 || k == 0) continue; ap = ap2; bp = bp2; at = at2; bt = bt2; ar = ar1; br = br1; break;
+            case 7: if (i == np-1 || j == nt-1 || k == nr-1) continue; ap = ap2; bp = bp2; at = at2; bt = bt2; ar = ar2; br = br2; break;
+        }
+
+        // Solve quadratic: a*(ar*tau+br)^2 + b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2*f*(at*tau+bt)*(ap*tau+bp) = s^2
+        CUSTOMREAL eqn_a = fac_a[i_node] * ar*ar + fac_b[i_node] * at*at
+                         + fac_c[i_node] * ap*ap - _2_CR * fac_f[i_node] * at * ap;
+        CUSTOMREAL eqn_b = _2_CR * fac_a[i_node] * ar * br + _2_CR * fac_b[i_node] * at * bt
+                         + _2_CR * fac_c[i_node] * ap * bp - _2_CR * fac_f[i_node] * (at*bp + bt*ap);
+        CUSTOMREAL eqn_c = fac_a[i_node] * br*br + fac_b[i_node] * bt*bt
+                         + fac_c[i_node] * bp*bp - _2_CR * fac_f[i_node] * bt * bp
+                         - fun_loc_sq;
+        CUSTOMREAL eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
+
+        if (eqn_Delta >= 0) {
+            CUSTOMREAL eqn_Delta_sqrt = sqrt(eqn_Delta);
+            CUSTOMREAL one_over_a = _1_CR / (_2_CR * eqn_a);
+            for (int i_solution = 0; i_solution < 2; i_solution++) {
+                CUSTOMREAL tmp_tau;
+                if (i_solution == 0) tmp_tau = (-eqn_b + eqn_Delta_sqrt) * one_over_a;
+                else                 tmp_tau = (-eqn_b - eqn_Delta_sqrt) * one_over_a;
+
+                // Check causality
+                CUSTOMREAL T_r = ar * tmp_tau + br;
+                CUSTOMREAL T_t = at * tmp_tau + bt;
+                CUSTOMREAL T_p = ap * tmp_tau + bp;
+                CUSTOMREAL charact_r = fac_a[i_node] * T_r;
+                CUSTOMREAL charact_t = fac_b[i_node] * T_t - fac_f[i_node] * T_p;
+                CUSTOMREAL charact_p = fac_c[i_node] * T_p - fac_f[i_node] * T_t;
+
+                bool is_causality = false;
+                switch (i_case) {
+                    case 0: if (charact_p >= 0 && charact_t >= 0 && charact_r >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 1: if (charact_p >= 0 && charact_t >= 0 && charact_r <= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 2: if (charact_p >= 0 && charact_t <= 0 && charact_r >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 3: if (charact_p >= 0 && charact_t <= 0 && charact_r <= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 4: if (charact_p <= 0 && charact_t >= 0 && charact_r >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 5: if (charact_p <= 0 && charact_t >= 0 && charact_r <= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 6: if (charact_p <= 0 && charact_t <= 0 && charact_r >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 7: if (charact_p <= 0 && charact_t <= 0 && charact_r <= 0 && tmp_tau > 0) is_causality = true; break;
+                }
+
+                if (is_causality && count_cand < 52) {
+                    cand[count_cand++] = tmp_tau;
+                }
+            }
+        }
+    }
+
+    // Second catalog: 12 triangle cases (2D surfaces)
+    // r-t plane (cases 0-3): force H_p3 = c*T_p - f*T_t = 0 -> a*T_r^2 + (bc-f^2)/c*T_t^2 = s^2
+    for (int i_case = 0; i_case < 4; i_case++) {
+        CUSTOMREAL at = 0, bt = 0, ar = 0, br = 0;
+        switch (i_case) {
+            case 0: if (j == 0 || k == 0) continue; at = at1; bt = bt1; ar = ar1; br = br1; break;
+            case 1: if (j == 0 || k == nr-1) continue; at = at1; bt = bt1; ar = ar2; br = br2; break;
+            case 2: if (j == nt-1 || k == 0) continue; at = at2; bt = bt2; ar = ar1; br = br1; break;
+            case 3: if (j == nt-1 || k == nr-1) continue; at = at2; bt = bt2; ar = ar2; br = br2; break;
+        }
+
+        // Solve: a*(ar*tau+br)^2 + (bc-f^2)/c*(at*tau+bt)^2 = s^2
+        CUSTOMREAL eqn_a = fac_a[i_node] * ar*ar + bc_over_c * at*at;
+        CUSTOMREAL eqn_b = _2_CR * fac_a[i_node] * ar * br + _2_CR * bc_over_c * at * bt;
+        CUSTOMREAL eqn_c = fac_a[i_node] * br*br + bc_over_c * bt*bt - fun_loc_sq;
+        CUSTOMREAL eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
+
+        if (eqn_Delta >= 0) {
+            CUSTOMREAL eqn_Delta_sqrt = sqrt(eqn_Delta);
+            CUSTOMREAL one_over_a = _1_CR / (_2_CR * eqn_a);
+            for (int i_solution = 0; i_solution < 2; i_solution++) {
+                CUSTOMREAL tmp_tau;
+                if (i_solution == 0) tmp_tau = (-eqn_b + eqn_Delta_sqrt) * one_over_a;
+                else                 tmp_tau = (-eqn_b - eqn_Delta_sqrt) * one_over_a;
+
+                CUSTOMREAL T_r = ar * tmp_tau + br;
+                CUSTOMREAL T_t = at * tmp_tau + bt;
+                CUSTOMREAL charact_r = fac_a[i_node] * T_r;
+                CUSTOMREAL charact_t = bc_over_c * T_t;
+
+                bool is_causality = false;
+                switch (i_case) {
+                    case 0: if (charact_t >= 0 && charact_r >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 1: if (charact_t >= 0 && charact_r <= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 2: if (charact_t <= 0 && charact_r >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 3: if (charact_t <= 0 && charact_r <= 0 && tmp_tau > 0) is_causality = true; break;
+                }
+
+                if (is_causality && count_cand < 52) {
+                    cand[count_cand++] = tmp_tau;
+                }
+            }
+        }
+    }
+
+    // r-p plane (cases 4-7): force H_p2 = b*T_t - f*T_p = 0 -> a*T_r^2 + (bc-f^2)/b*T_p^2 = s^2
+    for (int i_case = 4; i_case < 8; i_case++) {
+        CUSTOMREAL ap = 0, bp = 0, ar = 0, br = 0;
+        switch (i_case) {
+            case 4: if (i == 0 || k == 0) continue; ap = ap1; bp = bp1; ar = ar1; br = br1; break;
+            case 5: if (i == 0 || k == nr-1) continue; ap = ap1; bp = bp1; ar = ar2; br = br2; break;
+            case 6: if (i == np-1 || k == 0) continue; ap = ap2; bp = bp2; ar = ar1; br = br1; break;
+            case 7: if (i == np-1 || k == nr-1) continue; ap = ap2; bp = bp2; ar = ar2; br = br2; break;
+        }
+
+        // Solve: a*(ar*tau+br)^2 + (bc-f^2)/b*(ap*tau+bp)^2 = s^2
+        CUSTOMREAL eqn_a = fac_a[i_node] * ar*ar + bc_over_b * ap*ap;
+        CUSTOMREAL eqn_b = _2_CR * fac_a[i_node] * ar * br + _2_CR * bc_over_b * ap * bp;
+        CUSTOMREAL eqn_c = fac_a[i_node] * br*br + bc_over_b * bp*bp - fun_loc_sq;
+        CUSTOMREAL eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
+
+        if (eqn_Delta >= 0) {
+            CUSTOMREAL eqn_Delta_sqrt = sqrt(eqn_Delta);
+            CUSTOMREAL one_over_a = _1_CR / (_2_CR * eqn_a);
+            for (int i_solution = 0; i_solution < 2; i_solution++) {
+                CUSTOMREAL tmp_tau;
+                if (i_solution == 0) tmp_tau = (-eqn_b + eqn_Delta_sqrt) * one_over_a;
+                else                 tmp_tau = (-eqn_b - eqn_Delta_sqrt) * one_over_a;
+
+                CUSTOMREAL T_r = ar * tmp_tau + br;
+                CUSTOMREAL T_p = ap * tmp_tau + bp;
+                CUSTOMREAL charact_r = fac_a[i_node] * T_r;
+                CUSTOMREAL charact_p = bc_over_b * T_p;
+
+                bool is_causality = false;
+                switch (i_case) {
+                    case 4: if (charact_p >= 0 && charact_r >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 5: if (charact_p >= 0 && charact_r <= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 6: if (charact_p <= 0 && charact_r >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 7: if (charact_p <= 0 && charact_r <= 0 && tmp_tau > 0) is_causality = true; break;
+                }
+
+                if (is_causality && count_cand < 52) {
+                    cand[count_cand++] = tmp_tau;
+                }
+            }
+        }
+    }
+
+    // t-p plane (cases 8-11): force H_p1 = T_r = 0 -> b*T_t^2 + c*T_p^2 - 2f*T_t*T_p = s^2
+    for (int i_case = 8; i_case < 12; i_case++) {
+        CUSTOMREAL ap = 0, bp = 0, at = 0, bt = 0;
+        switch (i_case) {
+            case 8:  if (i == 0 || j == 0) continue; ap = ap1; bp = bp1; at = at1; bt = bt1; break;
+            case 9:  if (i == 0 || j == nt-1) continue; ap = ap1; bp = bp1; at = at2; bt = bt2; break;
+            case 10: if (i == np-1 || j == 0) continue; ap = ap2; bp = bp2; at = at1; bt = bt1; break;
+            case 11: if (i == np-1 || j == nt-1) continue; ap = ap2; bp = bp2; at = at2; bt = bt2; break;
+        }
+
+        // Solve: b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2f*(at*tau+bt)*(ap*tau+bp) = s^2
+        CUSTOMREAL eqn_a = fac_b[i_node] * at*at
+                         + fac_c[i_node] * ap*ap - _2_CR * fac_f[i_node] * at * ap;
+        CUSTOMREAL eqn_b = _2_CR * fac_b[i_node] * at * bt
+                         + _2_CR * fac_c[i_node] * ap * bp - _2_CR * fac_f[i_node] * (at*bp + bt*ap);
+        CUSTOMREAL eqn_c = fac_b[i_node] * bt*bt
+                         + fac_c[i_node] * bp*bp - _2_CR * fac_f[i_node] * bt * bp - fun_loc_sq;
+        CUSTOMREAL eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
+
+        if (eqn_Delta >= 0) {
+            CUSTOMREAL eqn_Delta_sqrt = sqrt(eqn_Delta);
+            CUSTOMREAL one_over_a = _1_CR / (_2_CR * eqn_a);
+            for (int i_solution = 0; i_solution < 2; i_solution++) {
+                CUSTOMREAL tmp_tau;
+                if (i_solution == 0) tmp_tau = (-eqn_b + eqn_Delta_sqrt) * one_over_a;
+                else                 tmp_tau = (-eqn_b - eqn_Delta_sqrt) * one_over_a;
+
+                CUSTOMREAL T_t = at * tmp_tau + bt;
+                CUSTOMREAL T_p = ap * tmp_tau + bp;
+                CUSTOMREAL charact_t = fac_b[i_node] * T_t - fac_f[i_node] * T_p;
+                CUSTOMREAL charact_p = fac_c[i_node] * T_p - fac_f[i_node] * T_t;
+
+                bool is_causality = false;
+                switch (i_case) {
+                    case 8:  if (charact_p >= 0 && charact_t >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 9:  if (charact_p >= 0 && charact_t <= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 10: if (charact_p <= 0 && charact_t >= 0 && tmp_tau > 0) is_causality = true; break;
+                    case 11: if (charact_p <= 0 && charact_t <= 0 && tmp_tau > 0) is_causality = true; break;
+                }
+
+                if (is_causality && count_cand < 52) {
+                    cand[count_cand++] = tmp_tau;
+                }
+            }
+        }
+    }
+
+    // Third catalog: 6 line cases (1D, 2 per axis)
+    // r-axis (cases 0-1)
+    for (int i_case = 0; i_case < 2; i_case++) {
+        CUSTOMREAL ar = 0, br = 0;
+        switch (i_case) {
+            case 0: if (k == 0) continue; ar = ar1; br = br1; break;
+            case 1: if (k == nr-1) continue; ar = ar2; br = br2; break;
+        }
+
+        CUSTOMREAL fun_loc_sqrt = sqrt(fun_loc_sq / fac_a[i_node]);
+        CUSTOMREAL one_over_a = _1_CR / ar;
+        for (int i_solution = 0; i_solution < 2; i_solution++) {
+            CUSTOMREAL tmp_tau;
+            if (i_solution == 0) tmp_tau = (fun_loc_sqrt - br) * one_over_a;
+            else                 tmp_tau = (-fun_loc_sqrt - br) * one_over_a;
+
+            // Check causality: compare traveltime with neighbor (global-indexed T0v)
+            int ii_mr = i__j__km1[i_node]; // k-1 neighbor
+            int ii_pr = i__j__kp1[i_node]; // k+1 neighbor
+            bool is_causality = false;
+            if (i_case == 0) {
+                if (tmp_tau * T0v[i_node] > tau[ii_mr] * T0v_glob[ii_mr]
+                    && _2_CR * tmp_tau > tau[ii_mr] && tmp_tau > 0)
+                    is_causality = true;
+            } else {
+                if (tmp_tau * T0v[i_node] > tau[ii_pr] * T0v_glob[ii_pr]
+                    && _2_CR * tmp_tau > tau[ii_pr] && tmp_tau > 0)
+                    is_causality = true;
+            }
+
+            if (is_causality && count_cand < 52) {
+                cand[count_cand++] = tmp_tau;
+            }
+        }
+    }
+
+    // t-axis (cases 2-3)
+    for (int i_case = 2; i_case < 4; i_case++) {
+        CUSTOMREAL at = 0, bt = 0;
+        switch (i_case) {
+            case 2: if (j == 0) continue; at = at1; bt = bt1; break;
+            case 3: if (j == nt-1) continue; at = at2; bt = bt2; break;
+        }
+
+        CUSTOMREAL fun_loc_sqrt = sqrt(fun_loc_sq * fac_c[i_node] / bc_f2);
+        CUSTOMREAL one_over_a = _1_CR / at;
+        for (int i_solution = 0; i_solution < 2; i_solution++) {
+            CUSTOMREAL tmp_tau;
+            if (i_solution == 0) tmp_tau = (fun_loc_sqrt - bt) * one_over_a;
+            else                 tmp_tau = (-fun_loc_sqrt - bt) * one_over_a;
+
+            bool is_causality = false;
+            if (i_case == 2) {
+                int ii_mt = i__jm1k__[i_node];
+                if (tmp_tau * T0v[i_node] > tau[ii_mt] * T0v_glob[ii_mt]
+                    && _2_CR * tmp_tau > tau[ii_mt] && tmp_tau > 0)
+                    is_causality = true;
+            } else {
+                int ii_pt = i__jp1k__[i_node];
+                if (tmp_tau * T0v[i_node] > tau[ii_pt] * T0v_glob[ii_pt]
+                    && _2_CR * tmp_tau > tau[ii_pt] && tmp_tau > 0)
+                    is_causality = true;
+            }
+
+            if (is_causality && count_cand < 52) {
+                cand[count_cand++] = tmp_tau;
+            }
+        }
+    }
+
+    // p-axis (cases 4-5)
+    for (int i_case = 4; i_case < 6; i_case++) {
+        CUSTOMREAL ap = 0, bp = 0;
+        switch (i_case) {
+            case 4: if (i == 0) continue; ap = ap1; bp = bp1; break;
+            case 5: if (i == np-1) continue; ap = ap2; bp = bp2; break;
+        }
+
+        CUSTOMREAL fun_loc_sqrt = sqrt(fun_loc_sq * fac_b[i_node] / bc_f2);
+        CUSTOMREAL one_over_a = _1_CR / ap;
+        for (int i_solution = 0; i_solution < 2; i_solution++) {
+            CUSTOMREAL tmp_tau;
+            if (i_solution == 0) tmp_tau = (fun_loc_sqrt - bp) * one_over_a;
+            else                 tmp_tau = (-fun_loc_sqrt - bp) * one_over_a;
+
+            bool is_causality = false;
+            if (i_case == 4) {
+                int ii_mp = im1j__k__[i_node];
+                if (tmp_tau * T0v[i_node] > tau[ii_mp] * T0v_glob[ii_mp]
+                    && _2_CR * tmp_tau > tau[ii_mp] && tmp_tau > 0)
+                    is_causality = true;
+            } else {
+                int ii_pp = ip1j__k__[i_node];
+                if (tmp_tau * T0v[i_node] > tau[ii_pp] * T0v_glob[ii_pp]
+                    && _2_CR * tmp_tau > tau[ii_pp] && tmp_tau > 0)
+                    is_causality = true;
+            }
+
+            if (is_causality && count_cand < 52) {
+                cand[count_cand++] = tmp_tau;
+            }
+        }
+    }
+
+    // Final: take minimum candidate as updated value
+    for (int i_cand = 0; i_cand < count_cand; i_cand++) {
+        tau[ii] = min(tau[ii], cand[i_cand]);
+    }
+}
+
+// Run UPWIND iteration on GPU (same orchestration as cuda_run_iteration_forward)
+void cuda_run_iteration_upwind(Grid_on_device* grid_dv, int const& iswp) {
+
+    initialize_sweep_params(grid_dv);
+
+    int block_size = CUDA_SWEEPING_BLOCK_SIZE;
+    int num_blocks_x, num_blocks_y;
+    int i_node_offset = 0;
+
+    for (size_t i_level = 0; i_level < grid_dv->n_levels_host; i_level++) {
+        get_block_xy(ceil(grid_dv->n_nodes_on_levels_host[i_level] / block_size + 0.5), &num_blocks_x, &num_blocks_y);
+        dim3 grid_each(num_blocks_x, num_blocks_y);
+        dim3 threads_each(block_size, 1, 1);
+
+        // Launch UPWIND kernel for this level
+        int id_stream = i_level;
+
+        if (iswp == 0) {
+            void* kernelArgs[] = {
+                &(grid_dv->vv_i__j__k___0), &(grid_dv->vv_ip1j__k___0), &(grid_dv->vv_im1j__k___0),
+                &(grid_dv->vv_i__jp1k___0), &(grid_dv->vv_i__jm1k___0), &(grid_dv->vv_i__j__kp1_0), &(grid_dv->vv_i__j__km1_0),
+                &(grid_dv->vv_fac_a_0), &(grid_dv->vv_fac_b_0), &(grid_dv->vv_fac_c_0), &(grid_dv->vv_fac_f_0),
+                &(grid_dv->vv_T0v_0), &(grid_dv->vv_T0r_0), &(grid_dv->vv_T0t_0), &(grid_dv->vv_T0p_0),
+                &(grid_dv->vv_fun_0), &(grid_dv->vv_change_0), &(grid_dv->tau),
+                &(grid_dv->T0v_glob),
+                &(grid_dv->loc_I_host), &(grid_dv->loc_J_host), &(grid_dv->loc_K_host),
+                &(grid_dv->dr_host), &(grid_dv->dt_host), &(grid_dv->dp_host),
+                &(grid_dv->n_nodes_on_levels_host[i_level]), &i_node_offset
+            };
+            print_CUDA_error_if_any(cudaLaunchKernel((void*)cuda_do_sweep_level_kernel_upwind, grid_each, threads_each, kernelArgs, 0, grid_dv->level_streams[id_stream]), 40001);
+        } else if (iswp == 1) {
+            void* kernelArgs[] = {
+                &(grid_dv->vv_i__j__k___1), &(grid_dv->vv_ip1j__k___1), &(grid_dv->vv_im1j__k___1),
+                &(grid_dv->vv_i__jp1k___1), &(grid_dv->vv_i__jm1k___1), &(grid_dv->vv_i__j__kp1_1), &(grid_dv->vv_i__j__km1_1),
+                &(grid_dv->vv_fac_a_1), &(grid_dv->vv_fac_b_1), &(grid_dv->vv_fac_c_1), &(grid_dv->vv_fac_f_1),
+                &(grid_dv->vv_T0v_1), &(grid_dv->vv_T0r_1), &(grid_dv->vv_T0t_1), &(grid_dv->vv_T0p_1),
+                &(grid_dv->vv_fun_1), &(grid_dv->vv_change_1), &(grid_dv->tau),
+                &(grid_dv->T0v_glob),
+                &(grid_dv->loc_I_host), &(grid_dv->loc_J_host), &(grid_dv->loc_K_host),
+                &(grid_dv->dr_host), &(grid_dv->dt_host), &(grid_dv->dp_host),
+                &(grid_dv->n_nodes_on_levels_host[i_level]), &i_node_offset
+            };
+            print_CUDA_error_if_any(cudaLaunchKernel((void*)cuda_do_sweep_level_kernel_upwind, grid_each, threads_each, kernelArgs, 0, grid_dv->level_streams[id_stream]), 40002);
+        } else if (iswp == 2) {
+            void* kernelArgs[] = {
+                &(grid_dv->vv_i__j__k___2), &(grid_dv->vv_ip1j__k___2), &(grid_dv->vv_im1j__k___2),
+                &(grid_dv->vv_i__jp1k___2), &(grid_dv->vv_i__jm1k___2), &(grid_dv->vv_i__j__kp1_2), &(grid_dv->vv_i__j__km1_2),
+                &(grid_dv->vv_fac_a_2), &(grid_dv->vv_fac_b_2), &(grid_dv->vv_fac_c_2), &(grid_dv->vv_fac_f_2),
+                &(grid_dv->vv_T0v_2), &(grid_dv->vv_T0r_2), &(grid_dv->vv_T0t_2), &(grid_dv->vv_T0p_2),
+                &(grid_dv->vv_fun_2), &(grid_dv->vv_change_2), &(grid_dv->tau),
+                &(grid_dv->T0v_glob),
+                &(grid_dv->loc_I_host), &(grid_dv->loc_J_host), &(grid_dv->loc_K_host),
+                &(grid_dv->dr_host), &(grid_dv->dt_host), &(grid_dv->dp_host),
+                &(grid_dv->n_nodes_on_levels_host[i_level]), &i_node_offset
+            };
+            print_CUDA_error_if_any(cudaLaunchKernel((void*)cuda_do_sweep_level_kernel_upwind, grid_each, threads_each, kernelArgs, 0, grid_dv->level_streams[id_stream]), 40003);
+        } else if (iswp == 3) {
+            void* kernelArgs[] = {
+                &(grid_dv->vv_i__j__k___3), &(grid_dv->vv_ip1j__k___3), &(grid_dv->vv_im1j__k___3),
+                &(grid_dv->vv_i__jp1k___3), &(grid_dv->vv_i__jm1k___3), &(grid_dv->vv_i__j__kp1_3), &(grid_dv->vv_i__j__km1_3),
+                &(grid_dv->vv_fac_a_3), &(grid_dv->vv_fac_b_3), &(grid_dv->vv_fac_c_3), &(grid_dv->vv_fac_f_3),
+                &(grid_dv->vv_T0v_3), &(grid_dv->vv_T0r_3), &(grid_dv->vv_T0t_3), &(grid_dv->vv_T0p_3),
+                &(grid_dv->vv_fun_3), &(grid_dv->vv_change_3), &(grid_dv->tau),
+                &(grid_dv->T0v_glob),
+                &(grid_dv->loc_I_host), &(grid_dv->loc_J_host), &(grid_dv->loc_K_host),
+                &(grid_dv->dr_host), &(grid_dv->dt_host), &(grid_dv->dp_host),
+                &(grid_dv->n_nodes_on_levels_host[i_level]), &i_node_offset
+            };
+            print_CUDA_error_if_any(cudaLaunchKernel((void*)cuda_do_sweep_level_kernel_upwind, grid_each, threads_each, kernelArgs, 0, grid_dv->level_streams[id_stream]), 40004);
+        } else if (iswp == 4) {
+            void* kernelArgs[] = {
+                &(grid_dv->vv_i__j__k___4), &(grid_dv->vv_ip1j__k___4), &(grid_dv->vv_im1j__k___4),
+                &(grid_dv->vv_i__jp1k___4), &(grid_dv->vv_i__jm1k___4), &(grid_dv->vv_i__j__kp1_4), &(grid_dv->vv_i__j__km1_4),
+                &(grid_dv->vv_fac_a_4), &(grid_dv->vv_fac_b_4), &(grid_dv->vv_fac_c_4), &(grid_dv->vv_fac_f_4),
+                &(grid_dv->vv_T0v_4), &(grid_dv->vv_T0r_4), &(grid_dv->vv_T0t_4), &(grid_dv->vv_T0p_4),
+                &(grid_dv->vv_fun_4), &(grid_dv->vv_change_4), &(grid_dv->tau),
+                &(grid_dv->T0v_glob),
+                &(grid_dv->loc_I_host), &(grid_dv->loc_J_host), &(grid_dv->loc_K_host),
+                &(grid_dv->dr_host), &(grid_dv->dt_host), &(grid_dv->dp_host),
+                &(grid_dv->n_nodes_on_levels_host[i_level]), &i_node_offset
+            };
+            print_CUDA_error_if_any(cudaLaunchKernel((void*)cuda_do_sweep_level_kernel_upwind, grid_each, threads_each, kernelArgs, 0, grid_dv->level_streams[id_stream]), 40005);
+        } else if (iswp == 5) {
+            void* kernelArgs[] = {
+                &(grid_dv->vv_i__j__k___5), &(grid_dv->vv_ip1j__k___5), &(grid_dv->vv_im1j__k___5),
+                &(grid_dv->vv_i__jp1k___5), &(grid_dv->vv_i__jm1k___5), &(grid_dv->vv_i__j__kp1_5), &(grid_dv->vv_i__j__km1_5),
+                &(grid_dv->vv_fac_a_5), &(grid_dv->vv_fac_b_5), &(grid_dv->vv_fac_c_5), &(grid_dv->vv_fac_f_5),
+                &(grid_dv->vv_T0v_5), &(grid_dv->vv_T0r_5), &(grid_dv->vv_T0t_5), &(grid_dv->vv_T0p_5),
+                &(grid_dv->vv_fun_5), &(grid_dv->vv_change_5), &(grid_dv->tau),
+                &(grid_dv->T0v_glob),
+                &(grid_dv->loc_I_host), &(grid_dv->loc_J_host), &(grid_dv->loc_K_host),
+                &(grid_dv->dr_host), &(grid_dv->dt_host), &(grid_dv->dp_host),
+                &(grid_dv->n_nodes_on_levels_host[i_level]), &i_node_offset
+            };
+            print_CUDA_error_if_any(cudaLaunchKernel((void*)cuda_do_sweep_level_kernel_upwind, grid_each, threads_each, kernelArgs, 0, grid_dv->level_streams[id_stream]), 40006);
+        } else if (iswp == 6) {
+            void* kernelArgs[] = {
+                &(grid_dv->vv_i__j__k___6), &(grid_dv->vv_ip1j__k___6), &(grid_dv->vv_im1j__k___6),
+                &(grid_dv->vv_i__jp1k___6), &(grid_dv->vv_i__jm1k___6), &(grid_dv->vv_i__j__kp1_6), &(grid_dv->vv_i__j__km1_6),
+                &(grid_dv->vv_fac_a_6), &(grid_dv->vv_fac_b_6), &(grid_dv->vv_fac_c_6), &(grid_dv->vv_fac_f_6),
+                &(grid_dv->vv_T0v_6), &(grid_dv->vv_T0r_6), &(grid_dv->vv_T0t_6), &(grid_dv->vv_T0p_6),
+                &(grid_dv->vv_fun_6), &(grid_dv->vv_change_6), &(grid_dv->tau),
+                &(grid_dv->T0v_glob),
+                &(grid_dv->loc_I_host), &(grid_dv->loc_J_host), &(grid_dv->loc_K_host),
+                &(grid_dv->dr_host), &(grid_dv->dt_host), &(grid_dv->dp_host),
+                &(grid_dv->n_nodes_on_levels_host[i_level]), &i_node_offset
+            };
+            print_CUDA_error_if_any(cudaLaunchKernel((void*)cuda_do_sweep_level_kernel_upwind, grid_each, threads_each, kernelArgs, 0, grid_dv->level_streams[id_stream]), 40007);
+        } else { // iswp == 7
+            void* kernelArgs[] = {
+                &(grid_dv->vv_i__j__k___7), &(grid_dv->vv_ip1j__k___7), &(grid_dv->vv_im1j__k___7),
+                &(grid_dv->vv_i__jp1k___7), &(grid_dv->vv_i__jm1k___7), &(grid_dv->vv_i__j__kp1_7), &(grid_dv->vv_i__j__km1_7),
+                &(grid_dv->vv_fac_a_7), &(grid_dv->vv_fac_b_7), &(grid_dv->vv_fac_c_7), &(grid_dv->vv_fac_f_7),
+                &(grid_dv->vv_T0v_7), &(grid_dv->vv_T0r_7), &(grid_dv->vv_T0t_7), &(grid_dv->vv_T0p_7),
+                &(grid_dv->vv_fun_7), &(grid_dv->vv_change_7), &(grid_dv->tau),
+                &(grid_dv->T0v_glob),
+                &(grid_dv->loc_I_host), &(grid_dv->loc_J_host), &(grid_dv->loc_K_host),
+                &(grid_dv->dr_host), &(grid_dv->dt_host), &(grid_dv->dp_host),
+                &(grid_dv->n_nodes_on_levels_host[i_level]), &i_node_offset
+            };
+            print_CUDA_error_if_any(cudaLaunchKernel((void*)cuda_do_sweep_level_kernel_upwind, grid_each, threads_each, kernelArgs, 0, grid_dv->level_streams[id_stream]), 40008);
+        }
+
+        i_node_offset += grid_dv->n_nodes_on_levels_host[i_level];
+    }
+
+    finalize_sweep_params(grid_dv);
+}
+
 void initialize_sweep_params(Grid_on_device* grid_dv){
 
     // check the numBlockPerSm and set the block size accordingly

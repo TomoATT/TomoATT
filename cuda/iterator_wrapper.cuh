@@ -22,6 +22,7 @@ void run_kernel(Grid_on_device*, int const&, int const&, int const&, dim3&, dim3
 void initialize_sweep_params(Grid_on_device*);
 void finalize_sweep_params(Grid_on_device*);
 void cuda_run_iteration_forward(Grid_on_device*, int const&);
+void cuda_run_iteration_upwind(Grid_on_device*, int const&);
 
 
 #endif // ITERATOR_WRAPPER_CUH

@@ -181,7 +181,10 @@ void Iterator::initialize_arrays(InputParams& IP, IO_utils& io, Grid& grid, Sour
     if (IP.get_sweep_type() == SWEEP_TYPE_LEVEL) assign_processes_for_levels(grid, IP);
 
 #ifdef USE_CUDA
-    if(use_gpu){
+    if(use_gpu && !vv_i__j__k__.empty()){
+        // Only initialize GPU grid when preloaded index arrays are populated.
+        // The UPWIND stencil type returns early in assign_processes_for_levels,
+        // leaving the preloaded arrays empty — skip GPU init in that case.
         gpu_grid = new Grid_on_device();
         if (IP.get_stencil_order() == 1){
             cuda_initialize_grid_1st(ijk_for_this_subproc, gpu_grid, loc_I, loc_J, loc_K, dp, dt, dr, \
@@ -195,6 +198,11 @@ void Iterator::initialize_arrays(InputParams& IP, IO_utils& io, Grid& grid, Sour
         }
 
         //std::cout << "gpu grid initialization done." << std::endl;
+    } else if (use_gpu && vv_i__j__k__.empty()) {
+        // UPWIND stencil type: preloaded arrays are empty, fall back to CPU
+        use_gpu = false;
+        if (myrank == 0)
+            std::cout << "WARNING: GPU acceleration is not available for UPWIND stencil type. Falling back to CPU." << std::endl;
     }
 #endif
 
@@ -307,29 +315,31 @@ void Iterator::assign_processes_for_levels(Grid& grid, InputParams& IP) {
     //
     // TODO: upwind scheme + sweep parallelization does not support SIMD yet
     //
-    if (IP.get_stencil_type() == UPWIND) {
+    if (IP.get_stencil_type() == UPWIND && !use_gpu) {
         return;
     }
 
 
 #if defined USE_SIMD || defined USE_CUDA
 
-    preload_indices(vv_iip, vv_jjt, vv_kkr,  0, 0, 0);
-    preload_indices_1d(vv_i__j__k__, 0, 0, 0);
-    preload_indices_1d(vv_ip1j__k__, 1, 0, 0);
-    preload_indices_1d(vv_i__jp1k__, 0, 1, 0);
-    preload_indices_1d(vv_i__j__kp1, 0, 0, 1);
-    preload_indices_1d(vv_im1j__k__,-1, 0, 0);
-    preload_indices_1d(vv_i__jm1k__, 0,-1, 0);
-    preload_indices_1d(vv_i__j__km1, 0, 0,-1);
+    bool is_upwind = (IP.get_stencil_type() == UPWIND);
+
+    preload_indices(vv_iip, vv_jjt, vv_kkr,  0, 0, 0, is_upwind);
+    preload_indices_1d(vv_i__j__k__, 0, 0, 0, is_upwind);
+    preload_indices_1d(vv_ip1j__k__, 1, 0, 0, is_upwind);
+    preload_indices_1d(vv_i__jp1k__, 0, 1, 0, is_upwind);
+    preload_indices_1d(vv_i__j__kp1, 0, 0, 1, is_upwind);
+    preload_indices_1d(vv_im1j__k__,-1, 0, 0, is_upwind);
+    preload_indices_1d(vv_i__jm1k__, 0,-1, 0, is_upwind);
+    preload_indices_1d(vv_i__j__km1, 0, 0,-1, is_upwind);
 
     if(IP.get_stencil_order() == 3 || is_teleseismic){
-        preload_indices_1d(vv_ip2j__k__, 2, 0, 0);
-        preload_indices_1d(vv_i__jp2k__, 0, 2, 0);
-        preload_indices_1d(vv_i__j__kp2, 0, 0, 2);
-        preload_indices_1d(vv_im2j__k__,-2, 0, 0);
-        preload_indices_1d(vv_i__jm2k__, 0,-2, 0);
-        preload_indices_1d(vv_i__j__km2, 0, 0,-2);
+        preload_indices_1d(vv_ip2j__k__, 2, 0, 0, is_upwind);
+        preload_indices_1d(vv_i__jp2k__, 0, 2, 0, is_upwind);
+        preload_indices_1d(vv_i__j__kp2, 0, 0, 2, is_upwind);
+        preload_indices_1d(vv_im2j__k__,-2, 0, 0, is_upwind);
+        preload_indices_1d(vv_i__jm2k__, 0,-2, 0, is_upwind);
+        preload_indices_1d(vv_i__j__km2, 0, 0,-2, is_upwind);
         simd_allocated_3rd = true;
     }
 
@@ -439,7 +449,7 @@ template <typename T>
 void Iterator::preload_indices(std::vector<std::vector<T*>> &vvvi, \
                                std::vector<std::vector<T*>> &vvvj, \
                                std::vector<std::vector<T*>> &vvvk, \
-                               int shift_i, int shift_j, int shift_k) {
+                               int shift_i, int shift_j, int shift_k, bool is_upwind) {
 
     int iip, jjt, kkr;
     for (int iswp=0; iswp < 8; iswp++){
@@ -463,12 +473,15 @@ void Iterator::preload_indices(std::vector<std::vector<T*>> &vvvi, \
             for (int i_node = 0; i_node < n_nodes; i_node++) {
                 int tmp_ijk = ijk_for_this_subproc[i_level][i_node];
                 V2I(tmp_ijk, iip, jjt, kkr);
-                if (r_dirc < 0) kkr = loc_K-kkr; //kk-1;
-                else            kkr = kkr-1;  //nr-kk;
-                if (t_dirc < 0) jjt = loc_J-jjt; //jj-1;
-                else            jjt = jjt-1;  //nt-jj;
-                if (p_dirc < 0) iip = loc_I-iip; //ii-1;
-                else            iip = iip-1;  //np-ii;
+                if (is_upwind) {
+                    if (r_dirc < 0) kkr = loc_K-1-kkr; else kkr = kkr;
+                    if (t_dirc < 0) jjt = loc_J-1-jjt; else jjt = jjt;
+                    if (p_dirc < 0) iip = loc_I-1-iip; else iip = iip;
+                } else {
+                    if (r_dirc < 0) kkr = loc_K-kkr; else kkr = kkr-1;
+                    if (t_dirc < 0) jjt = loc_J-jjt; else jjt = jjt-1;
+                    if (p_dirc < 0) iip = loc_I-iip; else iip = iip-1;
+                }
 
                 kkr += shift_k;
                 jjt += shift_j;
@@ -507,7 +520,7 @@ void Iterator::preload_indices(std::vector<std::vector<T*>> &vvvi, \
 
 template <typename T>
 void Iterator::preload_indices_1d(std::vector<std::vector<T*>> &vvv, \
-                               int shift_i, int shift_j, int shift_k) {
+                               int shift_i, int shift_j, int shift_k, bool is_upwind) {
 
     int iip, jjt, kkr;
     for (int iswp=0; iswp < 8; iswp++){
@@ -529,12 +542,15 @@ void Iterator::preload_indices_1d(std::vector<std::vector<T*>> &vvv, \
             for (int i_node = 0; i_node < n_nodes; i_node++) {
                 int tmp_ijk = ijk_for_this_subproc[i_level][i_node];
                 V2I(tmp_ijk, iip, jjt, kkr);
-                if (r_dirc < 0) kkr = loc_K-kkr; //kk-1;
-                else            kkr = kkr-1;  //nr-kk;
-                if (t_dirc < 0) jjt = loc_J-jjt; //jj-1;
-                else            jjt = jjt-1;  //nt-jj;
-                if (p_dirc < 0) iip = loc_I-iip; //ii-1;
-                else            iip = iip-1;  //np-ii;
+                if (is_upwind) {
+                    if (r_dirc < 0) kkr = loc_K-1-kkr; else kkr = kkr;
+                    if (t_dirc < 0) jjt = loc_J-1-jjt; else jjt = jjt;
+                    if (p_dirc < 0) iip = loc_I-1-iip; else iip = iip;
+                } else {
+                    if (r_dirc < 0) kkr = loc_K-kkr; else kkr = kkr-1;
+                    if (t_dirc < 0) jjt = loc_J-jjt; else jjt = jjt-1;
+                    if (p_dirc < 0) iip = loc_I-iip; else iip = iip-1;
+                }
 
                 kkr += shift_k;
                 jjt += shift_j;
@@ -841,7 +857,7 @@ void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
 
         CUSTOMREAL one_over_delta_lon = _1_CR/delta_lon;
         CUSTOMREAL one_over_delta_lat = _1_CR/delta_lat;
-        CUSTOMREAL one_over_delta_r   = _1_CR/delta_r  ; 
+        CUSTOMREAL one_over_delta_r   = _1_CR/delta_r  ;
 
         // get positions
         CUSTOMREAL rec_lon = rec.lon*DEG2RAD;
@@ -925,7 +941,7 @@ void Iterator::init_delta_and_Tadj_density(Grid& grid, InputParams& IP) {
 
         CUSTOMREAL one_over_delta_lon = 1/delta_lon;
         CUSTOMREAL one_over_delta_lat = 1/delta_lat;
-        CUSTOMREAL one_over_delta_r   = 1/delta_r  ; 
+        CUSTOMREAL one_over_delta_r   = 1/delta_r  ;
 
         // get positions
         CUSTOMREAL rec_lon = rec.lon*DEG2RAD;
@@ -1276,7 +1292,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                                         << std::endl;
                             break;
                     }
-                    
+
                 }
 
 
@@ -1576,7 +1592,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_p, T_t into eikonal equation, solve the quadratic equation:  b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_b_loc[ii] * at*at 
+        eqn_a = grid.fac_b_loc[ii] * at*at
               + grid.fac_c_loc[ii] * ap*ap - _2_CR*grid.fac_f_loc[ii] * at * ap;
         eqn_b = _2_CR*grid.fac_b_loc[ii] * at * bt
               + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
@@ -1610,7 +1626,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 switch (i_case){
                     case 8:  //characteristic travels from -p, -t
                         if (charact_p >= 0 && charact_t >= 0 && tmp_tau > 0){
-                            
+
                             is_causality = true;
                         }
                         break;
@@ -1663,14 +1679,14 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                                         << "+p: " << grid.T0v_loc[I2V(iip+1,jjt,kkr)]*grid.tau_loc[I2V(iip+1, jjt, kkr)] << ", "
                                         << "T_t: " << T_t << ", T_p: " << T_p << ", "
                                         << std::endl;
-                            // // T_t = (T0v * tau)_t = 
+                            // // T_t = (T0v * tau)_t =
                             // std::cout << " check T_t. " << std::endl;
                             // std::cout << "T_+ = T0v_loc[I2V(iip,jjt+1,kkr)] * tau_loc[I2V(iip,jjt+1,kkr)]:" << grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] << std::endl;
                             // std::cout << "T   = T0v_loc[I2V(iip,jjt,kkr)]   * tmp_tau  :" << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau << std::endl;
-                            // std::cout << "T_t_1 = (T_+ - T)/dt = " 
-                            //           <<  (grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)] 
+                            // std::cout << "T_t_1 = (T_+ - T)/dt = "
+                            //           <<  (grid.T0v_loc[I2V(iip,jjt+1,kkr)]*grid.tau_loc[I2V(iip, jjt+1, kkr)]
                             //             - grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau) / grid.dt << std::endl;
-                            // std::cout << "T_t_2 = T0v * (tau_+ - tau)/dt + T0t * tau " << std::endl; 
+                            // std::cout << "T_t_2 = T0v * (tau_+ - tau)/dt + T0t * tau " << std::endl;
                             // std::cout << "T0v_+ : " << grid.T0v_loc[I2V(iip,jjt+1,kkr)] << std::endl;
                             // std::cout << "T0v   : " << grid.T0v_loc[I2V(iip  ,jjt,kkr)] << std::endl;
                             // std::cout << "tau_+ : " << grid.tau_loc[I2V(iip, jjt+1, kkr)] << std::endl;
@@ -1788,7 +1804,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/c*(at*tau+bt)^2 = s^2
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
-            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_c_loc[ii]/bc_f2); 
+            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_c_loc[ii]/bc_f2);
             one_over_a = 1/at;
             // solutions
             switch (i_solution){
@@ -1866,7 +1882,7 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/b*(ap*tau+bp)^2 = s^2
         // simply, we have two solutions
         for (int i_solution = 0; i_solution < 2; i_solution++){
-            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_b_loc[ii]/bc_f2); 
+            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_b_loc[ii]/bc_f2);
             one_over_a = 1/ap;
             // solutions
             switch (i_solution){
@@ -1905,15 +1921,15 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 switch (i_case) {
                     case 4: //characteristic travels from -p
                         std::cout   << "-p: " << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << ", " << std::endl;
-                        
-                        // T_p = (T0v * tau)_p = 
+
+                        // T_p = (T0v * tau)_p =
                         std::cout << " check T_p. " << std::endl;
                         std::cout << "T_- = T0v_loc[I2V(iip-1,jjt,kkr)] * tau_loc[I2V(iip-1,jjt,kkr)]:" << grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)] << std::endl;
                         std::cout << "T   = T0v_loc[I2V(iip,jjt,kkr)]   * tmp_tau  :" << grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau << std::endl;
-                        std::cout << "T_p_1 = (T - T_-)/dp = " 
-                                    <<  (grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau 
+                        std::cout << "T_p_1 = (T - T_-)/dp = "
+                                    <<  (grid.T0v_loc[I2V(iip,jjt,kkr)]*tmp_tau
                                     - grid.T0v_loc[I2V(iip-1,jjt,kkr)]*grid.tau_loc[I2V(iip-1, jjt, kkr)]) / grid.dp << std::endl;
-                        std::cout << "T_p_2 = T0v * (tau - tau_-)/dt + T0t * tau " << std::endl; 
+                        std::cout << "T_p_2 = T0v * (tau - tau_-)/dt + T0t * tau " << std::endl;
                         std::cout << "T0v : " << grid.T0v_loc[I2V(iip,jjt,kkr)] << std::endl;
                         std::cout << "T0v_-   : " << grid.T0v_loc[I2V(iip-1,jjt,kkr)] << std::endl;
                         std::cout << "grid.dp: " << grid.dp << std::endl;
@@ -2234,7 +2250,7 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     CUSTOMREAL tmp_T_ip = grid.T_loc[ii_pp]-grid.T_loc[ii_mp];
     CUSTOMREAL tmp_T_jt = grid.T_loc[ii_pt]-grid.T_loc[ii_mt];
 
-    // a1(-0.5r) = - (1 + 2*zeta) & T_r 
+    // a1(-0.5r) = - (1 + 2*zeta) & T_r
     CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[ii_mr]+grid.zeta_loc[ii]) * (grid.T_loc[ii]-grid.T_loc[ii_mr]) * dr_inv;
     CUSTOMREAL a1m = (a1 - std::abs(a1));   // in fact, it should be a1m = (a1 - std::abs(a1))/2, 1/2 is included in the coe and Hadj for high efficiency
     CUSTOMREAL a1p = (a1 + std::abs(a1));   // similar for a1p, a2m, a2p, b1m, b1p, b2m, b2p, c1m, c1p, c2m, c2p
@@ -2290,7 +2306,7 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     // }
 
     // coe
-    // _0_5_CR is 
+    // _0_5_CR is
     CUSTOMREAL coe = _0_5_CR * ( (a2p-a1m)* dr_inv + (b2p-b1m)* dt_inv + (c2p-c1m)* dp_inv );
 
     if (isZeroAdj(coe)) {   // here the traveltime is larger than surrounding

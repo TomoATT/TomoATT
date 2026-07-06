@@ -97,9 +97,9 @@ protected:
     std::vector<std::vector<bool*>>vv_change_bl;
 
     template <typename T>
-    void preload_indices(std::vector<std::vector<T*>> &vi, std::vector<std::vector<T*>> &, std::vector<std::vector<T*>> &, int, int, int);
+    void preload_indices(std::vector<std::vector<T*>> &vi, std::vector<std::vector<T*>> &, std::vector<std::vector<T*>> &, int, int, int, bool is_upwind = false);
     template <typename T>
-    void preload_indices_1d(std::vector<std::vector<T*>> &, int, int, int);
+    void preload_indices_1d(std::vector<std::vector<T*>> &, int, int, int, bool is_upwind = false);
     template <typename T>
     std::vector<std::vector<CUSTOMREAL*>> preload_array(T* a);
     std::vector<std::vector<bool*>> preload_array_bl(bool* a);

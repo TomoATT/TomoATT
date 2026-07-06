@@ -12,7 +12,7 @@ Iterator_level::Iterator_level(InputParams& IP, Grid& grid, Source& src, IO_util
 
 
 void Iterator_level::do_sweep_adj(int iswp, Grid& grid, InputParams& IP){
-    
+
     // set sweep direction
     set_sweep_direction(iswp);
 
@@ -26,12 +26,12 @@ void Iterator_level::do_sweep_adj(int iswp, Grid& grid, InputParams& IP){
 
             V2I(ijk_for_this_subproc[i_level][i_node], iip, jjt, kkr);
 
-            if (r_dirc < 0) kkr = nr-1-kkr; 
+            if (r_dirc < 0) kkr = nr-1-kkr;
             else            kkr = kkr;
-            if (t_dirc < 0) jjt = nt-1-jjt; 
-            else            jjt = jjt;  
-            if (p_dirc < 0) iip = np-1-iip; 
-            else            iip = iip;  
+            if (t_dirc < 0) jjt = nt-1-jjt;
+            else            jjt = jjt;
+            if (p_dirc < 0) iip = np-1-iip;
+            else            iip = iip;
 
             if(iip < 0 || jjt < 0 || kkr < 0 || iip >= np || jjt >= nt || kkr >= nr) {
                 std::cout << "ERROR: iip = " << iip << ", jjt = " << jjt << ", kkr = " << kkr << std::endl;
@@ -78,12 +78,12 @@ void Iterator_level_tele::do_sweep_adj(int iswp, Grid& grid, InputParams& IP){
 
             V2I(ijk_for_this_subproc[i_level][i_node], iip, jjt, kkr);
 
-            if (r_dirc < 0) kkr = nr-1-kkr; 
+            if (r_dirc < 0) kkr = nr-1-kkr;
             else            kkr = kkr;
-            if (t_dirc < 0) jjt = nt-1-jjt; 
-            else            jjt = jjt;  
-            if (p_dirc < 0) iip = np-1-iip; 
-            else            iip = iip;  
+            if (t_dirc < 0) jjt = nt-1-jjt;
+            else            jjt = jjt;
+            if (p_dirc < 0) iip = np-1-iip;
+            else            iip = iip;
 
             //
             // calculate stencils
@@ -740,38 +740,64 @@ Iterator_level_1st_order_upwind::Iterator_level_1st_order_upwind(InputParams& IP
 
 void Iterator_level_1st_order_upwind::do_sweep(int iswp, Grid& grid, InputParams& IP){
 
-    // set sweep direction
-    set_sweep_direction(iswp);
+    if (use_gpu) {
 
-    int iip, jjt, kkr;
-    int n_levels = ijk_for_this_subproc.size();
+#if defined USE_CUDA
+        // copy full-grid T0v to device once per source (constant during solve, needed for
+        // upwind line-case neighbor causality checks). gpu_grid is created fresh per source,
+        // so T0v_glob starts null and this uploads the current source's T0v exactly once.
+        if (gpu_grid->T0v_glob == nullptr)
+            cuda_copy_T0v_glob_to_device(gpu_grid, grid.T0v_loc);
 
-    for (int i_level = 0; i_level < n_levels; i_level++) {
-        size_t n_nodes = ijk_for_this_subproc[i_level].size();
+        // copy tau to device
+        cuda_copy_tau_to_device(gpu_grid, grid.tau_loc);
 
-        for (size_t i_node = 0; i_node < n_nodes; i_node++) {
+        // run iteration on GPU (upwind solver)
+        cuda_run_iteration_upwind(gpu_grid, iswp);
 
-            V2I(ijk_for_this_subproc[i_level][i_node], iip, jjt, kkr);
+        // copy tau to host
+        cuda_copy_tau_to_host(gpu_grid, grid.tau_loc);
+#else
+        std::cout << "Error: USE_CUDA is not defined" << std::endl;
+        exit(1);
+#endif
 
-            if (r_dirc < 0) kkr = nr-1-kkr; 
-            else            kkr = kkr;
-            if (t_dirc < 0) jjt = nt-1-jjt; 
-            else            jjt = jjt;  
-            if (p_dirc < 0) iip = np-1-iip; 
-            else            iip = iip;  
+    } else {
 
-            //
-            // calculate stencils
-            //
-            if (grid.is_changed[I2V(iip, jjt, kkr)]) {
-                calculate_stencil_1st_order_upwind(grid, iip, jjt, kkr);
-            } // is_changed == true
-        } // end ijk
+        // CPU code path
+        // set sweep direction
+        set_sweep_direction(iswp);
 
-        // mpi synchronization
-        synchronize_all_sub();
+        int iip, jjt, kkr;
+        int n_levels = ijk_for_this_subproc.size();
 
-    } // end loop i_level
+        for (int i_level = 0; i_level < n_levels; i_level++) {
+            size_t n_nodes = ijk_for_this_subproc[i_level].size();
+
+            for (size_t i_node = 0; i_node < n_nodes; i_node++) {
+
+                V2I(ijk_for_this_subproc[i_level][i_node], iip, jjt, kkr);
+
+                if (r_dirc < 0) kkr = nr-1-kkr;
+                else            kkr = kkr;
+                if (t_dirc < 0) jjt = nt-1-jjt;
+                else            jjt = jjt;
+                if (p_dirc < 0) iip = np-1-iip;
+                else            iip = iip;
+
+                //
+                // calculate stencils
+                //
+                if (grid.is_changed[I2V(iip, jjt, kkr)]) {
+                    calculate_stencil_1st_order_upwind(grid, iip, jjt, kkr);
+                } // is_changed == true
+            } // end ijk
+
+            // mpi synchronization
+            synchronize_all_sub();
+
+        } // end loop i_level
+    }
 }
 
 // ERROR index!!!!!!!!!!!!!
@@ -1069,12 +1095,12 @@ void Iterator_level_1st_order_upwind_tele::do_sweep(int iswp, Grid& grid, InputP
 
             V2I(ijk_for_this_subproc[i_level][i_node], iip, jjt, kkr);
 
-            if (r_dirc < 0) kkr = nr-1-kkr; 
+            if (r_dirc < 0) kkr = nr-1-kkr;
             else            kkr = kkr;
-            if (t_dirc < 0) jjt = nt-1-jjt; 
-            else            jjt = jjt;  
-            if (p_dirc < 0) iip = np-1-iip; 
-            else            iip = iip;  
+            if (t_dirc < 0) jjt = nt-1-jjt;
+            else            jjt = jjt;
+            if (p_dirc < 0) iip = np-1-iip;
+            else            iip = iip;
 
             //
             // calculate stencils

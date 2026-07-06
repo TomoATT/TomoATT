@@ -54,6 +54,9 @@ typedef struct Grid_on_device {
     // temporary variables
     CUSTOMREAL* tau;
 
+    // full-grid (global) T0v, indexed by flattened global index. Used by UPWIND line-case neighbor causality.
+    CUSTOMREAL* T0v_glob = nullptr;
+
     bool if_3rd_order = false;
 
     // thead and grid for sweeping
@@ -119,5 +122,7 @@ void cuda_finalize_grid(Grid_on_device* grid_dv);
 void cuda_copy_tau_to_device(Grid_on_device* grid_dv, CUSTOMREAL* tau_h);
 // copy tau from device to host
 void cuda_copy_tau_to_host(Grid_on_device* grid_dv, CUSTOMREAL* tau_h);
+// copy full-grid (global) T0v to device (allocate on first call). Used by UPWIND solver.
+void cuda_copy_T0v_glob_to_device(Grid_on_device* grid_dv, CUSTOMREAL* T0v_h);
 
 #endif // GRID_WRAPPER_CUH

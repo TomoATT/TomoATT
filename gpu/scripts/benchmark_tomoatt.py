@@ -221,8 +221,9 @@ def run_benchmark(args):
 
             # Generate test model
             print("\n  Generating test model...")
+            n_rtp = grid_config['n_rtp']
             rc, out, err = run_cmd(
-                ['python3', 'make_test_model.py'],
+                ['python3', 'make_test_model.py', str(n_rtp[0]), str(n_rtp[1]), str(n_rtp[2])],
                 cwd=str(test_dir)
             )
             if rc != 0:

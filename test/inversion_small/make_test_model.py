@@ -4,6 +4,7 @@
 # %%
 import numpy as np
 import math
+import sys
 
 # grid
 R_earth = 6371.0
@@ -15,7 +16,13 @@ tt2=(42.0+0.3)/180*math.pi
 pp1=(23.0-0.3)/180*math.pi
 pp2=(27.0+0.3)/180*math.pi
 
-n_rtp = [10,50,50]
+# Allow grid size to be passed as command-line argument
+# Usage: python make_test_model.py [nr] [nt] [np]
+# Default: n_rtp = [10, 50, 50]
+if len(sys.argv) >= 4:
+    n_rtp = [int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])]
+else:
+    n_rtp = [10, 50, 50]
 dr = (rr2-rr1)/(n_rtp[0]-1)
 dt = (tt2-tt1)/(n_rtp[1]-1)
 dp = (pp2-pp1)/(n_rtp[2]-1)
