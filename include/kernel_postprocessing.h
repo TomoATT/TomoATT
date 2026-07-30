@@ -20,8 +20,8 @@ namespace Kernel_postprocessing {
     // normalize kernels to -1 ~ 1
     void normalize_kernels(Grid& grid);
 
-    // assign processing kernels to modified kernels for model update
-    void assign_to_modified_kernels(Grid& grid);
+    // assign processing kernels to model update (perturbation)
+    void assign_to_model_update(Grid& grid);
 
     // ---------------------------------------------------
     // ------------------ sub functions ------------------

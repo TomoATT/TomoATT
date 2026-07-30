@@ -746,6 +746,11 @@ inline void broadcast_i_single_intra_sim(int& value, int root){
     broadcast_i_single_sub(value, root);       // broadcast within subdomain group
 }
 
+inline void broadcast_str_intra_sim(std::string& str, int root){
+    broadcast_str(str, root);           // broadcast among subdomain group
+    broadcast_str_sub(str, root);       // broadcast within subdomain group
+}
+
 inline void broadcast_i_single_inter_and_intra_sim(int& value, int root){
     broadcast_i_single_inter_sim(value, root); // broadcast among simultaneous run group
     broadcast_i_single(value, root);           // broadcast among subdomain group

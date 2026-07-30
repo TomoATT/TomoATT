@@ -25,8 +25,8 @@ Optimizer_gd::~Optimizer_gd() {
 // smooth kernels (multigrid) + kernel normalization (kernel density normalization)
 void Optimizer_gd::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) {
     
-    // initialize and backup modified kernels
-    initialize_and_backup_modified_kernels(grid);
+    // initialize and backup model_update (perturbation)
+    initialize_and_backup_model_update(grid);
 
     // check kernel value range
     check_kernel_value_range(grid);
@@ -40,16 +40,16 @@ void Optimizer_gd::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io,
     // 2. normalize kernels to -1 ~ 1
     Kernel_postprocessing::normalize_kernels(grid);
 
-    // assign to modified kernels
+    // assign to model_update
     // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
     // -->
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
-    Kernel_postprocessing::assign_to_modified_kernels(grid);
+    Kernel_postprocessing::assign_to_model_update(grid);
 }
 
 
 // evaluate line search performance
-bool Optimizer_gd::check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
+bool Optimizer_gd::check_conditions_for_line_search(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
     // There are 8 ways to adjust step:
     // The current model: (step, obj) = (0, v_obj_inout)
     // The first try: (alpha, v1)

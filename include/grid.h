@@ -69,8 +69,8 @@ public:
     // check model discontinuity
     void check_velocity_discontinuity();
 
-    void reinitialize_abcf();   // reinitialize factors
-    void rejuvenate_abcf();     // reinitialize factors for earthquake relocation
+    // void reinitialize_abcf();   // reinitialize factors
+    // void rejuvenate_abcf();     // reinitialize factors for earthquake relocation
     void initialize_kernels();  // fill 0 to kernels
 
     //
@@ -110,10 +110,10 @@ public:
     CUSTOMREAL* get_fun()          {return get_array_for_vis(fun_loc,   false);}; //
     CUSTOMREAL* get_xi()           {return get_array_for_vis(xi_loc,    false);}; //
     CUSTOMREAL* get_eta()          {return get_array_for_vis(eta_loc,   false);}; //
-    CUSTOMREAL* get_a()            {return get_array_for_vis(fac_a_loc, false);}; //
-    CUSTOMREAL* get_b()            {return get_array_for_vis(fac_b_loc, false);}; //
-    CUSTOMREAL* get_c()            {return get_array_for_vis(fac_c_loc, false);}; //
-    CUSTOMREAL* get_f()            {return get_array_for_vis(fac_f_loc, false);}; //
+    // CUSTOMREAL* get_a()            {return get_array_for_vis(fac_a_loc, false);}; //
+    // CUSTOMREAL* get_b()            {return get_array_for_vis(fac_b_loc, false);}; //
+    // CUSTOMREAL* get_c()            {return get_array_for_vis(fac_c_loc, false);}; //
+    // CUSTOMREAL* get_f()            {return get_array_for_vis(fac_f_loc, false);}; //
     CUSTOMREAL* get_vel()          {return get_array_for_vis(fun_loc,   true);}; // true velocity field
     CUSTOMREAL* get_T0v()          {return get_array_for_vis(T0v_loc,   false);}; // initial T0
     CUSTOMREAL* get_u()            {return get_array_for_vis(u_loc,     false);}; // current solution
@@ -192,12 +192,14 @@ public:
     // copy tau to Tadj
     void update_Tadj_density();
     // back up fun xi eta
-    void back_up_fun_xi_eta_bcf();
+    // void back_up_fun_xi_eta_bcf();
+    // void back_up_fun_xi_eta();
     // restore fun xi eta
-    void restore_fun_xi_eta_bcf();
+    // void restore_fun_xi_eta_bcf();
+    // void restore_fun_xi_eta();
 
     // write out inversion grid file
-    void write_inversion_grid_file();
+    // void write_inversion_grid_file();
 
 private:
 
@@ -252,59 +254,57 @@ public:
     // 3d arrays
     CUSTOMREAL *xi_loc;    // local xi
     CUSTOMREAL *eta_loc;   // local eta
-    CUSTOMREAL *zeta_loc;  // local zeta
-    CUSTOMREAL *fac_a_loc; // factor a
-    CUSTOMREAL *fac_b_loc; // factor b
-    CUSTOMREAL *fac_c_loc; // factor c
-    CUSTOMREAL *fac_f_loc; // factor f
-    CUSTOMREAL *fun_loc;
-    CUSTOMREAL *T_loc;
-    CUSTOMREAL *T0v_loc, *T0r_loc, *T0p_loc, *T0t_loc;
-    CUSTOMREAL *tau_loc;
-    CUSTOMREAL *tau_old_loc;
+    CUSTOMREAL *fun_loc;    // local slowness
+    // CUSTOMREAL *zeta_loc;  // local zeta
+    // CUSTOMREAL *fac_a_loc; // factor a (20260608: removed, a = 1)
+    // CUSTOMREAL *fac_b_loc; // factor b (20260608: removed, b = (1 - 2xi)/r^2)
+    // CUSTOMREAL *fac_c_loc; // factor c (20260608: removed, c = (1 + 2xi)(r^2*cos^2))
+    // CUSTOMREAL *fac_f_loc; // factor f (20260608: removed, f = -2eta/(r^2*cos))
+    
+    CUSTOMREAL *T_loc;              // traveltime field. But it is temporarily used as tau in local forward solver.
+    CUSTOMREAL *T0v_loc;            // background time field. Retained.
+    CUSTOMREAL *tau_loc;        
+    CUSTOMREAL *tau_old_loc;        // previous tau for local forward solver, T for tele forward solver
     bool       *is_changed;
-    // for inversion backup
-    CUSTOMREAL *fun_loc_back;
-    CUSTOMREAL *xi_loc_back;
-    CUSTOMREAL *eta_loc_back;
-    CUSTOMREAL *fac_b_loc_back;
-    CUSTOMREAL *fac_c_loc_back;
-    CUSTOMREAL *fac_f_loc_back;
-    // for lbfgs
-    // CUSTOMREAL *Ks_grad_store_loc, *Keta_grad_store_loc, *Kxi_grad_store_loc;
-    // CUSTOMREAL *Ks_model_store_loc, *Keta_model_store_loc, *Kxi_model_store_loc;
-    // CUSTOMREAL *Ks_descent_dir_loc, *Keta_descent_dir_loc, *Kxi_descent_dir_loc;
-    // CUSTOMREAL *fun_regularization_penalty_loc, *eta_regularization_penalty_loc, *xi_regularization_penalty_loc;
-    // CUSTOMREAL *fun_gradient_regularization_penalty_loc, *eta_gradient_regularization_penalty_loc, *xi_gradient_regularization_penalty_loc;
-    // CUSTOMREAL *fun_prior_loc, *eta_prior_loc, *xi_prior_loc; // *zeta_prior_loc; TODO
+
     // tmp array for file IO
     CUSTOMREAL *vis_data;
 
 private:
     // windows for shm arrays
-    MPI_Win win_fac_a_loc, win_fac_b_loc, win_fac_c_loc, win_fac_f_loc;
-    MPI_Win win_T0r_loc, win_T0p_loc, win_T0t_loc, win_T0v_loc;
+    // MPI_Win win_fac_a_loc, win_fac_b_loc, win_fac_c_loc, win_fac_f_loc;
+    MPI_Win win_T0v_loc;
     MPI_Win win_tau_loc, win_fun_loc;
     MPI_Win win_is_changed;
     MPI_Win win_T_loc, win_tau_old_loc;
-    MPI_Win win_xi_loc, win_eta_loc, win_zeta_loc;
+    // MPI_Win win_xi_loc, win_eta_loc, win_zeta_loc;
+    MPI_Win win_xi_loc, win_eta_loc;
     MPI_Win win_r_loc_1d, win_t_loc_1d, win_p_loc_1d;
+    MPI_Win win_coe_r_loc_T0r, win_coe_t_loc_T0t, win_coe_t_loc_T0p, win_coe_p_loc_T0t, win_coe_p_loc_T0p;
     MPI_Win win_one_over_r_loc_1d, win_one_over_r_loc_1d_sq, win_one_over_cos_t_loc;
     MPI_Win win_one_over_cos_t_loc_sq, win_sin_t_loc, win_cos_t_loc_m0p5, win_cos_t_loc_p0p5;
 
-    CUSTOMREAL *x_loc_3d;     // local (lon) x (global position)
-    CUSTOMREAL *y_loc_3d;     // local (lat) y (global position)
-    CUSTOMREAL *z_loc_3d;     // local (r  ) z (global position)
-    CUSTOMREAL *p_loc_3d;     // local lon (x) (global position)
-    CUSTOMREAL *t_loc_3d;     // local lat (y) (global position)
-    CUSTOMREAL *r_loc_3d;     // local r   (z) (global position)
-    int        *elms_conn;    // connectivity array
-    int        *my_proc_dump; // dump process id for each node  DEBUG
+    CUSTOMREAL *x_loc_3d;     // local (lon) x (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *y_loc_3d;     // local (lat) y (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *z_loc_3d;     // local (r  ) z (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *p_loc_3d;     // local lon (x) (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *t_loc_3d;     // local lat (y) (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    CUSTOMREAL *r_loc_3d;     // local r   (z) (global position)    (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    int        *elms_conn;    // connectivity array                 (released after io.write_grid. See memory_deallocation_for_3D_grid())
+    int        *my_proc_dump; // dump process id for each node  DEBUG   (released after io.write_grid. See memory_deallocation_for_3D_grid())
 public:
     // 1d arrays for coordinates, storing only subdomain's local coordinates
     CUSTOMREAL *r_loc_1d; // radius z    in kilo meter
     CUSTOMREAL *t_loc_1d; // theta lat y in radian
     CUSTOMREAL *p_loc_1d; // phi lon x   in radian
+
+    // 1d arrays for calculating T0r, T0t, T0p.
+    CUSTOMREAL *coe_r_loc_T0r;
+    CUSTOMREAL *coe_t_loc_T0t;
+    CUSTOMREAL *coe_t_loc_T0p;
+    CUSTOMREAL *coe_p_loc_T0t;
+    CUSTOMREAL *coe_p_loc_T0p;
+
     // pre-calculated geometric factors (inverses, squares, and trigonometric values).
     CUSTOMREAL *one_over_r_loc_1d;     // inverse of radius z 
     CUSTOMREAL *one_over_r_loc_1d_sq;  // square of inverse of radius z
@@ -320,37 +320,43 @@ private:
     //int n_inv_grids; // in config.h
     //int n_inv_I_loc, n_inv_J_loc, n_inv_K_loc; // in config.h
 public:
-    CUSTOMREAL *Ks_loc;             // original kernel
+    CUSTOMREAL *Tadj_loc; // timetable for adjoint source
+    CUSTOMREAL *Tadj_density_loc; // timetable for density of adjoint source
+
+    // original kernel, needed by level 1 and level 2    
+    // summed up among level 1 in sumup_kernels(Grid& grid), then needed only by level 2 (subdom_main = True and id_sim == 0)
+    CUSTOMREAL *Ks_loc;             
     CUSTOMREAL *Kxi_loc;
     CUSTOMREAL *Keta_loc;
     CUSTOMREAL *Ks_density_loc;
     CUSTOMREAL *Kxi_density_loc;
     CUSTOMREAL *Keta_density_loc;
 
-    CUSTOMREAL *Tadj_loc; // timetable for adjoint source
-    CUSTOMREAL *Tadj_density_loc; // timetable for density of adjoint source
-
-    CUSTOMREAL *Ks_inv_loc;             // kernel on coarse inversion grid
+    // kernels on coarse inversion grid
+    CUSTOMREAL *Ks_inv_loc;             
     CUSTOMREAL *Kxi_inv_loc;
     CUSTOMREAL *Keta_inv_loc;
     CUSTOMREAL *Ks_density_inv_loc;
     CUSTOMREAL *Kxi_density_inv_loc;
     CUSTOMREAL *Keta_density_inv_loc;
-    // kernel processing
-    std::vector<CUSTOMREAL> Ks_processing_loc;      // kernel during processing
+
+    // kernel during processing (can be only allocated for subdom_main = True and id_sim = 0, i.e., level 2)
+    std::vector<CUSTOMREAL> Ks_processing_loc;      
     std::vector<CUSTOMREAL> Kxi_processing_loc;
     std::vector<CUSTOMREAL> Keta_processing_loc;
     std::vector<CUSTOMREAL> Ks_density_processing_loc;      
     std::vector<CUSTOMREAL> Kxi_density_processing_loc;
     std::vector<CUSTOMREAL> Keta_density_processing_loc;
-    // model update para
-    CUSTOMREAL *Ks_update_loc;              // desceent direction (modified kernel)
+
+    // model update para    (can be only allocated for subdom_main = True and id_sim = 0, i.e., level 2)
+    CUSTOMREAL *Ks_update_loc;              // model update (perturbation)
     CUSTOMREAL *Kxi_update_loc;
     CUSTOMREAL *Keta_update_loc;
     CUSTOMREAL *Ks_density_update_loc;
     CUSTOMREAL *Kxi_density_update_loc;
     CUSTOMREAL *Keta_density_update_loc;
-    // model update para of the previous step       // backup descent direction
+
+    // model update para of the previous step       // backup descent direction (can be only allocated for subdom_main = True and id_sim = 0, i.e., level 2)
     CUSTOMREAL *Ks_update_loc_previous;
     CUSTOMREAL *Kxi_update_loc_previous;
     CUSTOMREAL *Keta_update_loc_previous;
@@ -419,10 +425,11 @@ private:
     //
     // members for test
     //
-    CUSTOMREAL *u_loc;    // true solution # TODO: erase for no testing
+    CUSTOMREAL *u_loc;    // true solution # TODO: erase for no testing // only is allocated when test = True
     //CUSTOMREAL *velo_loc; // velocity field, # TODO: use this for storing an intial model
     // anisotropic factors
-    CUSTOMREAL a0, b0, c0, f0, fun0;
+    CUSTOMREAL a0, b0, c0, f0;
+    CUSTOMREAL xi0, eta0, fun0;
 
     CUSTOMREAL source_width;
     //
@@ -441,6 +448,9 @@ public:
 
     // finalize the Time table
     void calc_T_plus_tau();
+
+    void memory_deallocation_for_3D_grid(); // deallocate memory for 3D grid (after writing out the grid file)
+
 private:
     // check difference between true solution and computed solution
     void calc_residual();

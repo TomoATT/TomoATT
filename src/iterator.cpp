@@ -2,8 +2,8 @@
 
 // test no valence anymore
 
-Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const std::string& src_name, \
-                   bool first_init, bool is_teleseismic_in, bool is_second_run_in) \
+Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, 
+                   bool first_init, bool is_teleseismic_in, bool is_second_run_in) 
          : is_second_run(is_second_run_in) {
 
     if(n_subprocs > 1) {
@@ -84,7 +84,7 @@ Iterator::Iterator(InputParams& IP, Grid& grid, Source& src, IO_utils& io, const
     ed_level = nr+nt+np-3;
 
     // initialize factors etc.
-    initialize_arrays(IP, io, grid, src, src_name);
+    initialize_arrays(IP, io, grid, src);
 
 
 
@@ -154,7 +154,7 @@ Iterator::~Iterator() {
 }
 
 
-void Iterator::initialize_arrays(InputParams& IP, IO_utils& io, Grid& grid, Source& src, const std::string& name_sim_src) {
+void Iterator::initialize_arrays(InputParams& IP, IO_utils& io, Grid& grid, Source& src) {
     if(if_verbose && myrank == 0) std::cout << "(re) initializing arrays" << std::endl;
 
     // std::cout << "source lat: " << src.get_src_t()*RAD2DEG << ", source lon: " << src.get_src_p()*RAD2DEG << ", source dep: " << src.get_src_r() << std::endl;
@@ -669,17 +669,17 @@ void Iterator::run_iteration_forward(InputParams& IP, Grid& grid, IO_utils& io, 
         //if (cur_diff_L1 < IP.get_conv_tol() && cur_diff_Linf < IP.get_conv_tol()) { // MNMN: let us use only L1 because Linf stop decreasing when using numbers of subdomains.
         if (cur_diff_L1 < IP.get_conv_tol()) {
             //stdout_by_main("--- iteration converged. ---");
-            goto iter_end;
+            break;
         } else if (IP.get_max_iter() <= iter_count) {
             stdout_by_main("--- iteration reached to the maximum number of iterations. ---");
-            goto iter_end;
+            break;
         } else {
             if(myrank==0 && if_verbose)
                 std::cout << "iteration " << iter_count << ": " << cur_diff_L1 << ", " << cur_diff_Linf << ", " << timer_iter.get_t_delta() << "\n";
         }
     }
 
-iter_end:
+    // iteration finished
     if (myrank==0){
         if (if_verbose){
             std::cout << "Converged at iteration " << iter_count << ": " << cur_diff_L1 << ", " << cur_diff_Linf << std::endl;
@@ -714,15 +714,14 @@ void Iterator::run_iteration_adjoint(InputParams& IP, Grid& grid, IO_utils& io, 
 
     if(if_verbose) stdout_by_main("--- start iteration adjoint. ---");
     iter_count = 0;
-    CUSTOMREAL cur_diff_L1_dummy = HUGE_VAL;
-               cur_diff_Linf = HUGE_VAL;
+    cur_diff_L1     = HUGE_VAL;
+    cur_diff_Linf   = HUGE_VAL;
 
     // initialize delta and Tadj_loc (here we use the array tau_old instead of delta for memory saving)
     if (subdom_main){
         if (adj_type == 0)  init_delta_and_Tadj(grid, IP);          // run iteration for adjoint field
         if (adj_type == 1)  init_delta_and_Tadj_density(grid, IP);  // run iteration for the density of adjoint field (adjoint source -> abs(adjoint source))
     }
-
 
     if(if_verbose) std::cout << "checker point 1, myrank: " << myrank << ", id_sim: " << id_sim << ", id_subdomain: " << id_subdomain
                << ", subdom_main:" << subdom_main << ", world_rank: " << world_rank << std::endl;
@@ -758,13 +757,13 @@ void Iterator::run_iteration_adjoint(InputParams& IP, Grid& grid, IO_utils& io, 
         // calculate the objective function
         // if converged, break the loop
         if (subdom_main) {
-            if(adj_type == 0)   grid.calc_L1_and_Linf_diff_adj(cur_diff_L1_dummy, cur_diff_Linf);
-            if(adj_type == 1)   grid.calc_L1_and_Linf_diff_adj_density(cur_diff_L1_dummy, cur_diff_Linf);
+            if(adj_type == 0)   grid.calc_L1_and_Linf_diff_adj(cur_diff_L1, cur_diff_Linf);
+            if(adj_type == 1)   grid.calc_L1_and_Linf_diff_adj_density(cur_diff_L1, cur_diff_Linf);
         }
 
         // broadcast the diff values
         //broadcast_cr_single_sub(cur_diff_L1, 0);
-        broadcast_cr_single_sub(cur_diff_Linf, 0);
+        broadcast_cr_single_sub(cur_diff_Linf, 0);  // level 3
 
         // debug store temporal T fields
         //io.write_tmp_tau_h5(grid, iter_count);
@@ -776,11 +775,12 @@ void Iterator::run_iteration_adjoint(InputParams& IP, Grid& grid, IO_utils& io, 
         }
 
         if (cur_diff_Linf < IP.get_conv_tol()) {
+        // if (if_converged) {
             //stdout_by_main("--- adjoint iteration converged. ---");
-            goto iter_end;
+            break;
         } else if (IP.get_max_iter() <= iter_count) {
             stdout_by_main("--- adjoint iteration reached the maximum number of iterations. ---");
-            goto iter_end;
+            break;
         } else {
             if(myrank==0 && if_verbose)
                 std::cout << "iteration adj. " << iter_count << ": " << cur_diff_Linf << std::endl;
@@ -790,7 +790,6 @@ void Iterator::run_iteration_adjoint(InputParams& IP, Grid& grid, IO_utils& io, 
 
     }
 
-iter_end:
     if (myrank==0){
         if (if_verbose)
             std::cout << "Converged at adjoint iteration " << iter_count << ": "  << cur_diff_Linf << std::endl;
@@ -823,12 +822,21 @@ void Iterator::init_delta_and_Tadj(Grid& grid, InputParams& IP) {
         grid.Tadj_loc[idx]    = 9999999.9;
     }
 
+    // i_rec (1:N) -> id_rec_att (key of rec_map)
+    std::vector<int> id_rec_att_vec = srcrec_id_2_id_att(IP.rec_map);      // main of level 2 and 3
+    if(proc_store_srcrec){
+        if ((int)id_rec_att_vec.size() != IP.n_rec_this_sim_group) {
+            std::cerr << "Error: id_rec_att_vec.size() != IP.n_rec_this_sim_group" << std::endl;
+            exit(1);
+        }
+    }
     // loop all receivers
     for (int irec = 0; irec < IP.n_rec_this_sim_group; irec++) {
 
         // get receiver information
-        std::string rec_name = IP.get_rec_name(irec);
-        auto rec = IP.get_rec_point_bcast(rec_name);
+        int id_rec_att       = IP.get_id_rec_att(irec, id_rec_att_vec);
+        std::string rec_name = IP.get_rec_name(irec, id_rec_att_vec);
+        auto rec = IP.get_rec_point_bcast(id_rec_att);
 
         // "iter->second" is the receiver, with the class SrcRecInfo
         if (rec.adjoint_source == 0){
@@ -907,12 +915,17 @@ void Iterator::init_delta_and_Tadj_density(Grid& grid, InputParams& IP) {
         grid.Tadj_density_loc[idx]    = 9999999.9;
     }
 
+    // i_rec (1:N) -> id_rec_att (key of rec_map)
+    std::vector<int> id_rec_att_vec = srcrec_id_2_id_att(IP.rec_map);      // main of level 2 and 3
+
     // loop all receivers
     for (int irec = 0; irec < IP.n_rec_this_sim_group; irec++) {
 
         // get receiver information
-        std::string rec_name = IP.get_rec_name(irec);
-        auto rec = IP.get_rec_point_bcast(rec_name);
+        int id_rec_att       = IP.get_id_rec_att(irec, id_rec_att_vec);
+        std::string rec_name = IP.get_rec_name(irec, id_rec_att_vec);
+        auto rec = IP.get_rec_point_bcast(id_rec_att);
+
 
         // "iter->second" is the receiver, with the class SrcRecInfo
         if (rec.adjoint_source_density == 0){
@@ -1034,40 +1047,74 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
     int ii_mr   = I2V(iip  , jjt,   kkr-1);
     int ii_pr   = I2V(iip  , jjt,   kkr+1);
 
+    // coefficients, from xi, eta to a,b,c,f
+    // matrix:
+    // a 0  0
+    // 0 b -f
+    // 0 -f c
+    fac_a   = _1_CR;
+    fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
+    fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
+    fac_f   = -_2_CR * grid.eta_loc[ii] * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc[jjt];
+
+    // calculate T0p, T0t, T0r
+    // T0r = coe_r_loc_T0r[k_r] / T0v
+    // T0t = (coe_t_loc_T0t[j_lat] + coe_p_loc_T0t[i_lon]) / T0v
+    // T0p = (coe_t_loc_T0p[j_lat] + coe_p_loc_T0p[i_lon]) / T0v
+
+    if (isZero(grid.T0v_loc[ii])){
+        one_over_T0v = _0_CR;
+    } else {
+        one_over_T0v = _1_CR/grid.T0v_loc[ii];
+    }
+    T0r = grid.coe_r_loc_T0r[kkr] * one_over_T0v;
+    T0t = (grid.coe_t_loc_T0t[jjt] + grid.coe_p_loc_T0t[iip]) * one_over_T0v;
+    T0p = (grid.coe_t_loc_T0p[jjt] + grid.coe_p_loc_T0p[iip]) * one_over_T0v;
+
+
     count_cand = 0;
     // forward and backward partial differential discretization
     //  T_p = (T0*tau)_p = T0p*tau + T0v*tau_p = ap*tau(iip, jjt, kkr)+bp;
     //  T_t = (T0*tau)_t = T0t*tau + T0v*tau_t = at*tau(iip, jjt, kkr)+bt;
     //  T_r = (T0*tau)_r = T0r*tau + T0v*tau_r = ar*tau(iip, jjt, kkr)+br;
     if (iip > 0){
-        ap1 =  grid.T0p_loc[ii] +  grid.T0v_loc[ii]/dp;
+        // ap1 =  grid.T0p_loc[ii] +  grid.T0v_loc[ii]/dp;
+        ap1 =  T0p +  grid.T0v_loc[ii]/dp;
         bp1 = -grid.T0v_loc[ii]/dp*grid.tau_loc[ii_mp];
     }
     if (iip < np-1){
-        ap2 =  grid.T0p_loc[ii] -  grid.T0v_loc[ii]/dp;
+        // ap2 =  grid.T0p_loc[ii] -  grid.T0v_loc[ii]/dp;
+        ap2 =  T0p -  grid.T0v_loc[ii]/dp;
         bp2 =  grid.T0v_loc[ii]/dp*grid.tau_loc[ii_pp];
     }
 
     if (jjt > 0){
-        at1 =  grid.T0t_loc[ii] + grid.T0v_loc[ii]/dt;
+        // at1 =  grid.T0t_loc[ii] + grid.T0v_loc[ii]/dt;
+        at1 =  T0t + grid.T0v_loc[ii]/dt;
         bt1 = -grid.T0v_loc[ii]/dt*grid.tau_loc[ii_mt];
     }
     if (jjt < nt-1){
-        at2 =  grid.T0t_loc[ii] - grid.T0v_loc[ii]/dt;
+        // at2 =  grid.T0t_loc[ii] - grid.T0v_loc[ii]/dt;
+        at2 =  T0t - grid.T0v_loc[ii]/dt;
         bt2 =  grid.T0v_loc[ii]/dt*grid.tau_loc[ii_pt];
     }
 
     if (kkr > 0){
-        ar1 =  grid.T0r_loc[ii] + grid.T0v_loc[ii]/dr;
+        // ar1 =  grid.T0r_loc[ii] + grid.T0v_loc[ii]/dr;
+        ar1 =  T0r + grid.T0v_loc[ii]/dr;
         br1 = -grid.T0v_loc[ii]/dr*grid.tau_loc[ii_mr];
     }
     if (kkr < nr-1){
-        ar2 =  grid.T0r_loc[ii] - grid.T0v_loc[ii]/dr;
+        // ar2 =  grid.T0r_loc[ii] - grid.T0v_loc[ii]/dr;
+        ar2 =  T0r - grid.T0v_loc[ii]/dr;
         br2 =  grid.T0v_loc[ii]/dr*grid.tau_loc[ii_pr];
     }
-    bc_f2 = grid.fac_b_loc[ii]*grid.fac_c_loc[ii] - grid.fac_f_loc[ii]*grid.fac_f_loc[ii];
-    bc_over_b = bc_f2/grid.fac_b_loc[ii];
-    bc_over_c = bc_f2/grid.fac_c_loc[ii];
+    // bc_f2 = grid.fac_b_loc[ii]*grid.fac_c_loc[ii] - grid.fac_f_loc[ii]*grid.fac_f_loc[ii];
+    // bc_over_b = bc_f2/grid.fac_b_loc[ii];
+    // bc_over_c = bc_f2/grid.fac_c_loc[ii];
+    bc_f2 = fac_b*fac_c - fac_f*fac_f;
+    bc_over_b = bc_f2/fac_b;
+    bc_over_c = bc_f2/fac_c;
     fun_loc_sq = grid.fun_loc[ii]*grid.fun_loc[ii];
 
     // start to find candidate solutions
@@ -1137,12 +1184,19 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
 
         // plug T_p, T_t, T_r into eikonal equation, solving the quadratic equation with respect to tau(iip,jjt,kkr)
         // that is a*(ar*tau+br)^2 + b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2*f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_a_loc[ii] * ar*ar + grid.fac_b_loc[ii] * at*at
-              + grid.fac_c_loc[ii] * ap*ap - _2_CR*grid.fac_f_loc[ii] * at * ap;
-        eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*grid.fac_b_loc[ii] * at * bt
-              + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
-        eqn_c = grid.fac_a_loc[ii] * br*br + grid.fac_b_loc[ii] * bt*bt
-              + grid.fac_c_loc[ii] * bp*bp - _2_CR*grid.fac_f_loc[ii] * bt * bp
+        // eqn_a = grid.fac_a_loc[ii] * ar*ar + grid.fac_b_loc[ii] * at*at
+        //       + grid.fac_c_loc[ii] * ap*ap - _2_CR*grid.fac_f_loc[ii] * at * ap;
+        // eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*grid.fac_b_loc[ii] * at * bt
+        //       + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
+        // eqn_c = grid.fac_a_loc[ii] * br*br + grid.fac_b_loc[ii] * bt*bt
+        //       + grid.fac_c_loc[ii] * bp*bp - _2_CR*grid.fac_f_loc[ii] * bt * bp
+        //       - fun_loc_sq;
+        eqn_a = fac_a * ar*ar + fac_b * at*at
+              + fac_c * ap*ap - _2_CR*fac_f * at * ap;
+        eqn_b = _2_CR*fac_a * ar * br + _2_CR*fac_b * at * bt
+              + _2_CR*fac_c * ap * bp - _2_CR*fac_f * (at*bp + bt*ap);
+        eqn_c = fac_a * br*br + fac_b * bt*bt
+              + fac_c * bp*bp - _2_CR*fac_f * bt * bp
               - fun_loc_sq;
         eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
 
@@ -1166,9 +1220,12 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 T_t = at*tmp_tau + bt;
                 T_p = ap*tmp_tau + bp;
 
-                charact_r = grid.fac_a_loc[ii]*T_r;
-                charact_t = grid.fac_b_loc[ii]*T_t - grid.fac_f_loc[ii]*T_p;
-                charact_p = grid.fac_c_loc[ii]*T_p - grid.fac_f_loc[ii]*T_t;
+                // charact_r = grid.fac_a_loc[ii]*T_r;
+                // charact_t = grid.fac_b_loc[ii]*T_t - grid.fac_f_loc[ii]*T_p;
+                // charact_p = grid.fac_c_loc[ii]*T_p - grid.fac_f_loc[ii]*T_t;
+                charact_r = fac_a*T_r;
+                charact_t = fac_b*T_t - fac_f*T_p;
+                charact_p = fac_c*T_p - fac_f*T_t;
 
                 is_causality = false;
                 switch (i_case){
@@ -1323,9 +1380,13 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 + (bc-f^2)/c*(at*tau+bt)^2 = s^2
-        eqn_a = grid.fac_a_loc[ii] * ar*ar + bc_over_c * at*at;
-        eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*bc_over_c * at * bt;
-        eqn_c = grid.fac_a_loc[ii] * br*br + bc_over_c * bt*bt
+        // eqn_a = grid.fac_a_loc[ii] * ar*ar + bc_over_c * at*at;
+        // eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*bc_over_c * at * bt;
+        // eqn_c = grid.fac_a_loc[ii] * br*br + bc_over_c * bt*bt
+        //       - fun_loc_sq;
+        eqn_a = fac_a * ar*ar + bc_over_c * at*at;
+        eqn_b = _2_CR*fac_a * ar * br + _2_CR*bc_over_c * at * bt;
+        eqn_c = fac_a * br*br + bc_over_c * bt*bt
               - fun_loc_sq;
         eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
 
@@ -1347,7 +1408,9 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 T_r = ar*tmp_tau + br;
                 T_t = at*tmp_tau + bt;
 
-                charact_r = grid.fac_a_loc[ii]*T_r;
+                // charact_r = grid.fac_a_loc[ii]*T_r;
+                // charact_t = bc_over_c*T_t;
+                charact_r = fac_a*T_r;
                 charact_t = bc_over_c*T_t;
 
                 is_causality = false;
@@ -1450,9 +1513,13 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 + (bc-f^2)/b*(ap*tau+bp)^2 = s^2
-        eqn_a = grid.fac_a_loc[ii] * ar*ar + bc_over_b * ap*ap;
-        eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*bc_over_b * ap * bp;
-        eqn_c = grid.fac_a_loc[ii] * br*br + bc_over_b * bp*bp
+        // eqn_a = grid.fac_a_loc[ii] * ar*ar + bc_over_b * ap*ap;
+        // eqn_b = _2_CR*grid.fac_a_loc[ii] * ar * br + _2_CR*bc_over_b * ap * bp;
+        // eqn_c = grid.fac_a_loc[ii] * br*br + bc_over_b * bp*bp
+        //       - fun_loc_sq;
+        eqn_a = fac_a * ar*ar + bc_over_b * ap*ap;
+        eqn_b = _2_CR*fac_a * ar * br + _2_CR*bc_over_b * ap * bp;
+        eqn_c = fac_a * br*br + bc_over_b * bp*bp
               - fun_loc_sq;
         eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
 
@@ -1474,7 +1541,9 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 T_r = ar*tmp_tau + br;
                 T_p = ap*tmp_tau + bp;
 
-                charact_r = grid.fac_a_loc[ii]*T_r;
+                // charact_r = grid.fac_a_loc[ii]*T_r;
+                // charact_p = bc_over_b*T_p;
+                charact_r = fac_a*T_r;
                 charact_p = bc_over_b*T_p;
 
                 is_causality = false;
@@ -1576,12 +1645,19 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
         }
 
         // plug T_p, T_t into eikonal equation, solve the quadratic equation:  b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_b_loc[ii] * at*at 
-              + grid.fac_c_loc[ii] * ap*ap - _2_CR*grid.fac_f_loc[ii] * at * ap;
-        eqn_b = _2_CR*grid.fac_b_loc[ii] * at * bt
-              + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
-        eqn_c = grid.fac_b_loc[ii] * bt*bt
-              + grid.fac_c_loc[ii] * bp*bp - _2_CR*grid.fac_f_loc[ii] * bt * bp
+        // eqn_a = grid.fac_b_loc[ii] * at*at 
+        //       + grid.fac_c_loc[ii] * ap*ap - _2_CR*grid.fac_f_loc[ii] * at * ap;
+        // eqn_b = _2_CR*grid.fac_b_loc[ii] * at * bt
+        //       + _2_CR*grid.fac_c_loc[ii] * ap * bp - _2_CR*grid.fac_f_loc[ii] * (at*bp + bt*ap);
+        // eqn_c = grid.fac_b_loc[ii] * bt*bt
+        //       + grid.fac_c_loc[ii] * bp*bp - _2_CR*grid.fac_f_loc[ii] * bt * bp
+        //       - fun_loc_sq;
+        eqn_a = fac_b * at*at 
+              + fac_c * ap*ap - _2_CR*fac_f * at * ap;
+        eqn_b = _2_CR*fac_b * at * bt
+              + _2_CR*fac_c * ap * bp - _2_CR*fac_f * (at*bp + bt*ap);
+        eqn_c = fac_b * bt*bt
+              + fac_c * bp*bp - _2_CR*fac_f * bt * bp
               - fun_loc_sq;
         eqn_Delta = eqn_b*eqn_b - _4_CR * eqn_a * eqn_c;
 
@@ -1603,8 +1679,10 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                 T_t = at*tmp_tau + bt;
                 T_p = ap*tmp_tau + bp;
 
-                charact_t = grid.fac_b_loc[ii]*T_t - grid.fac_f_loc[ii]*T_p;
-                charact_p = grid.fac_c_loc[ii]*T_p - grid.fac_f_loc[ii]*T_t;
+                // charact_t = grid.fac_b_loc[ii]*T_t - grid.fac_f_loc[ii]*T_p;
+                // charact_p = grid.fac_c_loc[ii]*T_p - grid.fac_f_loc[ii]*T_t;
+                charact_t = fac_b*T_t - fac_f*T_p;
+                charact_p = fac_c*T_p - fac_f*T_t;
 
                 is_causality = false;
                 switch (i_case){
@@ -1710,9 +1788,11 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
 
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 = s^2
         // simply, we have two solutions
+        // fun_loc_sqrt = std::sqrt(fun_loc_sq/grid.fac_a_loc[ii]);
+        fun_loc_sqrt = std::sqrt(fun_loc_sq/fac_a);
+        one_over_a = 1/ar;
         for (int i_solution = 0; i_solution < 2; i_solution++){
-            fun_loc_sqrt = std::sqrt(fun_loc_sq/grid.fac_a_loc[ii]);
-            one_over_a = 1/ar;
+            
             // solutions
             switch (i_solution){
                 case 0:
@@ -1787,9 +1867,11 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
 
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/c*(at*tau+bt)^2 = s^2
         // simply, we have two solutions
+        // fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_c_loc[ii]/bc_f2); 
+        fun_loc_sqrt = std::sqrt(fun_loc_sq*fac_c/bc_f2); 
+        one_over_a = 1/at;
         for (int i_solution = 0; i_solution < 2; i_solution++){
-            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_c_loc[ii]/bc_f2); 
-            one_over_a = 1/at;
+            
             // solutions
             switch (i_solution){
                 case 0:
@@ -1865,9 +1947,11 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
 
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/b*(ap*tau+bp)^2 = s^2
         // simply, we have two solutions
+        // fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_b_loc[ii]/bc_f2); 
+        fun_loc_sqrt = std::sqrt(fun_loc_sq*fac_b/bc_f2); 
+        one_over_a = 1/ap;
         for (int i_solution = 0; i_solution < 2; i_solution++){
-            fun_loc_sqrt = std::sqrt(fun_loc_sq*grid.fac_b_loc[ii]/bc_f2); 
-            one_over_a = 1/ap;
+            
             // solutions
             switch (i_solution){
                 case 0:
@@ -1919,10 +2003,12 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
                         std::cout << "grid.dp: " << grid.dp << std::endl;
                         std::cout << "tau : " << tmp_tau << std::endl;
                         std::cout << "tau_- : " << grid.tau_loc[I2V(iip-1, jjt, kkr)] << std::endl;
-                        std::cout << "T0p : " << grid.T0p_loc[I2V(iip,jjt,kkr)] << std::endl;
+                        // std::cout << "T0p : " << grid.T0p_loc[I2V(iip,jjt,kkr)] << std::endl;
+                        std::cout << "T0p : " << T0p << std::endl;
                         std::cout << "T_p_2 = "
                                     << grid.T0v_loc[I2V(iip,jjt,kkr)] * (tmp_tau - grid.tau_loc[I2V(iip-1, jjt, kkr)]) / grid.dp
-                                    + grid.T0t_loc[I2V(iip,jjt,kkr)] * tmp_tau << std::endl;
+                                    // + grid.T0t_loc[I2V(iip,jjt,kkr)] * tmp_tau << std::endl;
+                                    + T0t * tmp_tau << std::endl;
                                     break;
 
 
@@ -1943,13 +2029,13 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
 
     // final, choose the minimum candidate solution as the updated value
     for (int i_cand = 0; i_cand < count_cand; i_cand++){
-        grid.tau_loc[I2V(iip, jjt, kkr)] = std::min(grid.tau_loc[I2V(iip, jjt, kkr)], canditate[i_cand]);
+        grid.tau_loc[ii] = std::min(grid.tau_loc[ii], canditate[i_cand]);
 
         if (check_out && iip == iip_out && jjt == jjt_out && kkr == kkr_out){
-            std::cout << "tau_loc: " << grid.tau_loc[I2V(iip, jjt, kkr)] << ", i_cand: " << i_cand << ", cand: " << canditate[i_cand] << std::endl;
+            std::cout << "tau_loc: " << grid.tau_loc[ii] << ", i_cand: " << i_cand << ", cand: " << canditate[i_cand] << std::endl;
         }
 
-        if (grid.tau_loc[I2V(iip, jjt, kkr)] < 0 ){
+        if (grid.tau_loc[ii] < 0 ){
             std::cout << "error, tau_loc < 0. iip: " << iip << ", jjt: " << jjt << ", kkr: " << kkr << std::endl;
             exit(1);
         }
@@ -1959,16 +2045,26 @@ void Iterator::calculate_stencil_1st_order_upwind(Grid&grid, int&iip, int&jjt, i
 
 
     if (check_out && iip == iip_out && jjt == jjt_out && kkr == kkr_out){
-            std::cout << "tau_loc: " << grid.tau_loc[I2V(iip, jjt, kkr)]
-                      << ",  T_loc: " << grid.T0v_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip, jjt, kkr)]
+            std::cout << "tau_loc: " << grid.tau_loc[ii]
+                      << ",  T_loc: " << grid.T0v_loc[ii] * grid.tau_loc[ii]
                       << std::endl;
     }
 }
 
 void Iterator::calculate_stencil_1st_order(Grid& grid, int& iip, int& jjt, int&kkr){
-    sigr = SWEEPING_COEFF*std::sqrt(grid.fac_a_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
-    sigt = SWEEPING_COEFF*std::sqrt(grid.fac_b_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
-    sigp = SWEEPING_COEFF*std::sqrt(grid.fac_c_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    // sigr = SWEEPING_COEFF*std::sqrt(grid.fac_a_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    // sigt = SWEEPING_COEFF*std::sqrt(grid.fac_b_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    // sigp = SWEEPING_COEFF*std::sqrt(grid.fac_c_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
+
+    int ii      = I2V(iip,   jjt,   kkr);
+    fac_a   = _1_CR;
+    fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
+    fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
+    // CUSTOMREAL fac_f   = -_2_CR * grid.eta_loc[ii] * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc[jjt];
+    
+    sigr = SWEEPING_COEFF*std::sqrt(fac_a)*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    sigt = SWEEPING_COEFF*std::sqrt(fac_b)*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    sigp = SWEEPING_COEFF*std::sqrt(fac_c)*grid.T0v_loc[I2V(iip, jjt, kkr)];
     coe  = _1_CR/((sigr/dr)+(sigt/dt)+(sigp/dp));
 
     pp1 = (grid.tau_loc[I2V(iip  , jjt  , kkr  )] - grid.tau_loc[I2V(iip-1, jjt  , kkr  )])/dp;
@@ -1990,9 +2086,19 @@ void Iterator::calculate_stencil_1st_order(Grid& grid, int& iip, int& jjt, int&k
 
 
 void Iterator::calculate_stencil_3rd_order(Grid& grid, int& iip, int& jjt, int&kkr){
-    sigr = SWEEPING_COEFF*std::sqrt(grid.fac_a_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
-    sigt = SWEEPING_COEFF*std::sqrt(grid.fac_b_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
-    sigp = SWEEPING_COEFF*std::sqrt(grid.fac_c_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    int ii      = I2V(iip,   jjt,   kkr);
+    fac_a   = _1_CR;
+    fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
+    fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
+
+
+    // sigr = SWEEPING_COEFF*std::sqrt(grid.fac_a_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    // sigt = SWEEPING_COEFF*std::sqrt(grid.fac_b_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    // sigp = SWEEPING_COEFF*std::sqrt(grid.fac_c_loc[I2V(iip, jjt, kkr)])*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    sigr = SWEEPING_COEFF*std::sqrt(fac_a)*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    sigt = SWEEPING_COEFF*std::sqrt(fac_b)*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    sigp = SWEEPING_COEFF*std::sqrt(fac_c)*grid.T0v_loc[I2V(iip, jjt, kkr)];
+    
     coe  = _1_CR/((sigr/dr)+(sigt/dt)+(sigp/dp));
 
 
@@ -2235,12 +2341,14 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
     CUSTOMREAL tmp_T_jt = grid.T_loc[ii_pt]-grid.T_loc[ii_mt];
 
     // a1(-0.5r) = - (1 + 2*zeta) & T_r 
-    CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[ii_mr]+grid.zeta_loc[ii]) * (grid.T_loc[ii]-grid.T_loc[ii_mr]) * dr_inv;
+    // CUSTOMREAL a1  = - (_1_CR+grid.zeta_loc[ii_mr]+grid.zeta_loc[ii]) * (grid.T_loc[ii]-grid.T_loc[ii_mr]) * dr_inv;
+    CUSTOMREAL a1  = - (grid.T_loc[ii]-grid.T_loc[ii_mr]) * dr_inv;
     CUSTOMREAL a1m = (a1 - std::abs(a1));   // in fact, it should be a1m = (a1 - std::abs(a1))/2, 1/2 is included in the coe and Hadj for high efficiency
     CUSTOMREAL a1p = (a1 + std::abs(a1));   // similar for a1p, a2m, a2p, b1m, b1p, b2m, b2p, c1m, c1p, c2m, c2p
 
     // a2(+0.5r) = - (1 + 2*zeta) & T_r
-    CUSTOMREAL a2  = - (_1_CR+grid.zeta_loc[ii]+grid.zeta_loc[ii_pr]) * (grid.T_loc[ii_pr]-grid.T_loc[ii]) * dr_inv;
+    // CUSTOMREAL a2  = - (_1_CR+grid.zeta_loc[ii]+grid.zeta_loc[ii_pr]) * (grid.T_loc[ii_pr]-grid.T_loc[ii]) * dr_inv;
+    CUSTOMREAL a2  = - (grid.T_loc[ii_pr]-grid.T_loc[ii]) * dr_inv;
     CUSTOMREAL a2m = (a2 - std::abs(a2));
     CUSTOMREAL a2p = (a2 + std::abs(a2));
 
@@ -2276,7 +2384,8 @@ void Iterator::calculate_stencil_adj(Grid& grid, int& iip, int& jjt, int& kkr){
 
     // additional terms of divergence in spherical cooridinate
     // -2 (1+2*zeta) *(1/r) *T_r + (1-2xi) * sin(t) * (1/r^2cos(t)) * T_t + 2*eta * sin(t) * (1/(r*cos(t))^2) * T_p
-    CUSTOMREAL d   = - (_1_CR+_2_CR*grid.zeta_loc[ii]) * one_over_r_loc_1d_kkr \
+    // CUSTOMREAL d   = - (_1_CR+_2_CR*grid.zeta_loc[ii]) * one_over_r_loc_1d_kkr
+    CUSTOMREAL d   = - one_over_r_loc_1d_kkr \
                      * (grid.T_loc[ii_pr]-grid.T_loc[ii_mr]) * dr_inv \
                      + (_0_5_CR-grid.xi_loc[ii]) * sin_t_loc_jjt * one_over_r_loc_1d_kkr_sq * one_over_cos_t_loc_jjt \
                      * tmp_T_jt * dt_inv \
@@ -2310,6 +2419,21 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
 
     // preparations
 
+    int ii      = I2V(iip,   jjt,   kkr);
+    int ii_mp   = I2V(iip-1, jjt,   kkr);
+    int ii_pp   = I2V(iip+1, jjt,   kkr);
+    int ii_mt   = I2V(iip  , jjt-1, kkr);
+    int ii_pt   = I2V(iip  , jjt+1, kkr);
+    int ii_mr   = I2V(iip  , jjt,   kkr-1);
+    int ii_pr   = I2V(iip  , jjt,   kkr+1);
+
+    fac_a   = _1_CR;
+    fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
+    fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
+    fac_f   = -_2_CR * grid.eta_loc[ii] * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc[jjt];
+    
+
+
     count_cand = 0;
     // forward and backward partial differential discretization
     //  T_p = ap*T(iip, jjt, kkr)+bp; two cases:  1/dp * T(iip,jjt,kkr) - T(iip-1,jjt,kkr)/dp  or  -1/dp * T(iip,jjt,kkr) + T(iip+1,jjt,kkr)/dp
@@ -2317,31 +2441,35 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
     //  T_r = ar*T(iip, jjt, kkr)+br;
     if (iip > 0){
         ap1 =  _1_CR/dp;
-        bp1 = -grid.T_loc[I2V(iip-1, jjt, kkr)]/dp;
+        bp1 = -grid.T_loc[ii_mp]/dp;
     }
     if (iip < np-1){
         ap2 = -_1_CR/dp;
-        bp2 =  grid.T_loc[I2V(iip+1, jjt, kkr)]/dp;
+        bp2 =  grid.T_loc[ii_pp]/dp;
     }
 
     if (jjt > 0){
         at1 =  _1_CR/dt;
-        bt1 = -grid.T_loc[I2V(iip, jjt-1, kkr)]/dt;
+        bt1 = -grid.T_loc[ii_mt]/dt;
     }
     if (jjt < nt-1){
         at2 = -_1_CR/dt;
-        bt2 =  grid.T_loc[I2V(iip, jjt+1, kkr)]/dt;
+        bt2 =  grid.T_loc[ii_pt]/dt;
     }
 
     if (kkr > 0){
         ar1 =  _1_CR/dr;
-        br1 = -grid.T_loc[I2V(iip, jjt, kkr-1)]/dr;
+        br1 = -grid.T_loc[ii_mr]/dr;
     }
     if (kkr < nr-1){
         ar2 = -_1_CR/dr;
-        br2 =  grid.T_loc[I2V(iip, jjt, kkr+1)]/dr;
+        br2 =  grid.T_loc[ii_pr]/dr;
     }
-    bc_f2 = grid.fac_b_loc[I2V(iip,jjt,kkr)]*grid.fac_c_loc[I2V(iip,jjt,kkr)] - std::pow(grid.fac_f_loc[I2V(iip,jjt,kkr)],_2_CR);
+    // bc_f2 = grid.fac_b_loc[I2V(iip,jjt,kkr)]*grid.fac_c_loc[I2V(iip,jjt,kkr)] - std::pow(grid.fac_f_loc[I2V(iip,jjt,kkr)],_2_CR);
+    bc_f2 = fac_b*fac_c - fac_f*fac_f;
+    bc_over_b = bc_f2/fac_b;
+    bc_over_c = bc_f2/fac_c;
+    fun_loc_sq = grid.fun_loc[ii]*grid.fun_loc[ii];
 
     // start to find candidate solutions
 
@@ -2410,24 +2538,32 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
 
         // plug T_p, T_t, T_r into eikonal equation, solving the quadratic equation with respect to tau(iip,jjt,kkr)
         // that is a*(ar*T+br)^2 + b*(at*T+bt)^2 + c*(ap*T+bp)^2 - 2*f*(at*T+bt)*(ap*T+bp) = s^2
-        eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR)
-              + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * at * ap;
-        eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*grid.fac_b_loc[I2V(iip,jjt,kkr)] * at * bt
-              + _2_CR*grid.fac_c_loc[I2V(iip,jjt,kkr)] * ap * bp - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * (at*bp + bt*ap);
-        eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
-              + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * bt * bp
-              - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
-        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+        // eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR)
+        //       + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * at * ap;
+        // eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*grid.fac_b_loc[I2V(iip,jjt,kkr)] * at * bt
+        //       + _2_CR*grid.fac_c_loc[I2V(iip,jjt,kkr)] * ap * bp - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * (at*bp + bt*ap);
+        // eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
+        //       + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * bt * bp
+        //       - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
+        eqn_a = fac_a*ar*ar + fac_b*at*at + fac_c*ap*ap - _2_CR*fac_f*at*ap;
+        eqn_b = _2_CR*fac_a*ar*br + _2_CR*fac_b*at*bt + _2_CR*fac_c*ap*bp - _2_CR*fac_f*(at*bp + bt*ap);
+        eqn_c = fac_a*br*br + fac_b*bt*bt + fac_c*bp*bp - _2_CR*fac_f*bt*bp
+              - fun_loc_sq;
+        eqn_Delta = eqn_b * eqn_b - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
+            eqn_Delta_sqrt = std::sqrt(eqn_Delta);
+            one_over_a = 1 / (_2_CR*eqn_a);
             for (int i_solution = 0; i_solution < 2; i_solution++){
                 // solutions
                 switch (i_solution){
                     case 0:
-                        tmp_T = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        // tmp_T = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_T = (-eqn_b + eqn_Delta_sqrt)*one_over_a;
                         break;
                     case 1:
-                        tmp_T = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        // tmp_T = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_T = (-eqn_b - eqn_Delta_sqrt)*one_over_a;
                         break;
                 }
 
@@ -2437,10 +2573,13 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
                 T_t = at*tmp_T + bt;
                 T_p = ap*tmp_T + bp;
 
-                charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
-                charact_t = grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_t - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_p;
-                charact_p = grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_p - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_t;
-
+                // charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
+                // charact_t = grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_t - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_p;
+                // charact_p = grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_p - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_t;
+                charact_r = fac_a*T_r;
+                charact_t = fac_b*T_t - fac_f*T_p;
+                charact_p = fac_c*T_p - fac_f*T_t;
+                
                 is_causality = false;
                 switch (i_case){
                     case 0:  //characteristic travels from -p, -t, -r
@@ -2536,21 +2675,26 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
         }
 
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 + (bc-f^2)/c*(at*tau+bt)^2 = s^2
-        eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR);
-        eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * at * bt;
-        eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
-              - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
-        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+        // eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR);
+        // eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * at * bt;
+        // eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
+        //       - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
+        eqn_a = fac_a*ar*ar + bc_over_c*at*at;
+        eqn_b = _2_CR*fac_a*ar*br + _2_CR*bc_over_c*at*bt;
+        eqn_c = fac_a*br*br + bc_over_c*bt*bt - fun_loc_sq;
+        eqn_Delta = eqn_b * eqn_b - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
+            eqn_Delta_sqrt = std::sqrt(eqn_Delta);
+            one_over_a = 1 / (_2_CR*eqn_a);
             for (int i_solution = 0; i_solution < 2; i_solution++){
                 // solutions
                 switch (i_solution){
                     case 0:
-                        tmp_T = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_T = (-eqn_b + eqn_Delta_sqrt)*one_over_a;
                         break;
                     case 1:
-                        tmp_T = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_T = (-eqn_b - eqn_Delta_sqrt)*one_over_a;
                         break;
                 }
 
@@ -2558,9 +2702,10 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
                 T_r = ar*tmp_T + br;
                 T_t = at*tmp_T + bt;
 
-                charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
-                charact_t = bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_t;
-
+                // charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
+                // charact_t = bc_f2/grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_t;
+                charact_r = fac_a*T_r;
+                charact_t = bc_over_c*T_t;
                 is_causality = false;
                 switch (i_case){
                     case 0:  //characteristic travels from -t, -r
@@ -2635,21 +2780,27 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
         }
 
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 + (bc-f^2)/b*(ap*tau+bp)^2 = s^2
-        eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR);
-        eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * ap * bp;
-        eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR)
-              - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
-        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+        // eqn_a = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(ar, _2_CR) + bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR);
+        // eqn_b = _2_CR*grid.fac_a_loc[I2V(iip,jjt,kkr)] * ar * br + _2_CR*bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * ap * bp;
+        // eqn_c = grid.fac_a_loc[I2V(iip,jjt,kkr)] * std::pow(br, _2_CR) + bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR)
+        //       - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
+        eqn_a = fac_a * ar*ar + bc_over_b * ap*ap;
+        eqn_b = _2_CR * fac_a * ar * br + _2_CR * bc_over_b * ap * bp;
+        eqn_c = fac_a * br*br + bc_over_b * bp*bp
+              - fun_loc_sq;
+        eqn_Delta = eqn_b * eqn_b - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
+            eqn_Delta_sqrt = std::sqrt(eqn_Delta);
+            one_over_a = 1 / (_2_CR*eqn_a);
             for (int i_solution = 0; i_solution < 2; i_solution++){
                 // solutions
                 switch (i_solution){
                     case 0:
-                        tmp_T = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_T = (-eqn_b + eqn_Delta_sqrt)*one_over_a;
                         break;
                     case 1:
-                        tmp_T = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_T = (-eqn_b - eqn_Delta_sqrt)*one_over_a;
                         break;
                 }
 
@@ -2657,8 +2808,10 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
                 T_r = ar*tmp_T + br;
                 T_p = ap*tmp_T + bp;
 
-                charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
-                charact_p = bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_p;
+                // charact_r = grid.fac_a_loc[I2V(iip,jjt,kkr)]*T_r;
+                // charact_p = bc_f2/grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_p;
+                charact_r = fac_a*T_r;
+                charact_p = bc_over_b*T_p;
 
                 is_causality = false;
                 switch (i_case){
@@ -2733,24 +2886,33 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
         }
 
         // plug T_p, T_t into eikonal equation, solve the quadratic equation:  b*(at*tau+bt)^2 + c*(ap*tau+bp)^2 - 2f*(at*tau+bt)*(ap*tau+bp) = s^2
-        eqn_a = grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR)
-              + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * at * ap;
-        eqn_b = _2_CR*grid.fac_b_loc[I2V(iip,jjt,kkr)] * at * bt
-              + _2_CR*grid.fac_c_loc[I2V(iip,jjt,kkr)] * ap * bp - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * (at*bp + bt*ap);
-        eqn_c = grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
-              + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * bt * bp
-              - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
-        eqn_Delta = std::pow(eqn_b, _2_CR) - _4_CR * eqn_a * eqn_c;
+        // eqn_a = grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(at, _2_CR)
+        //       + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(ap, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * at * ap;
+        // eqn_b = _2_CR*grid.fac_b_loc[I2V(iip,jjt,kkr)] * at * bt
+        //       + _2_CR*grid.fac_c_loc[I2V(iip,jjt,kkr)] * ap * bp - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * (at*bp + bt*ap);
+        // eqn_c = grid.fac_b_loc[I2V(iip,jjt,kkr)] * std::pow(bt, _2_CR)
+        //       + grid.fac_c_loc[I2V(iip,jjt,kkr)] * std::pow(bp, _2_CR) - _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * bt * bp
+        //       - std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR);
+        eqn_a = fac_b * at*at
+              + fac_c * ap*ap - _2_CR*fac_f * at * ap;
+        eqn_b = _2_CR*fac_b * at * bt
+              + _2_CR*fac_c * ap * bp - _2_CR*fac_f * (at*bp + bt*ap);
+        eqn_c = fac_b * bt*bt
+              + fac_c * bp*bp - _2_CR*fac_f * bt * bp
+              - fun_loc_sq;
+        eqn_Delta = eqn_b * eqn_b - _4_CR * eqn_a * eqn_c;
 
         if (eqn_Delta >= 0){    // one or two real solutions
+            eqn_Delta_sqrt = std::sqrt(eqn_Delta);
+            one_over_a = 1 / (_2_CR*eqn_a);
             for (int i_solution = 0; i_solution < 2; i_solution++){
                 // solutions
                 switch (i_solution){
                     case 0:
-                        tmp_T = (-eqn_b + std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_T = (-eqn_b + eqn_Delta_sqrt)*one_over_a;
                         break;
                     case 1:
-                        tmp_T = (-eqn_b - std::sqrt(eqn_Delta))/(_2_CR*eqn_a);
+                        tmp_T = (-eqn_b - eqn_Delta_sqrt)*one_over_a;
                         break;
                 }
 
@@ -2758,8 +2920,10 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
                 T_t = at*tmp_T + bt;
                 T_p = ap*tmp_T + bp;
 
-                charact_t = grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_t - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_p;
-                charact_p = grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_p - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_t;
+                // charact_t = grid.fac_b_loc[I2V(iip,jjt,kkr)]*T_t - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_p;
+                // charact_p = grid.fac_c_loc[I2V(iip,jjt,kkr)]*T_p - grid.fac_f_loc[I2V(iip,jjt,kkr)]*T_t;
+                charact_t = fac_b * T_t - fac_f * T_p;
+                charact_p = fac_c * T_p - fac_f * T_t;
 
                 is_causality = false;
                 switch (i_case){
@@ -2820,14 +2984,18 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
 
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  a*(ar*tau+br)^2 = s^2
         // simply, we have two solutions
+        fun_loc_sqrt = std::sqrt(fun_loc_sq/fac_a);
+        one_over_a = 1/ar;
         for (int i_solution = 0; i_solution < 2; i_solution++){
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_T = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)/grid.fac_a_loc[I2V(iip,jjt,kkr)]) - br)/ar;
+                    // tmp_T = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)/grid.fac_a_loc[I2V(iip,jjt,kkr)]) - br)/ar;
+                    tmp_T = (fun_loc_sqrt - br)*one_over_a;
                     break;
                 case 1:
-                    tmp_T = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)/grid.fac_a_loc[I2V(iip,jjt,kkr)]) - br)/ar;
+                    // tmp_T = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)/grid.fac_a_loc[I2V(iip,jjt,kkr)]) - br)/ar;
+                    tmp_T = (-fun_loc_sqrt - br)*one_over_a;
                     break;
             }
 
@@ -2881,14 +3049,18 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
 
         // plug T_p, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/c*(at*tau+bt)^2 = s^2
         // simply, we have two solutions
+        fun_loc_sqrt = std::sqrt(fun_loc_sq*fac_c/bc_f2);
+        one_over_a = 1/at;
         for (int i_solution = 0; i_solution < 2; i_solution++){
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_T = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_c_loc[I2V(iip,jjt,kkr)]/bc_f2) - bt)/at;
+                    // tmp_T = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_c_loc[I2V(iip,jjt,kkr)]/bc_f2) - bt)/at;
+                    tmp_T = (fun_loc_sqrt - bt)*one_over_a;
                     break;
                 case 1:
-                    tmp_T = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_c_loc[I2V(iip,jjt,kkr)]/bc_f2) - bt)/at;
+                    // tmp_T = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_c_loc[I2V(iip,jjt,kkr)]/bc_f2) - bt)/at;
+                    tmp_T = (-fun_loc_sqrt - bt)*one_over_a;
                     break;
             }
 
@@ -2943,14 +3115,18 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
 
         // plug T_t, T_r into eikonal equation, solve the quadratic equation:  (bc-f^2)/b*(ap*tau+bp)^2 = s^2
         // simply, we have two solutions
+        fun_loc_sqrt = std::sqrt(fun_loc_sq*fac_b/bc_f2);
+        one_over_a = 1/ap;
         for (int i_solution = 0; i_solution < 2; i_solution++){
             // solutions
             switch (i_solution){
                 case 0:
-                    tmp_T = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_b_loc[I2V(iip,jjt,kkr)]/bc_f2) - bp)/ap;
+                    // tmp_T = ( std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_b_loc[I2V(iip,jjt,kkr)]/bc_f2) - bp)/ap;
+                    tmp_T = (fun_loc_sqrt - bp)*one_over_a;
                     break;
                 case 1:
-                    tmp_T = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_b_loc[I2V(iip,jjt,kkr)]/bc_f2) - bp)/ap;
+                    // tmp_T = (-std::sqrt(std::pow(grid.fun_loc[I2V(iip,jjt,kkr)], _2_CR)*grid.fac_b_loc[I2V(iip,jjt,kkr)]/bc_f2) - bp)/ap;
+                    tmp_T = (-fun_loc_sqrt - bp)*one_over_a;
                     break;
             }
 
@@ -2984,7 +3160,7 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
 
     // final, choose the minimum candidate solution as the updated value
     for (int i_cand = 0; i_cand < count_cand; i_cand++){
-        grid.T_loc[I2V(iip, jjt, kkr)] = std::min(grid.T_loc[I2V(iip, jjt, kkr)], canditate[i_cand]);
+        grid.T_loc[ii] = std::min(grid.T_loc[ii], canditate[i_cand]);
     }
 
     // if (iip == 1 && jjt ==1 && kkr ==1){
@@ -3001,9 +3177,27 @@ void Iterator::calculate_stencil_1st_order_upwind_tele(Grid&grid, int&iip, int&j
 
 
 void Iterator::calculate_stencil_1st_order_tele(Grid& grid, int& iip, int& jjt, int&kkr){
-    sigr = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_a_loc[I2V(iip, jjt, kkr)]);
-    sigt = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_b_loc[I2V(iip, jjt, kkr)]);
-    sigp = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_c_loc[I2V(iip, jjt, kkr)]);
+    // sigr = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_a_loc[I2V(iip, jjt, kkr)]);
+    // sigt = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_b_loc[I2V(iip, jjt, kkr)]);
+    // sigp = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_c_loc[I2V(iip, jjt, kkr)]);
+
+    int ii      = I2V(iip,   jjt,   kkr);
+    // int ii_mp   = I2V(iip-1, jjt,   kkr);
+    // int ii_pp   = I2V(iip+1, jjt,   kkr);
+    // int ii_mt   = I2V(iip  , jjt-1, kkr);
+    // int ii_pt   = I2V(iip  , jjt+1, kkr);
+    // int ii_mr   = I2V(iip  , jjt,   kkr-1);
+    // int ii_pr   = I2V(iip  , jjt,   kkr+1);
+
+    fac_a   = _1_CR;
+    fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
+    fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
+
+
+    sigr = SWEEPING_COEFF_TELE*std::sqrt(fac_a);
+    sigt = SWEEPING_COEFF_TELE*std::sqrt(fac_b);
+    sigp = SWEEPING_COEFF_TELE*std::sqrt(fac_c);
+
     coe  = _1_CR/((sigr/dr)+(sigt/dt)+(sigp/dp));
 
     pp1 = (grid.T_loc[I2V(iip  , jjt  , kkr  )] - grid.T_loc[I2V(iip-1, jjt  , kkr  )])/dp;
@@ -3023,9 +3217,18 @@ void Iterator::calculate_stencil_1st_order_tele(Grid& grid, int& iip, int& jjt, 
 
 
 void Iterator::calculate_stencil_3rd_order_tele(Grid& grid, int& iip, int& jjt, int&kkr){
-    sigr = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_a_loc[I2V(iip, jjt, kkr)]);
-    sigt = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_b_loc[I2V(iip, jjt, kkr)]);
-    sigp = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_c_loc[I2V(iip, jjt, kkr)]);
+    // sigr = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_a_loc[I2V(iip, jjt, kkr)]);
+    // sigt = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_b_loc[I2V(iip, jjt, kkr)]);
+    // sigp = SWEEPING_COEFF_TELE*std::sqrt(grid.fac_c_loc[I2V(iip, jjt, kkr)]);
+
+    int ii     = I2V(iip,   jjt,   kkr);
+    fac_a   = _1_CR;
+    fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
+    fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
+
+    sigr = SWEEPING_COEFF_TELE*std::sqrt(fac_a);
+    sigt = SWEEPING_COEFF_TELE*std::sqrt(fac_b);
+    sigp = SWEEPING_COEFF_TELE*std::sqrt(fac_c);
     coe  = _1_CR/((sigr/dr)+(sigt/dt)+(sigp/dp));
 
     // direction p
@@ -3254,12 +3457,29 @@ inline CUSTOMREAL Iterator::calc_LF_Hamiltonian(Grid& grid, \
                                          CUSTOMREAL& pr1, CUSTOMREAL& pr2, \
                                          int& iip, int& jjt, int& kkr) {
     // LF Hamiltonian
+    int ii      = I2V(iip,   jjt,   kkr);
+
+    fac_a   = _1_CR;
+    fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
+    fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
+    fac_f   = -_2_CR * grid.eta_loc[ii] * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc[jjt];
+    
+    // calculate T0p, T0t, T0r
+    // T0r = coe_r_loc_T0r[k_r] / T0v
+    // T0t = (coe_t_loc_T0t[j_lat] + coe_p_loc_T0t[i_lon]) / T0v
+    // T0p = (coe_t_loc_T0p[j_lat] + coe_p_loc_T0p[i_lon]) / T0v
+    one_over_T0v = _1_CR/grid.T0v_loc[ii];
+    T0r = grid.coe_r_loc_T0r[kkr] * one_over_T0v;
+    T0t = (grid.coe_t_loc_T0t[jjt] + grid.coe_p_loc_T0t[iip]) * one_over_T0v;
+    T0p = (grid.coe_t_loc_T0p[jjt] + grid.coe_p_loc_T0p[iip]) * one_over_T0v;
+
+
     return sqrt(
-              grid.fac_a_loc[I2V(iip,jjt,kkr)] * my_square(grid.T0r_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pr1+pr2)/_2_CR) \
-    +         grid.fac_b_loc[I2V(iip,jjt,kkr)] * my_square(grid.T0t_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pt1+pt2)/_2_CR) \
-    +         grid.fac_c_loc[I2V(iip,jjt,kkr)] * my_square(grid.T0p_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pp1+pp2)/_2_CR) \
-    -   _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * (grid.T0t_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pt1+pt2)/_2_CR) \
-                                               * (grid.T0p_loc[I2V(iip,jjt,kkr)] * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pp1+pp2)/_2_CR) \
+              fac_a * my_square(T0r * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pr1+pr2)/_2_CR) \
+    +         fac_b * my_square(T0t * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pt1+pt2)/_2_CR) \
+    +         fac_c * my_square(T0p * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pp1+pp2)/_2_CR) \
+    -   _2_CR*fac_f * (T0t * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pt1+pt2)/_2_CR) \
+                                               * (T0p * grid.tau_loc[I2V(iip,jjt,kkr)] + grid.T0v_loc[I2V(iip,jjt,kkr)] * (pp1+pp2)/_2_CR) \
     );
 
 }
@@ -3271,11 +3491,19 @@ inline CUSTOMREAL Iterator::calc_LF_Hamiltonian_tele(Grid& grid, \
                                          CUSTOMREAL& pr1, CUSTOMREAL& pr2, \
                                          int& iip, int& jjt, int& kkr) {
     // LF Hamiltonian for teleseismic source
+    int ii      = I2V(iip,   jjt,   kkr);
+
+    fac_a   = _1_CR;
+    fac_b   = (_1_CR - _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr];
+    fac_c   = (_1_CR + _2_CR * grid.xi_loc[ii]) * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc_sq[jjt];
+    fac_f   = -_2_CR * grid.eta_loc[ii] * grid.one_over_r_loc_1d_sq[kkr] * grid.one_over_cos_t_loc[jjt];
+
+
     return std::sqrt(
-              grid.fac_a_loc[I2V(iip,jjt,kkr)] * my_square((pr1+pr2)/_2_CR) \
-    +         grid.fac_b_loc[I2V(iip,jjt,kkr)] * my_square((pt1+pt2)/_2_CR) \
-    +         grid.fac_c_loc[I2V(iip,jjt,kkr)] * my_square((pp1+pp2)/_2_CR) \
-    -   _2_CR*grid.fac_f_loc[I2V(iip,jjt,kkr)] * ((pt1+pt2)/_2_CR) \
+              fac_a * my_square((pr1+pr2)/_2_CR) \
+    +         fac_b * my_square((pt1+pt2)/_2_CR) \
+    +         fac_c * my_square((pp1+pp2)/_2_CR) \
+    -   _2_CR*fac_f * ((pt1+pt2)/_2_CR) \
                                                * ((pp1+pp2)/_2_CR) \
     );
 

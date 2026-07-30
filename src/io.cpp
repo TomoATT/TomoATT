@@ -58,10 +58,10 @@ IO_utils::~IO_utils() {
     stdout_by_main("--- IO object finalization ---");
 }
 
-void IO_utils::reset_source_info(const int& id_sim_src, const std::string& name_sim_src) {
+void IO_utils::reset_source_info(const std::string& name_sim_src) {
 
     // set simulation group id and source name for output files/dataset names
-    set_id_src(id_sim_src);
+    // set_id_src(id_sim_src);
     set_name_src(name_sim_src);
 
 #ifdef USE_HDF5
@@ -251,6 +251,9 @@ void IO_utils::write_grid(Grid& grid) {
             } // end for i_rank
        } // end if id_sim == 0
     } // end if output_format==OUTPUT_FORMAT_ASCII
+
+    // once written, x_loc_3d etc. will not be needed anymore, so we can free the memory
+    grid.memory_deallocation_for_3D_grid();
 
 }
 
@@ -1133,81 +1136,81 @@ void IO_utils::write_eta(Grid& grid, int i_inv) {
 }
 
 
-void IO_utils::write_a(Grid& grid, int i_inv) {
-    if (!subdom_main) return;
+// void IO_utils::write_a(Grid& grid, int i_inv) {
+//     if (!subdom_main) return;
 
-    if (output_format==OUTPUT_FORMAT_HDF5){
-#ifdef USE_HDF5
-        std::string h5_dset_name = "fac_a";
-        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_a(), i_inv, model_data);
-#else
-        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
-        exit(1);
-#endif
-    } else if (output_format==OUTPUT_FORMAT_ASCII){
-        std::string dset_name = "fac_a_inv_" + int2string_zero_fill(i_inv);
-        std::string fname = create_fname_ascii_model(dset_name);
-        write_data_ascii(grid, fname, grid.get_a());
-    }
-}
-
-
-void IO_utils::write_b(Grid& grid, int i_inv) {
-    if (!subdom_main) return;
-
-    if (output_format==OUTPUT_FORMAT_HDF5){
-#ifdef USE_HDF5
-        std::string h5_dset_name = "fac_b";
-        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_b(), i_inv, model_data);
-#else
-        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
-        exit(1);
-#endif
-    } else if (output_format==OUTPUT_FORMAT_ASCII){
-        std::string dset_name = "fac_b_inv_" + int2string_zero_fill(i_inv);
-        std::string fname = create_fname_ascii_model(dset_name);
-        write_data_ascii(grid, fname, grid.get_b());
-    }
-
-}
+//     if (output_format==OUTPUT_FORMAT_HDF5){
+// #ifdef USE_HDF5
+//         std::string h5_dset_name = "fac_a";
+//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_a(), i_inv, model_data);
+// #else
+//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format==OUTPUT_FORMAT_ASCII){
+//         std::string dset_name = "fac_a_inv_" + int2string_zero_fill(i_inv);
+//         std::string fname = create_fname_ascii_model(dset_name);
+//         write_data_ascii(grid, fname, grid.get_a());
+//     }
+// }
 
 
-void IO_utils::write_c(Grid& grid, int i_inv) {
-    if (!subdom_main) return;
+// void IO_utils::write_b(Grid& grid, int i_inv) {
+//     if (!subdom_main) return;
 
-    if (output_format==OUTPUT_FORMAT_HDF5){
-#ifdef USE_HDF5
-        std::string h5_dset_name = "fac_c";
-        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_c(), i_inv, model_data);
-#else
-        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
-        exit(1);
-#endif
-    } else if (output_format==OUTPUT_FORMAT_ASCII){
-        std::string dset_name = "fac_c_inv_" + int2string_zero_fill(i_inv);
-        std::string fname = create_fname_ascii_model(dset_name);
-        write_data_ascii(grid, fname, grid.get_c());
-    }
-}
+//     if (output_format==OUTPUT_FORMAT_HDF5){
+// #ifdef USE_HDF5
+//         std::string h5_dset_name = "fac_b";
+//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_b(), i_inv, model_data);
+// #else
+//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format==OUTPUT_FORMAT_ASCII){
+//         std::string dset_name = "fac_b_inv_" + int2string_zero_fill(i_inv);
+//         std::string fname = create_fname_ascii_model(dset_name);
+//         write_data_ascii(grid, fname, grid.get_b());
+//     }
+
+// }
 
 
-void IO_utils::write_f(Grid& grid, int i_inv) {
-    if (!subdom_main) return;
+// void IO_utils::write_c(Grid& grid, int i_inv) {
+//     if (!subdom_main) return;
 
-    if (output_format==OUTPUT_FORMAT_HDF5){
-#ifdef USE_HDF5
-        std::string h5_dset_name = "fac_f";
-        write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_f(), i_inv, model_data);
-#else
-        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
-        exit(1);
-#endif
-    } else if (output_format==OUTPUT_FORMAT_ASCII){
-        std::string dset_name = "fac_f_inv_" + int2string_zero_fill(i_inv);
-        std::string fname = create_fname_ascii_model(dset_name);
-        write_data_ascii(grid, fname, grid.get_f());
-    }
-}
+//     if (output_format==OUTPUT_FORMAT_HDF5){
+// #ifdef USE_HDF5
+//         std::string h5_dset_name = "fac_c";
+//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_c(), i_inv, model_data);
+// #else
+//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format==OUTPUT_FORMAT_ASCII){
+//         std::string dset_name = "fac_c_inv_" + int2string_zero_fill(i_inv);
+//         std::string fname = create_fname_ascii_model(dset_name);
+//         write_data_ascii(grid, fname, grid.get_c());
+//     }
+// }
+
+
+// void IO_utils::write_f(Grid& grid, int i_inv) {
+//     if (!subdom_main) return;
+
+//     if (output_format==OUTPUT_FORMAT_HDF5){
+// #ifdef USE_HDF5
+//         std::string h5_dset_name = "fac_f";
+//         write_data_h5(grid, h5_group_name_data, h5_dset_name, grid.get_f(), i_inv, model_data);
+// #else
+//         std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+//         exit(1);
+// #endif
+//     } else if (output_format==OUTPUT_FORMAT_ASCII){
+//         std::string dset_name = "fac_f_inv_" + int2string_zero_fill(i_inv);
+//         std::string fname = create_fname_ascii_model(dset_name);
+//         write_data_ascii(grid, fname, grid.get_f());
+//     }
+// }
 
 
 void IO_utils::write_Ks(Grid& grid, int i_inv) {
