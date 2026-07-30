@@ -340,7 +340,7 @@ void set_new_model(Grid& grid, CUSTOMREAL step_length_new, bool init_bfgs=false)
                 }
             }
 
-            grid.rejuvenate_abcf();
+            // grid.rejuvenate_abcf();
 
 
         } else { // for LBFGS routine

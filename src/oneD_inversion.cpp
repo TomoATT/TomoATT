@@ -171,6 +171,8 @@ void OneDInversion::deallocate_arrays(){
 // ########           and sub functions            ########
 // ########################################################
 
+// because level 2 and level 3 are not allowed in OneDInversion.
+// each processor have src_map, rec_map, data_vec.
 std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams& IP, IO_utils& io, const int& i_inv) {
 
     // begin from here
@@ -180,43 +182,66 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
     // initialize misfit kernel
     initialize_kernel_1d();
 
+    // i_src (1:N) -> id_src_att
+    std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);      // main of level 2 and 3
     // iterate over sources
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec.size() != IP.n_src_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
         
-        const std::string name_sim_src  = IP.get_src_name(i_src);
+        int         id_src_att    = IP.get_id_src_att(i_src, id_src_att_vec);  // get id_src_att for the i-th source
+        std::string name_src  = IP.get_src_name(i_src, id_src_att_vec);
+        bool        is_teleseismic = IP.get_if_src_teleseismic(id_src_att); // get is_teleseismic flag
 
-        if (myrank == 0){    
+        if (is_teleseismic) {
+            if (myrank == 0){  // main of level 2 and level 3
+                std::cout << "id_sim: " << id_sim << ", source (" << i_src+1 << "/" << IP.n_src_this_sim_group
+                        << "), name: "
+                        << name_src << ", lat: " << IP.src_map[id_src_att].lat
+                        << ", lon: " << IP.src_map[id_src_att].lon << ", dep: " << IP.src_map[id_src_att].dep
+                        << "is teleseismic, skip"
+                        << std::endl;
+            }
+            continue;
+        }
+
+
+        if (myrank == 0){    // main of level 2 and level 3
             std::cout << "id_sim: " << id_sim << ", calculating source (" << i_src+1 << "/" << IP.n_src_this_sim_group
                     << "), name: "
-                    << name_sim_src << ", lat: " << IP.src_map[name_sim_src].lat
-                    << ", lon: " << IP.src_map[name_sim_src].lon << ", dep: " << IP.src_map[name_sim_src].dep
+                    << name_src << ", lat: " << IP.src_map[id_src_att].lat
+                    << ", lon: " << IP.src_map[id_src_att].lon << ", dep: " << IP.src_map[id_src_att].dep
                     << std::endl;
         }
 
         ///////////////// run forward //////////////////
 
         // solver 2d eikonal equation for the i-th source for traveltime field
-        eikonal_solver_2d(IP, i_src);   // now traveltime field has been stored in T_1dinv.
+        eikonal_solver_2d(IP, id_src_att);   // now traveltime field has been stored in T_1dinv.
 
         // calculate synthetic traveltime and adjoint source
-        calculate_synthetic_traveltime_and_adjoint_source(IP, i_src);  // now data in data_map, the data.traveltime has been updated.
+        calculate_synthetic_traveltime_and_adjoint_source(IP, id_src_att);  // now data in data_map, the data.traveltime has been updated.
 
         if(IP.get_if_output_source_field() && (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2 || i_inv == 0)){
             // write out the traveltime field
-            write_T_1dinv(io, IP.get_src_name(i_src), i_inv);
+            write_T_1dinv(io, name_src, i_inv);
         }
 
         ///////////////// run adjoint //////////////////
 
         // solver for 2d adjoint field
         int adj_type = 0;  // 0: adjoint_field, 1: adjoint_density
-        adjoint_solver_2d(IP, i_src, adj_type);  // now adjoint field has been stored in Tadj_1dinv.
+        adjoint_solver_2d(IP, id_src_att, adj_type);  // now adjoint field has been stored in Tadj_1dinv.
         adj_type = 1;  
-        adjoint_solver_2d(IP, i_src, adj_type);  // now adjoint field has been stored in Tadj_density_1dinv.
+        adjoint_solver_2d(IP, id_src_att, adj_type);  // now adjoint field has been stored in Tadj_density_1dinv.
         
         if(IP.get_if_output_source_field() && (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2 || i_inv == 0)){
             // write out the adjoint field
-            write_Tadj_1dinv(io, IP.get_src_name(i_src), i_src);
+            write_Tadj_1dinv(io, name_src, i_inv);
         }
 
         // calculate event sensitivity kernel
@@ -238,11 +263,10 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
 }
 
 
-void OneDInversion::eikonal_solver_2d(InputParams& IP, int& i_src){
+void OneDInversion::eikonal_solver_2d(InputParams& IP, int& id_src_att){
 
     // get the source r 
-    const std::string name_sim_src  = IP.get_src_name(i_src);
-    CUSTOMREAL src_r                = IP.get_src_radius(name_sim_src);
+    CUSTOMREAL src_r                = IP.get_src_radius(id_src_att);
     // source in the 2D grid is r = src_r, t = 0;
 
     // initialize T0v_1dinv, T0r_1dinv, T0t_1dinv, tau_1dinv, tau_old_1dinv is_changed_1dinv
@@ -664,91 +688,90 @@ void OneDInversion::calculate_stencil(const int& it, const int& ir) {
 }
 
 
-void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParams& IP, int& i_src) {
+void OneDInversion::calculate_synthetic_traveltime_and_adjoint_source(InputParams& IP, int id_src_att) {
 
     // get the (r,t,p) of the real source
-    const std::string name_src  = IP.get_src_name(i_src);
     // CUSTOMREAL src_r   = IP.get_src_radius(name_src);
-    CUSTOMREAL src_lon = IP.get_src_lon(   name_src); // in radian
-    CUSTOMREAL src_lat = IP.get_src_lat(   name_src); // in radian
+    CUSTOMREAL src_lon = IP.get_src_lon(   id_src_att); // in radian
+    CUSTOMREAL src_lat = IP.get_src_lat(   id_src_att); // in radian
 
     // rec.adjoint_source = 0 && rec.adjoint_source_density = 0
     IP.initialize_adjoint_source();
 
-    // loop all data 
-    for (auto it_rec = IP.data_map[name_src].begin(); it_rec != IP.data_map[name_src].end(); ++it_rec) {
-        for (auto& data: it_rec->second){
+    // loop all data (level 2 and 3 are not allowed. So, the processor contains all info)
+    int data_begin = IP.src_map[id_src_att].data_begin;
+    int data_end   = IP.src_map[id_src_att].data_end;
 
-            ///////////////// calculate synthetic traveltime //////////////////
+    for (int i = data_begin; i < data_end; ++i){
+        auto &data = IP.data_vec[i];
+        int id_rec_att = data.id_rec_att;
 
-            const std::string name_rec = data.name_rec;
-            // get position of the receiver
-            CUSTOMREAL rec_r = depth2radius(IP.rec_map[name_rec].dep);
-            CUSTOMREAL rec_lon = IP.rec_map[name_rec].lon*DEG2RAD;   // in radian
-            CUSTOMREAL rec_lat = IP.rec_map[name_rec].lat*DEG2RAD;   // in radian
+        // get position of the receiver
+        CUSTOMREAL rec_r = depth2radius(IP.rec_map[id_rec_att].dep);
+        CUSTOMREAL rec_lon = IP.rec_map[id_rec_att].lon*DEG2RAD;   // in radian
+        CUSTOMREAL rec_lat = IP.rec_map[id_rec_att].lat*DEG2RAD;   // in radian
+
+        // calculate epicentral distance
+        CUSTOMREAL distance =0.0;
+        Epicentral_distance_sphere(src_lat, src_lon, rec_lat, rec_lon, distance);
+
+        // 2d interporlation, to find the traveltime at (distance, rec_r) on the field of T_1dinv on the mesh meshgrid(t_1dinv, r_1dinv)
+        CUSTOMREAL traveltime = interpolate_2d_traveltime(distance, rec_r);
+        data.travel_time = traveltime;
+
+        // for common source differentail arrival time, calculate differential time in addition
+        if (data.data_type == DATA_TYPE_CSDIF) {
+            int id_rec2_att = data.id_pair_att;
+            
+            // get position of the second receiver
+            CUSTOMREAL rec_r2 = depth2radius(IP.rec_map[id_rec2_att].dep);
+            CUSTOMREAL rec_lon2 = IP.rec_map[id_rec2_att].lon*DEG2RAD;   // in radian
+            CUSTOMREAL rec_lat2 = IP.rec_map[id_rec2_att].lat*DEG2RAD;   // in radian
 
             // calculate epicentral distance
-            CUSTOMREAL distance =0.0;
-            Epicentral_distance_sphere(src_lat, src_lon, rec_lat, rec_lon, distance);
+            CUSTOMREAL distance2 =0.0;
+            Epicentral_distance_sphere(src_lat, src_lon, rec_lat2, rec_lon2, distance2);
 
             // 2d interporlation, to find the traveltime at (distance, rec_r) on the field of T_1dinv on the mesh meshgrid(t_1dinv, r_1dinv)
-            CUSTOMREAL traveltime = interpolate_2d_traveltime(distance, rec_r);
-            data.travel_time = traveltime;
+            CUSTOMREAL traveltime2 = interpolate_2d_traveltime(distance2, rec_r2);
+            data.dif_travel_time = traveltime - traveltime2;
+        }
 
-            // for common source differentail arrival time, calculate differential time in addition
-            if (data.is_rec_pair) {
-                const std::string name_rec2 = data.name_rec_pair[1];
-                CUSTOMREAL rec_r2 = depth2radius(IP.rec_map[name_rec2].dep);
-                CUSTOMREAL rec_lon2 = IP.rec_map[name_rec2].lon*DEG2RAD;   // in radian
-                CUSTOMREAL rec_lat2 = IP.rec_map[name_rec2].lat*DEG2RAD;   // in radian
+        /////////////// calculate adjoint source (only consider absolute traveltime for 1d inversion) /////////////////////////
 
-                // calculate epicentral distance
-                CUSTOMREAL distance2 =0.0;
-                Epicentral_distance_sphere(src_lat, src_lon, rec_lat2, rec_lon2, distance2);
+        // calculate adjoint source
+        if (data.data_type == DATA_TYPE_ABS) {
+            CUSTOMREAL syn_time       = data.travel_time;
+            CUSTOMREAL obs_time       = data.time_observation;
 
-                // 2d interporlation, to find the traveltime at (distance, rec_r) on the field of T_1dinv on the mesh meshgrid(t_1dinv, r_1dinv)
-                CUSTOMREAL traveltime2 = interpolate_2d_traveltime(distance2, rec_r2);
-                data.cs_dif_travel_time = traveltime - traveltime2;
-            }
+            // assign local weight
+            CUSTOMREAL  local_weight = _1_CR;
 
+            // evaluate residual_weight_abs （If run_mode == DO_INVERSION, tau_opt always equal 0. But when run_mode == INV_RELOC, we need to consider the change of ortime of earthquakes (swapped receiver)）
+            CUSTOMREAL  local_residual = abs(syn_time - obs_time + IP.rec_map[id_rec_att].tau_opt);
+            CUSTOMREAL* res_weight = IP.get_residual_weight_abs();
 
-            /////////////// calculate adjoint source (only consider absolute traveltime for 1d inversion) /////////////////////////
+            if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
+            else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
+            else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
 
+            // evaluate distance_weight_abs
+            CUSTOMREAL  local_dis    =   _0_CR;
+            Epicentral_distance_sphere(IP.get_rec_point(id_rec_att).lat*DEG2RAD, IP.get_rec_point(id_rec_att).lon*DEG2RAD, IP.get_src_point(id_src_att).lat*DEG2RAD, IP.get_src_point(id_src_att).lon*DEG2RAD, local_dis);
+            local_dis *= R_earth;       // rad to km
+            CUSTOMREAL* dis_weight = IP.get_distance_weight_abs();
 
-            // calculate adjoint source
-            if (data.is_src_rec){
-                CUSTOMREAL syn_time       = data.travel_time;
-                CUSTOMREAL obs_time       = data.travel_time_obs;
+            if      (local_dis < dis_weight[0])         local_weight *= dis_weight[2];
+            else if (local_dis > dis_weight[1])         local_weight *= dis_weight[3];
+            else                                        local_weight *= ((local_dis - dis_weight[0])/(dis_weight[1] - dis_weight[0]) * (dis_weight[3] - dis_weight[2]) + dis_weight[2]);
 
-                // assign local weight
-                CUSTOMREAL  local_weight = _1_CR;
+            // assign adjoint source
+            CUSTOMREAL adjoint_source = IP.get_rec_point(id_rec_att).adjoint_source + (syn_time - obs_time + IP.rec_map[id_rec_att].tau_opt) * data.weight * local_weight;
+            IP.set_adjoint_source(id_rec_att, adjoint_source); // set adjoint source to rec_map[id_rec_att]
 
-                // evaluate residual_weight_abs （If run_mode == DO_INVERSION, tau_opt always equal 0. But when run_mode == INV_RELOC, we need to consider the change of ortime of earthquakes (swapped receiver)）
-                CUSTOMREAL  local_residual = abs(syn_time - obs_time + IP.rec_map[name_rec].tau_opt);
-                CUSTOMREAL* res_weight = IP.get_residual_weight_abs();
-
-                if      (local_residual < res_weight[0])    local_weight *= res_weight[2];
-                else if (local_residual > res_weight[1])    local_weight *= res_weight[3];
-                else                                        local_weight *= ((local_residual - res_weight[0])/(res_weight[1] - res_weight[0]) * (res_weight[3] - res_weight[2]) + res_weight[2]);
-
-                // evaluate distance_weight_abs
-                CUSTOMREAL  local_dis    =   _0_CR;
-                Epicentral_distance_sphere(IP.get_rec_point(name_rec).lat*DEG2RAD, IP.get_rec_point(name_rec).lon*DEG2RAD, IP.get_src_point(name_src).lat*DEG2RAD, IP.get_src_point(name_src).lon*DEG2RAD, local_dis);
-                local_dis *= R_earth;       // rad to km
-                CUSTOMREAL* dis_weight = IP.get_distance_weight_abs();
-
-                if      (local_dis < dis_weight[0])         local_weight *= dis_weight[2];
-                else if (local_dis > dis_weight[1])         local_weight *= dis_weight[3];
-                else                                        local_weight *= ((local_dis - dis_weight[0])/(dis_weight[1] - dis_weight[0]) * (dis_weight[3] - dis_weight[2]) + dis_weight[2]);
-
-                // assign adjoint source
-                CUSTOMREAL adjoint_source = IP.get_rec_point(name_rec).adjoint_source + (syn_time - obs_time + IP.rec_map[name_rec].tau_opt) * data.weight * local_weight;
-                IP.set_adjoint_source(name_rec, adjoint_source); // set adjoint source to rec_map[name_rec]
-
-                // assign adjoint source density
-                CUSTOMREAL adjoint_source_density = IP.get_rec_point(name_rec).adjoint_source_density + _1_CR;
-                IP.set_adjoint_source_density(name_rec, adjoint_source_density);
-            }
+            // assign adjoint source density
+            CUSTOMREAL adjoint_source_density = IP.get_rec_point(id_rec_att).adjoint_source_density + _1_CR;
+            IP.set_adjoint_source_density(id_rec_att, adjoint_source_density);
         }
     }
 }
@@ -788,10 +811,10 @@ CUSTOMREAL OneDInversion::interpolate_2d_traveltime(const CUSTOMREAL& distance, 
 }
 
 
-void OneDInversion::adjoint_solver_2d(InputParams& IP, const int& i_src, const int& adj_type){
+void OneDInversion::adjoint_solver_2d(InputParams& IP, const int& id_src_att, const int& adj_type){
     
     // initialize adjoint arrays: Tadj_1dinv, is_changed_1dinv, delta_1dinv
-    initialize_adjoint_array(IP, i_src, adj_type);
+    initialize_adjoint_array(IP, id_src_att, adj_type);
 
     // fast sweeping method for 2d space
     FSM_2d_adjoint(adj_type);
@@ -799,7 +822,7 @@ void OneDInversion::adjoint_solver_2d(InputParams& IP, const int& i_src, const i
 }   
 
 
-void OneDInversion::initialize_adjoint_array(InputParams& IP, const int& i_src, const int& adj_type) {
+void OneDInversion::initialize_adjoint_array(InputParams& IP, const int& id_src_att, const int& adj_type) {
     // adj_type: 0, adjoint_source; 1, adjoint_source_density
     
     // initialize adjoint field
@@ -834,29 +857,31 @@ void OneDInversion::initialize_adjoint_array(InputParams& IP, const int& i_src, 
     // loop all receivers to assign adjoint source
 
     // get the (r,t,p) of the real source
-    const std::string name_src  = IP.get_src_name(i_src);
     // CUSTOMREAL src_r   = IP.get_src_radius(name_src);
-    CUSTOMREAL src_lon = IP.get_src_lon(   name_src); // in radian
-    CUSTOMREAL src_lat = IP.get_src_lat(   name_src); // in radian
+    CUSTOMREAL src_lon = IP.get_src_lon(   id_src_att); // in radian
+    CUSTOMREAL src_lat = IP.get_src_lat(   id_src_att); // in radian
+
+    // i_rec (1:N) -> id_rec_att (key of rec_map)
+    std::vector<int> id_rec_att_vec = srcrec_id_2_id_att(IP.rec_map);      // main of level 2 and 3
 
     // loop all receivers
     for (int irec = 0; irec < IP.n_rec_this_sim_group; irec++) {
 
         // get receiver information
-        std::string name_rec = IP.get_rec_name(irec);
+        int id_rec_att = id_rec_att_vec[irec];
         CUSTOMREAL adjoint_source; 
         if (adj_type == 0){
-            adjoint_source = IP.rec_map[name_rec].adjoint_source;
+            adjoint_source = IP.rec_map[id_rec_att].adjoint_source;
         } else if (adj_type == 1) {
-            adjoint_source = IP.rec_map[name_rec].adjoint_source_density;
+            adjoint_source = IP.rec_map[id_rec_att].adjoint_source_density;
         } else {
             std::cout << "error, adj_type is not defined." << std::endl;
             exit(1);
         }
         
-        CUSTOMREAL rec_r = depth2radius(IP.rec_map[name_rec].dep);
-        CUSTOMREAL rec_lon = IP.rec_map[name_rec].lon*DEG2RAD;   // in radian
-        CUSTOMREAL rec_lat = IP.rec_map[name_rec].lat*DEG2RAD;   // in radian
+        CUSTOMREAL rec_r = depth2radius(IP.rec_map[id_rec_att].dep);
+        CUSTOMREAL rec_lon = IP.rec_map[id_rec_att].lon*DEG2RAD;   // in radian
+        CUSTOMREAL rec_lat = IP.rec_map[id_rec_att].lat*DEG2RAD;   // in radian
 
         if (adjoint_source == 0){
             continue;

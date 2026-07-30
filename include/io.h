@@ -38,14 +38,14 @@ public:
     void update_xdmf_file();
 
     // change group name for source
-    void reset_source_info(const int&, const std::string&);
+    void reset_source_info(const std::string&);
     // change group name for model
     void change_group_name_for_model();
     // prepare grid for each inversion iteration
     void prepare_grid_inv_xdmf(int);
 
     // set id_sim
-    void set_id_src(const int& id_src_){id_sim_src = id_src_;};
+    // void set_id_src(const int& id_src_){id_sim_src = id_src_;};
     // set source name
     void set_name_src(const std::string& name_src_){name_sim_src = name_src_;};
 
@@ -93,14 +93,14 @@ public:
     void write_xi(Grid&, int);
     // write eta
     void write_eta(Grid&, int);
-    // write a
-    void write_a(Grid&, int);
-    // write b
-    void write_b(Grid&, int);
-    // write c
-    void write_c(Grid&, int);
-    // write f
-    void write_f(Grid&, int);
+    // // write a
+    // void write_a(Grid&, int);
+    // // write b
+    // void write_b(Grid&, int);
+    // // write c
+    // void write_c(Grid&, int);
+    // // write f
+    // void write_f(Grid&, int);
     // Ks
     void write_Ks(Grid&, int);
     // Kxi
@@ -131,12 +131,18 @@ public:
     void write_Kxi_density_update(Grid&, int);
     // Keta_density_update
     void write_Keta_density_update(Grid&, int);
-    // Ks_descent_dir_loc
-    void write_Ks_descent_dir(Grid&, int);
-    // Kxi_descent_dir_loc
-    void write_Kxi_descent_dir(Grid&, int);
-    // Keta_descent_dir_loc
-    void write_Keta_descent_dir(Grid&, int);
+    // Ks_bfgs
+    void write_Ks_bfgs(Grid&, int);
+    // Kxi_bfgs
+    void write_Kxi_bfgs(Grid&, int);
+    // Keta_bfgs
+    void write_Keta_bfgs(Grid&, int);
+    // // Ks_descent_dir_loc
+    // void write_Ks_descent_dir(Grid&, int);
+    // // Kxi_descent_dir_loc
+    // void write_Kxi_descent_dir(Grid&, int);
+    // // Keta_descent_dir_loc
+    // void write_Keta_descent_dir(Grid&, int);
 
     // write all concerning parameters
     std::vector<CUSTOMREAL> get_grid_data(CUSTOMREAL * data);
@@ -165,6 +171,27 @@ public:
     void read_T(Grid&);
     // read Travel time from a temporal file for earthquake relocation and common receiver double-difference
     void read_T_tmp(Grid&);
+
+    // // read bfgs_Ks_update
+    // void read_bfgs_Ks_update(Grid& grid, int i_inv);
+    // // read bfgs_Kxi_update
+    // void read_bfgs_Kxi_update(Grid& grid, int i_inv);
+    // // read bfgs_Keta_update
+    // void read_bfgs_Keta_update(Grid& grid, int i_inv);
+
+    // read Ks for bfgs
+    void read_Ks_bfgs(Grid&, int);
+    // read Kxi for bfgs
+    void read_Kxi_bfgs(Grid&, int);
+    // read Keta for bfgs
+    void read_Keta_bfgs(Grid&, int);
+
+    // read velocity for bfgs
+    void read_vel(Grid&, int);
+    // read xi for bfgs
+    void read_xi(Grid&, int);
+    // read eta for bfgs
+    void read_eta(Grid&, int);
 
     void read_data_ascii(Grid&, std::string&);
 
@@ -204,7 +231,7 @@ private:
     std::string h5_whole_name_proc = h5_file_and_group + "/" + h5_dset_name_procid;
 
     // index of current simulation used for naming output files and datasets
-    int id_sim_src;
+    // int id_sim_src;
     // name of current simulation used for naming output files and datasets
     std::string name_sim_src;
 
