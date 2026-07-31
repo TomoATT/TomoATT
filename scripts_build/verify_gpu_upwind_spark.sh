@@ -17,6 +17,17 @@ cd $TEST
 echo "### node: $(hostname)"
 nvidia-smi -L || true
 
+# normalize stencil flags to baseline (a previous crashed 3rd-order run may
+# have left stencil_order: 3 behind, which silently switches to LF solver)
+restore_baseline () {
+  for YML in input_params.yml input_params_pre.yml; do
+    grep -qE "^\s*stencil_order\s*:" $YML && sed -i -E "s/^(\s*)stencil_order\s*:.*/\1stencil_order: 1 # order of stencil, 1 or 3/" $YML
+    grep -qE "^\s*stencil_type\s*:"  $YML && sed -i -E "s/^(\s*)stencil_type\s*:.*/\1stencil_type: 1 # 0:lax-friedrichs,1:upwind/" $YML
+  done
+}
+trap restore_baseline EXIT
+restore_baseline
+
 set_gpu_flag () {
   local flag=$1
   for YML in input_params.yml input_params_pre.yml; do

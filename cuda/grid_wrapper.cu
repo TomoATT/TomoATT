@@ -670,6 +670,22 @@ void cuda_finalize_grid(Grid_on_device* grid_dv){
         grid_dv->T0v_glob = nullptr;
     }
 
+    if (grid_dv->adj_static_loaded) {
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->T_glob), 10130);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->zeta_glob), 10131);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->xi_glob), 10132);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->eta_glob), 10133);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->tau_old_glob), 10134);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->adj_one_over_r), 10135);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->adj_one_over_r_sq), 10136);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->adj_one_over_cos_t), 10137);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->adj_one_over_cos_t_sq), 10138);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->adj_sin_t), 10139);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->adj_cos_t_m0p5), 10140);
+        print_CUDA_error_if_any(deallocate_memory_on_device_cv(grid_dv->adj_cos_t_p0p5), 10141);
+        grid_dv->adj_static_loaded = false;
+    }
+
 }
 
 
@@ -692,5 +708,60 @@ void cuda_copy_T0v_glob_to_device(Grid_on_device* grid_dv, CUSTOMREAL* T0v_h){
         print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->T0v_glob), n), 10090);
     }
     print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->T0v_glob, T0v_h, n), 10091);
+}
+
+
+// ---------------------------------------------------------------------------
+// adjoint field helpers
+// ---------------------------------------------------------------------------
+
+// allocate adjoint global arrays once (3D n_total arrays + 1D coord factors),
+// upload the static 3D fields (zeta/xi/eta) and 1D factors; zeta/xi/eta are
+// re-uploaded every call since they change between inversion iterations.
+void cuda_copy_adj_static_to_device(Grid_on_device* grid_dv,
+                                    CUSTOMREAL* zeta_h, CUSTOMREAL* xi_h, CUSTOMREAL* eta_h,
+                                    CUSTOMREAL* oor_h, CUSTOMREAL* oor_sq_h,
+                                    CUSTOMREAL* ooc_h, CUSTOMREAL* ooc_sq_h,
+                                    CUSTOMREAL* sint_h, CUSTOMREAL* cos_m_h, CUSTOMREAL* cos_p_h,
+                                    int n_total, int nr, int nt){
+    if (!grid_dv->adj_static_loaded) {
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->T_glob),   n_total), 10100);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->zeta_glob), n_total), 10101);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->xi_glob),   n_total), 10102);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->eta_glob),  n_total), 10103);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->tau_old_glob), n_total), 10104);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->adj_one_over_r),       nr), 10105);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->adj_one_over_r_sq),    nr), 10106);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->adj_one_over_cos_t),    nt), 10107);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->adj_one_over_cos_t_sq), nt), 10108);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->adj_sin_t),       nt), 10109);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->adj_cos_t_m0p5),  nt), 10110);
+        print_CUDA_error_if_any(allocate_memory_on_device_cv((void**)&(grid_dv->adj_cos_t_p0p5),  nt), 10111);
+        // 1D coordinate factors never change for a given grid
+        print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->adj_one_over_r,       oor_h,     nr), 10112);
+        print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->adj_one_over_r_sq,    oor_sq_h,  nr), 10113);
+        print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->adj_one_over_cos_t,    ooc_h,     nt), 10114);
+        print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->adj_one_over_cos_t_sq, ooc_sq_h,  nt), 10115);
+        print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->adj_sin_t,       sint_h,  nt), 10116);
+        print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->adj_cos_t_m0p5,  cos_m_h, nt), 10117);
+        print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->adj_cos_t_p0p5,  cos_p_h, nt), 10118);
+        grid_dv->adj_static_loaded = true;
+    }
+    // zeta/xi/eta change between inversion iterations -> refresh every call
+    print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->zeta_glob, zeta_h, n_total), 10119);
+    print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->xi_glob,   xi_h,   n_total), 10120);
+    print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->eta_glob,  eta_h,  n_total), 10121);
+}
+
+// upload the current traveltime field T (changes per source / inversion iteration)
+void cuda_copy_adj_T_to_device(Grid_on_device* grid_dv, CUSTOMREAL* T_h){
+    int n = grid_dv->loc_I_host*grid_dv->loc_J_host*grid_dv->loc_K_host;
+    print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->T_glob, T_h, n), 10122);
+}
+
+// upload tau_old (adj source / delta field; changes per adjoint call type)
+void cuda_copy_adj_tau_old_to_device(Grid_on_device* grid_dv, CUSTOMREAL* tau_old_h){
+    int n = grid_dv->loc_I_host*grid_dv->loc_J_host*grid_dv->loc_K_host;
+    print_CUDA_error_if_any(copy_host_to_device_cv(grid_dv->tau_old_glob, tau_old_h, n), 10123);
 }
 

@@ -54,15 +54,26 @@ void initialize_cuda(){
     if (ncuda_device >= 1){
         cudaDeviceReset();
 
-        device = world_rank % ncuda_device;
+        // Use the node-LOCAL rank so that every MPI rank on a multi-GPU node
+        // gets a distinct GPU (world_rank fails whenever ranks are not laid
+        // out contiguously per node, e.g. slurm multi-node jobs).
+        int local_rank = 0;
+        {
+            MPI_Comm local_comm;
+            MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm);
+            MPI_Comm_rank(local_comm, &local_rank);
+            MPI_Comm_free(&local_comm);
+        }
+
+        device = local_rank % ncuda_device;
         cudaSetDevice(device);
 
         cudaFree(0);
 
         // check device is set
         cudaGetDevice(&device);
-        if (device != world_rank % ncuda_device){
-            printf("Error: Could not set device to %d\n", world_rank % ncuda_device);
+        if (device != local_rank % ncuda_device){
+            printf("Error: Could not set device to %d\n", local_rank % ncuda_device);
             exit(1);
         }
     } // end if ncuda_device >= 1

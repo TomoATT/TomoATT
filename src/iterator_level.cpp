@@ -13,6 +13,26 @@ Iterator_level::Iterator_level(InputParams& IP, Grid& grid, Source& src, IO_util
 
 void Iterator_level::do_sweep_adj(int iswp, Grid& grid, InputParams& IP){
 
+    if (use_gpu) {
+#if defined USE_CUDA
+        // upload per-adjoint-call fields, run adjoint sweep on GPU, download result
+        cuda_copy_tau_to_device(gpu_grid, grid.tau_loc);   // adjoint field lives in tau_loc (same as CPU)
+        cuda_copy_adj_static_to_device(gpu_grid, grid.zeta_loc, grid.xi_loc, grid.eta_loc,
+                                       grid.one_over_r_loc_1d, grid.one_over_r_loc_1d_sq,
+                                       grid.one_over_cos_t_loc, grid.one_over_cos_t_loc_sq,
+                                       grid.sin_t_loc, grid.cos_t_loc_m0p5, grid.cos_t_loc_p0p5,
+                                       loc_I*loc_J*loc_K, nr, nt);
+        cuda_copy_adj_T_to_device(gpu_grid, grid.T_loc);
+        cuda_copy_adj_tau_old_to_device(gpu_grid, grid.tau_old_loc);
+        cuda_run_iteration_adjoint(gpu_grid, iswp,
+                                   grid.i_first(), grid.i_last(),
+                                   grid.j_first(), grid.j_last(),
+                                   grid.k_first(), grid.k_last());
+        cuda_copy_tau_to_host(gpu_grid, grid.tau_loc);
+        return;
+#endif
+    }
+
     // set sweep direction
     set_sweep_direction(iswp);
 
@@ -65,6 +85,27 @@ Iterator_level_tele::Iterator_level_tele(InputParams& IP, Grid& grid, Source& sr
 
 
 void Iterator_level_tele::do_sweep_adj(int iswp, Grid& grid, InputParams& IP){
+
+    if (use_gpu) {
+#if defined USE_CUDA
+        // upload per-adjoint-call fields, run adjoint sweep on GPU, download result
+        cuda_copy_tau_to_device(gpu_grid, grid.tau_loc);   // adjoint field lives in tau_loc (same as CPU)
+        cuda_copy_adj_static_to_device(gpu_grid, grid.zeta_loc, grid.xi_loc, grid.eta_loc,
+                                       grid.one_over_r_loc_1d, grid.one_over_r_loc_1d_sq,
+                                       grid.one_over_cos_t_loc, grid.one_over_cos_t_loc_sq,
+                                       grid.sin_t_loc, grid.cos_t_loc_m0p5, grid.cos_t_loc_p0p5,
+                                       loc_I*loc_J*loc_K, nr, nt);
+        cuda_copy_adj_T_to_device(gpu_grid, grid.T_loc);
+        cuda_copy_adj_tau_old_to_device(gpu_grid, grid.tau_old_loc);
+        cuda_run_iteration_adjoint(gpu_grid, iswp,
+                                   grid.i_first(), grid.i_last(),
+                                   grid.j_first(), grid.j_last(),
+                                   grid.k_first(), grid.k_last());
+        cuda_copy_tau_to_host(gpu_grid, grid.tau_loc);
+        return;
+#endif
+    }
+
     // set sweep direction
     set_sweep_direction(iswp);
 
@@ -1081,6 +1122,16 @@ Iterator_level_1st_order_upwind_tele::Iterator_level_1st_order_upwind_tele(Input
 }
 
 void Iterator_level_1st_order_upwind_tele::do_sweep(int iswp, Grid& grid, InputParams& IP){
+
+    if (use_gpu) {
+#if defined USE_CUDA
+        // tele upwind solves for T directly; the device "tau" array holds T
+        cuda_copy_tau_to_device(gpu_grid, grid.T_loc);
+        cuda_run_iteration_upwind_tele(gpu_grid, iswp);
+        cuda_copy_tau_to_host(gpu_grid, grid.T_loc);
+        return;
+#endif
+    }
 
     // set sweep direction
     set_sweep_direction(iswp);

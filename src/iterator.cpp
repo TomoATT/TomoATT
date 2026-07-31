@@ -322,7 +322,13 @@ void Iterator::assign_processes_for_levels(Grid& grid, InputParams& IP) {
 
 #if defined USE_SIMD || defined USE_CUDA
 
-    bool is_upwind = (IP.get_stencil_type() == UPWIND);
+    // is_upwind must reflect the EFFECTIVE stencil, not the requested one:
+    // UPWIND is only implemented with 1st order. For 3rd order the code falls
+    // back to the LF (non-upwind) solver, whose physical-index flip differs by
+    // one position from the upwind flip. Using the upwind flip for an LF-3rd
+    // solver misaligns all preloaded index arrays (wrong/missing nodes, and it
+    // destabilized CPU runs as well). See Iterator factory + iterator_selector.
+    bool is_upwind = (IP.get_stencil_type() == UPWIND && IP.get_stencil_order() == 1);
 
     preload_indices(vv_iip, vv_jjt, vv_kkr,  0, 0, 0, is_upwind);
     preload_indices_1d(vv_i__j__k__, 0, 0, 0, is_upwind);

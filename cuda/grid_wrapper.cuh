@@ -57,6 +57,22 @@ typedef struct Grid_on_device {
     // full-grid (global) T0v, indexed by flattened global index. Used by UPWIND line-case neighbor causality.
     CUSTOMREAL* T0v_glob = nullptr;
 
+    // full-grid (global) fields for the adjoint solve (adjoint field itself reuses `tau`)
+    CUSTOMREAL* T_glob = nullptr;        // current traveltime field T
+    CUSTOMREAL* zeta_glob = nullptr;     // anisotropy factor zeta
+    CUSTOMREAL* xi_glob = nullptr;       // anisotropy factor xi
+    CUSTOMREAL* eta_glob = nullptr;      // anisotropy factor eta
+    CUSTOMREAL* tau_old_glob = nullptr;  // tau_old (delta field used as adjoint source)
+    // 1-D spherical coordinate factor arrays for the adjoint stencil
+    CUSTOMREAL* adj_one_over_r = nullptr;      // one_over_r_loc_1d     [loc_K]
+    CUSTOMREAL* adj_one_over_r_sq = nullptr;   // one_over_r_loc_1d_sq  [loc_K]
+    CUSTOMREAL* adj_one_over_cos_t = nullptr;  // one_over_cos_t_loc    [loc_J]
+    CUSTOMREAL* adj_one_over_cos_t_sq = nullptr;// one_over_cos_t_loc_sq [loc_J]
+    CUSTOMREAL* adj_sin_t = nullptr;           // sin_t_loc             [loc_J]
+    CUSTOMREAL* adj_cos_t_m0p5 = nullptr;      // cos_t_loc_m0p5        [loc_J]
+    CUSTOMREAL* adj_cos_t_p0p5 = nullptr;      // cos_t_loc_p0p5        [loc_J]
+    bool adj_static_loaded = false;
+
     bool if_3rd_order = false;
 
     // thead and grid for sweeping
@@ -124,5 +140,15 @@ void cuda_copy_tau_to_device(Grid_on_device* grid_dv, CUSTOMREAL* tau_h);
 void cuda_copy_tau_to_host(Grid_on_device* grid_dv, CUSTOMREAL* tau_h);
 // copy full-grid (global) T0v to device (allocate on first call). Used by UPWIND solver.
 void cuda_copy_T0v_glob_to_device(Grid_on_device* grid_dv, CUSTOMREAL* T0v_h);
+
+// adjoint solve helpers (full-grid globals; allocate on first call)
+void cuda_copy_adj_static_to_device(Grid_on_device* grid_dv,
+                                    CUSTOMREAL* zeta_h, CUSTOMREAL* xi_h, CUSTOMREAL* eta_h,
+                                    CUSTOMREAL* oor_h, CUSTOMREAL* oor_sq_h,
+                                    CUSTOMREAL* ooc_h, CUSTOMREAL* ooc_sq_h,
+                                    CUSTOMREAL* sint_h, CUSTOMREAL* cos_m_h, CUSTOMREAL* cos_p_h,
+                                    int n_total, int nr, int nt);
+void cuda_copy_adj_T_to_device(Grid_on_device* grid_dv, CUSTOMREAL* T_h);
+void cuda_copy_adj_tau_old_to_device(Grid_on_device* grid_dv, CUSTOMREAL* tau_old_h);
 
 #endif // GRID_WRAPPER_CUH
