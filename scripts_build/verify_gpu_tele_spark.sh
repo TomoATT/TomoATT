@@ -3,6 +3,7 @@
 #SBATCH -N 1
 #SBATCH -J tatt_vtel
 #SBATCH -t 02:00:00
+#SBATCH --exclude=spark-edge-0
 #SBATCH -o %x_%j.out
 # Verify teleseismic UPWIND GPU solver vs CPU on a synthetic mini-tele case.
 # Teleseismic sources are auto-detected when a source lies outside the domain,
@@ -18,7 +19,7 @@ TEST=$HOME/TomoATT/test/inversion_small
 cd $TEST
 
 echo "### node: $(hostname)"
-nvidia-smi -L || true
+nvidia-smi -L || { echo "NO GPU on $(hostname), abort"; exit 1; }
 
 # ---- make mini-tele src_rec: move first 3 source events far outside the domain ----
 awk 'BEGIN{OFS=" "}
@@ -30,6 +31,7 @@ restore_baseline () {
   for YML in input_params.yml input_params_pre.yml; do
     grep -qE "^\s*src_rec_file\s*:" $YML && sed -i -E "s|src_rec_file: [^ ]*|src_rec_file: src_rec_test.dat|" $YML
     grep -qE "^\s*use_gpu\s*:" $YML && sed -i -E "s/^(\s*)use_gpu\s*:.*/\1use_gpu: false # restored/" $YML
+    grep -qE "^\s*have_tele_data\s*:" $YML && sed -i -E "/^\s*have_tele_data\s*:/d" $YML
   done
 }
 trap restore_baseline EXIT
@@ -44,6 +46,13 @@ set_flags () {
     grep -qE "^\s*stencil_type\s*:"  $YML && sed -i -E "s/^(\s*)stencil_type\s*:.*/\1stencil_type: 1/" $YML
     # no swap for tele
     grep -qE "^\s*swap_src_rec\s*:" $YML && sed -i -E "s/^(\s*)swap_src_rec\s*:.*/\1swap_src_rec: false/" $YML
+    # teleseismic data flag (required when sources lie outside the region)
+    if grep -qE "^\s*have_tele_data\s*:" $YML; then
+      sed -i -E "s/^(\s*)have_tele_data\s*:.*/\1have_tele_data: true/" $YML
+    else
+      # insert at top (top-level yaml key)
+      sed -i "1i have_tele_data: true" $YML
+    fi
     # gpu toggle
     if grep -qE "^\s*use_gpu:" $YML; then
       sed -i -E "s/^(\s*)use_gpu: .*/\1use_gpu: ${flag} # toggled/" $YML
