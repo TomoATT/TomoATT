@@ -211,3 +211,83 @@ Build essentials (inside the scripts): CUDA at `/usr/local/cuda-13.0`,
 | `374777a` | CUDA arch configurability, CUDA 13 compat, spark harness |
 | `2aed5e2` | Harness scripts renamed (`build_*` → `make_*`; gitignore `build*`) |
 | `906f992` | Bench memory-print fix + hardened correctness Test 5 |
+| `07eec99` | GPU adjoint sweep (verified), teleseismic UPWIND GPU port, `is_upwind` flip fix, local-rank device select |
+| `89e352d` | 3rd-order verify harness uses legacy CPU sweep as reference |
+| `d20dca6` | Mini-teleseismic GPU verify harness |
+| `95ebb64` | libevent+hwloc+PMIx+OpenMPI multi-node MPI stack script |
+
+---
+
+## 8. Follow-up GPU extensions (2026-07-31 → 2026-08-01)
+
+### 8.1 Adjoint sweep on GPU — VERIFIED (`verify job 3142`)
+Inversions run 2 extra solves per source per iteration (adjoint field + its
+density), so the adjoint sweep was ported to GPU in the legacy stack:
+
+- `cuda_do_sweep_level_kernel_adj` — exact port of `calculate_stencil_adj`
+  (linear transport update; the adjoint field reuses the `tau` buffer exactly
+  like the CPU code; the six physical-domain-edge flags
+  (`grid.{i,j,k}_{first,last}()`) reproduce `calculate_boundary_nodes_adj`'s
+  zero boundary).
+- New full-grid device arrays: `T_glob` (frozen traveltime field),
+  `zeta/xi/eta_glob`, `tau_old_glob` (adjoint source), plus 7 one-dimensional
+  spherical-coordinate factor arrays. 1-D factors + ζ/ξ/η uploaded on first
+  call, ζ/ξ/η refreshed per call, T and τ_old uploaded every sweep.
+- GPU branch in `Iterator_level::do_sweep_adj` **and**
+  `Iterator_level_tele::do_sweep_adj`.
+
+Verified vs CPU on `test/inversion_small` (same numbers as §3.1):
+convergence counts identical (25×3+5×4 pre, 84×3+6×4 main),
+`final_model.h5` ≤ 1e-8, `objective_function.txt` identical,
+adjoint-field datasets ≤ 1e-6 (single-element 1e-8-level blips, fast-math noise).
+
+### 8.2 Teleseismic UPWIND on GPU — ported, build-verified
+`cuda_do_sweep_level_kernel_upwind_tele`: same 26-case upwind structure as
+§2.1 but solves for **T** directly (no T0·τ factorization; `ap=±1/dp`,
+line-case causality `tmp_T ≥ T_nbr && tmp_T > 0`), mirroring
+`calculate_stencil_1st_order_upwind_tele` exactly. Wired into
+`Iterator_level_1st_order_upwind_tele::do_sweep` (device `tau` buffer holds T).
+Runtime verification harness: `scripts_build/verify_gpu_tele_spark.sh`
+(auto-detects teleseismic mode via out-of-domain sources,
+`have_tele_data: true`, forward-only CPU vs GPU comparison).
+
+### 8.3 Third-order stencil — findings (pre-existing upstream issues)
+1. **CPU LEVEL-sweep 3rd-order is broken on the main branch** (reproduced on
+   commit `3fe822b`, before all this GPU work): every source diverges to the
+   max-iteration limit and the run segfaults in HDF5 at finalize. The **legacy
+   sweep (`sweep_type: 0`) converges normally** (~20–41 iters). Root cause
+   unknown; CPU-path specific (GPU-level-3rd does NOT diverge).
+2. **GPU 3rd-order kernel accuracy gap (~8.5%)** (`verify job 3152`,
+   GPU-level vs CPU-legacy): both converge, but `initial objective` differs
+   (CPU 49593 vs GPU 53787) and inverted models differ at ~20k grid points.
+   This is the **pre-existing `cuda_do_sweep_level_kernel_3rd`**, not the new
+   UPWIND port. Needs an upstream investigation pass.
+
+### 8.4 Multi-GPU readiness
+- Device selection now uses the **node-local rank**
+  (`MPI_Comm_split_type(SHARED)` in `initialize_cuda`) — correct placement for
+  slurm allocations regardless of global rank layout.
+- The stock OpenMPI cannot launch across nodes on this cluster
+  (ORTE cross-node failure; system has no usable PMI/PMIx build
+  environment). `scripts_build/make_mpi_stack_spark.sh` builds a
+  slurm-native stack: hwloc → **libevent 2.2** (PMIx 5 needs
+  `event_getcode4name`; Ubuntu 24.04 ships 2.1.12) → PMIx 5 → OpenMPI 4.1.6
+  (`--with-pmix --with-slurm`), relinks TOMOATT, and sanity-tests
+  `srun -N 2 -n 4 --mpi=pmix_v5`.
+- Multi-node (or single-node multi-rank) GPU correctness runs compare inverted
+  models and objective history against the single-process verified result.
+
+### 8.5 Harness hardening lessons
+- Verify scripts normalize stencil flags on entry and restore on exit
+  (crash-proof via `trap`), because a crashed 3rd-order probe once left
+  `stencil_order: 3` behind and the next UPWIND run silently switched solver.
+- Never run two verifies in the same test directory concurrently (HDF5 output
+  file locking races → segfault); chain with
+  `sbatch --dependency=afterok:<id>`.
+- `spark-edge-0` has no GB10 — GPU jobs exclude it
+  (`--exclude=spark-edge-0`) and preflight-check `nvidia-smi -L`.
+- `.gitignore` `build*` silently swallows new `build_*.sh` scripts —
+  harness files use the `make_*` prefix.
+- `stencil_type==UPWIND && stencil_order==3` falls back to the LF solver, so
+  `is_upwind` must be `(type==UPWIND && order==1)` — previously preloaded
+  index arrays were built with the wrong flip for LF-3rd (fixed in `07eec99`).
