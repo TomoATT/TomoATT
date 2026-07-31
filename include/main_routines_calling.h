@@ -56,19 +56,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         io.write_vel(grid, 0);
         io.write_xi( grid, 0);
         io.write_eta(grid, 0);
-        //io.write_zeta(grid, i_inv); // TODO
 
-        if (IP.get_verbose_output_level()){
-            io.write_a(grid,   0);
-            io.write_b(grid,   0);
-            io.write_c(grid,   0);
-            io.write_f(grid,   0);
-            io.write_fun(grid, 0);
-        }
-
-        // // output model_parameters_inv_0000.dat
-        // if (IP.get_if_output_model_dat())
-        //     io.write_concerning_parameters(grid, 0, IP);
     }
 
 
@@ -119,6 +107,9 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
         ///////////////////////////////////////////////////////
         // run (forward and adjoint) simulation for each source
         ///////////////////////////////////////////////////////
+        synchronize_all_world();
+        
+
 
         // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel for all sources
         // line_search_mode = false;
@@ -142,6 +133,7 @@ inline void run_forward_only_or_inversion(InputParams &IP, Grid &grid, IO_utils 
             // stop inversion
             break;
         }
+
 
         // output src rec file with the result arrival times
         if (IP.get_if_output_in_process_data() || i_inv == IP.get_max_iter_inv()-1 || i_inv==0) {
@@ -258,16 +250,13 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
 
     // iterate
     while (true) {
-
         v_obj      = 0.0;
 
         // calculate gradient of objective function at sources
         v_obj_misfit = calculate_gradient_objective_function(IP, grid, io, i_iter);
         v_obj = v_obj_misfit[0];
-
         // update source location
         recs.update_source_location(IP, grid);
-
         synchronize_all_world();
 
         // check convergence
@@ -293,17 +282,14 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
             // write objective function
             std::cout << "iteration: " << i_iter << ", objective function: "              << v_obj << std::endl;
         }
-
         // write objective functions
         write_objective_function(IP, i_iter, v_obj_misfit, out_main, "relocation");
-
         // write out new src_rec_file
         if (IP.get_if_output_in_process_data() || i_iter == N_ITER_MAX_SRC_RELOC-1 || i_iter==0){
             IP.write_src_rec_file(0,i_iter);
         }
-
-        // modify the receiver's location for output
-        IP.modify_swapped_source_location();
+        // modify the receiver's location for output  (seems no need. in write_src_rec_file, has been modified.)
+        // IP.modify_swapped_source_location();
 
 
         if (finished)
@@ -313,8 +299,8 @@ inline void run_earthquake_relocation(InputParams& IP, Grid& grid, IO_utils& io)
         i_iter++;
     }
 
-    // modify the receiver's location
-    IP.modify_swapped_source_location();
+    // modify the receiver's location   (seems no need. in write_src_rec_file, has been modified.)
+    // IP.modify_swapped_source_location();
     // write out new src_rec_file
     IP.write_src_rec_file(0,i_iter);
     // close xdmf file
@@ -356,13 +342,13 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
         io.write_eta(grid, 0);
         //io.write_zeta(grid, i_inv); // TODO
 
-        if (IP.get_verbose_output_level()){
-            io.write_a(grid,   0);
-            io.write_b(grid,   0);
-            io.write_c(grid,   0);
-            io.write_f(grid,   0);
-            io.write_fun(grid, 0);
-        }
+        // if (IP.get_verbose_output_level()){
+        //     io.write_a(grid,   0);
+        //     io.write_b(grid,   0);
+        //     io.write_c(grid,   0);
+        //     io.write_f(grid,   0);
+        //     io.write_fun(grid, 0);
+        // }
 
         // // output model_parameters_inv_0000.dat
         // if (IP.get_if_output_model_dat())
@@ -609,8 +595,8 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
                     IP.write_src_rec_file(model_update_step,relocation_step);
                 }
 
-                // modify the receiver's location for output
-                IP.modify_swapped_source_location();
+                // modify the receiver's location for output (back is updated in write_src_rec_file)
+                // IP.modify_swapped_source_location();
 
                 relocation_step += 1;
             } // end relocation loop
@@ -775,7 +761,7 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
             }
 
             // modify the receiver's location for output
-            IP.modify_swapped_source_location();
+            // IP.modify_swapped_source_location();  // back is updated in write_src_rec_file
 
             // wait for all processes to finish
             synchronize_all_world();
@@ -827,7 +813,8 @@ inline void run_inversion_and_relocation(InputParams& IP, Grid& grid, IO_utils& 
 
 
 // run 1D inversion mode
-// run mode: 4
+// run mode: 4 
+// (only level 1 is allowed.)
 inline void run_1d_inversion(InputParams& IP, Grid& grid, IO_utils& io) {
     OneDInversion oneDInv(IP, grid);
 

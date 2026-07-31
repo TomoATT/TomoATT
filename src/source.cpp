@@ -1,6 +1,6 @@
 #include "source.h"
 
-void Source::set_source_position(InputParams &IP, Grid &grid, bool& is_teleseismic, const std::string& name_sim_src, bool for_2d_solver) {
+void Source::set_source_position(InputParams &IP, Grid &grid, bool& is_teleseismic, const int id_src_att, bool for_2d_solver) {
 
 
     if (subdom_main) {
@@ -13,14 +13,14 @@ void Source::set_source_position(InputParams &IP, Grid &grid, bool& is_teleseism
 
         // set source position
         if(!for_2d_solver){
-            src_lon = IP.get_src_lon(   name_sim_src); // in radian
-            src_lat = IP.get_src_lat(   name_sim_src); // in radian
-            src_r   = IP.get_src_radius(name_sim_src); // radious
+            src_lon = IP.get_src_lon(   id_src_att); // in radian
+            src_lat = IP.get_src_lat(   id_src_att); // in radian
+            src_r   = IP.get_src_radius(id_src_att); // radious
         } else {
             // 2d src database (src_map_2d) is accessible from dedicated getters.
-            src_lon = IP.get_src_lon_2d(   name_sim_src); // in radian
-            src_lat = IP.get_src_lat_2d(   name_sim_src); // in radian
-            src_r   = IP.get_src_radius_2d(name_sim_src); // radious
+            src_lon = IP.get_src_lon_2d(   id_src_att); // in radian
+            src_lat = IP.get_src_lat_2d(   id_src_att); // in radian
+            src_r   = IP.get_src_radius_2d(id_src_att); // radious
         }
     }
 

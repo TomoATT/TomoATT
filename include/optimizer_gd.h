@@ -23,7 +23,7 @@ private:
     void processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) override;
     
     // evaluate line search performance
-    bool check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try) override;
+    bool check_conditions_for_line_search(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try) override;
 
 };
 

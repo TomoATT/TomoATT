@@ -8,20 +8,24 @@ Optimizer_bfgs::Optimizer_bfgs(InputParams& IP) : Optimizer(IP) {
     need_write_original_kernel = true;
 
     // initialize sizes
-    array_3d_forward.resize(n_total_loc_grid_points);
-    array_3d_backward.resize(n_total_loc_grid_points);
+    // array_3d_forward.resize(n_total_loc_grid_points);
+    // array_3d_backward.resize(n_total_loc_grid_points);
 
     // vectors in bfgs
-    sk_s.resize(n_total_loc_grid_points);
-    sk_xi.resize(n_total_loc_grid_points);
-    sk_eta.resize(n_total_loc_grid_points);
-    yk_s.resize(n_total_loc_grid_points);
-    yk_xi.resize(n_total_loc_grid_points);
-    yk_eta.resize(n_total_loc_grid_points);
+    // 20260608:  move into loop to release memory immediately after use
+    // sk_s.resize(n_total_loc_grid_points);
+    // sk_xi.resize(n_total_loc_grid_points);
+    // sk_eta.resize(n_total_loc_grid_points);
+    // yk_s.resize(n_total_loc_grid_points);
+    // yk_xi.resize(n_total_loc_grid_points);
+    // yk_eta.resize(n_total_loc_grid_points);
 
-    Ks_bfgs_loc.resize(n_total_loc_grid_points);
-    Kxi_bfgs_loc.resize(n_total_loc_grid_points);
-    Keta_bfgs_loc.resize(n_total_loc_grid_points);
+    // backup of bfgs gradient
+    // 20260608:  move to backup_bfgs_gradient to load array
+    //        and move to 
+    // Ks_bfgs_loc.resize(n_total_loc_grid_points);
+    // Kxi_bfgs_loc.resize(n_total_loc_grid_points);
+    // Keta_bfgs_loc.resize(n_total_loc_grid_points);
 
     // scalars in bfgs
     alpha_bfgs.resize(10000);
@@ -48,8 +52,8 @@ Optimizer_bfgs::~Optimizer_bfgs() {
 // smooth kernels (multigrid) + kernel normalization (kernel density normalization)
 void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv) {
     
-    // initialize and backup modified kernels
-    initialize_and_backup_modified_kernels(grid);
+    // initialize and backup model_update (perturbation)
+    initialize_and_backup_model_update(grid);
 
     // check kernel value range
     check_kernel_value_range(grid);
@@ -60,11 +64,13 @@ void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& i
     // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
     Kernel_postprocessing::process_kernels(IP, grid); 
 
-    // write bfgs gradient
+    // write bfgs gradient (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
     write_bfgs_gradient(grid, io, i_inv);
 
-    // backup bfgs gradient
-    backup_bfgs_gradient(grid);
+    // 20260608: no need to backup, choose to read
+    // backup bfgs gradient (backup the gradient at k-th model)
+    // backup bfgs gradient (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc) to Ks_bfgs_loc, Keta_bfgs_loc, Kxi_bfgs_loc
+    // backup_bfgs_gradient(grid);
     
     // calculate bfgs descent direction
     calculate_bfgs_descent_direction(grid, io, i_inv);
@@ -72,17 +78,17 @@ void Optimizer_bfgs::processing_kernels(InputParams& IP, Grid& grid, IO_utils& i
     // normalize kernels to -1 ~ 1
     Kernel_postprocessing::normalize_kernels(grid);
     
-    // assign processing kernels to modified kernels for model update
+    // assign processing kernels to model_update (perturbation)
     // Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc
     // -->
     // Ks_update_loc, Keta_update_loc, Kxi_update_loc
-    Kernel_postprocessing::assign_to_modified_kernels(grid);
+    Kernel_postprocessing::assign_to_model_update(grid);
 }
 
 
 // evaluate line search performance
 // (to do) allow users to adjust the step length change
-bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& grid, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
+bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& grid, IO_utils& io, int& i_inv, int sub_iter, int quit_sub_iter, CUSTOMREAL v_obj_inout, CUSTOMREAL v_obj_try){
     bool exit_flag = false;
 
     // --------------- Armijo condition, sufficient decrease condition (modified) ---------------
@@ -91,12 +97,13 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
     // So, we only check if f(x + alpha*p) < f(x)
     // This considtion ensures the decrease of objective function
     bool cond_armijo = false;
-    if(subdom_main){    // check condition only for main of level 3
+    if(subdom_main && id_sim==0){    // check condition only for main of level 3 and main of level 1
         if (v_obj_try < v_obj_inout){
             cond_armijo = true;
         }
     }
     //  broadcast the condition result to all processes within one subdomain
+    broadcast_bool_single_inter_sim(cond_armijo, 0);    // '_inter_sim' means between simultaneous runs, the main of level 1 tell others
     broadcast_bool_single_sub(cond_armijo, 0);      // '_sub' means within one subdomain, subdom_main tell others
 
 
@@ -111,7 +118,21 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
     bool cond_curvature = false;
     CUSTOMREAL proj_current = _0_CR;   // grad_f(x_k)^T * p_k, projection of gradient on descent direction at current model
     CUSTOMREAL proj_tried = _0_CR;   // grad_f(x_k+1)^T * p_k, projection of gradient on descent direction at tried model
-    if (subdom_main){    // check condition only for main of level 3
+    if (subdom_main && id_sim==0){    // check condition only for main of level 3 and main of level 1
+        // Ks_bfgs_loc is the backup of gradient at current model = g_k, that is, grad_f(x_k)
+        std::vector<CUSTOMREAL> Ks_bfgs_loc;      
+        std::vector<CUSTOMREAL> Kxi_bfgs_loc;
+        std::vector<CUSTOMREAL> Keta_bfgs_loc;
+        Ks_bfgs_loc.resize(n_total_loc_grid_points);
+        Kxi_bfgs_loc.resize(n_total_loc_grid_points);
+        Keta_bfgs_loc.resize(n_total_loc_grid_points);
+
+        // read bfgs gradient at current model = g_k, that is, grad_f(x_k)
+        read_bfgs_gradient_slowness(grid, io, i_inv, Ks_bfgs_loc);
+        read_bfgs_gradient_xi(grid, io, i_inv, Kxi_bfgs_loc);
+        read_bfgs_gradient_eta(grid, io, i_inv, Keta_bfgs_loc);
+        
+
         // Ks_update_loc is -p = - alpha * (m_k+1 - m_k)
         // Ks_bfgs_loc is the backup of gradient at current model = g_k, that is, grad_f(x_k)
         proj_current -= grid_value_dot_product(grid.Ks_update_loc, Ks_bfgs_loc.data(), n_total_loc_grid_points);
@@ -125,9 +146,11 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
 
         if (proj_tried >= proj_current){
             cond_curvature = true;
-        }
+        }   
     }
-    //  broadcast the condition result to all processes within one subdomain
+    // level 1 commun
+    broadcast_bool_single_inter_sim(cond_curvature, 0);   
+    //  (level 3, within one subdomain (the main subdomain)) broadcast the condition result to all processes within one subdomain
     broadcast_bool_single_sub(cond_curvature, 0);       // '_sub' means within one subdomain, subdom_main tell others
 
 
@@ -254,93 +277,115 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
 // y_i = g_{i+1} - g_i, gradient difference
 // s_i = m_{i+1} - m_i, model difference
 void Optimizer_bfgs::calculate_bfgs_descent_direction(Grid& grid, IO_utils& io, int& i_inv) {
-    if(subdom_main){
-        if(id_sim == 0){
-            if (i_inv > 0) {
-                // --------------- step 1,  initialize q = g_k (in this step, descent_dir is q)
-                // do nothing. 
-                // grid.Ks_processing_loc is the gradient at current model
+    if(subdom_main && id_sim==0){    // calculate bfgs descent direction only for main of level 3 and main of level 1
+        if (i_inv > 0) {
 
-                // --------------- step 2, loop for i = k-1, k-2, ..., k-Mbfgs  (in this step, descent_dir is q)
-                // alpha_i = rho_i * s_i^T * q
-                // q = q - alpha_i * y_i
-                int n_stored = std::min(i_inv, Mbfgs);
-                for (int i_bfgs = i_inv-1; i_bfgs >= i_inv-n_stored; i_bfgs--) {
-                    // --------------- substep 1, calculate rho_i = 1 / (y_i^T * s_i)
-                    get_model_dif(grid, io, i_bfgs);        // obtain s_i (model difference)
-                    get_gradient_dif(grid, io, i_bfgs);     // obtain y_i (gradient difference)
-                    rho[i_bfgs]     = grid_value_dot_product(yk_s.data(), sk_s.data(), n_total_loc_grid_points);      // for slowness
-                    rho[i_bfgs]    += grid_value_dot_product(yk_xi.data(), sk_xi.data(), n_total_loc_grid_points);   // for xi
-                    rho[i_bfgs]    += grid_value_dot_product(yk_eta.data(), sk_eta.data(), n_total_loc_grid_points);  // for eta
-                    rho[i_bfgs]     = 1.0 / rho[i_bfgs];
+            // initialize vectors for two-loop recursion
+            std::vector<CUSTOMREAL> sk_s;       // s_k = m_{k+1} - m_k, model difference
+            std::vector<CUSTOMREAL> sk_xi;
+            std::vector<CUSTOMREAL> sk_eta;
+            std::vector<CUSTOMREAL> yk_s;       // y_k = g_{k+1} - g_k, gradient difference
+            std::vector<CUSTOMREAL> yk_xi;
+            std::vector<CUSTOMREAL> yk_eta;
+            
+            sk_s.resize(n_total_loc_grid_points);
+            sk_xi.resize(n_total_loc_grid_points);
+            sk_eta.resize(n_total_loc_grid_points);
+            yk_s.resize(n_total_loc_grid_points);
+            yk_xi.resize(n_total_loc_grid_points);
+            yk_eta.resize(n_total_loc_grid_points);
 
-                    // --------------- substep 2, calculate alpha_i = rho_i * s_i^T * q
-                    alpha_bfgs[i_bfgs]  = grid_value_dot_product(sk_s.data(), grid.Ks_processing_loc.data(), n_total_loc_grid_points);
-                    alpha_bfgs[i_bfgs] += grid_value_dot_product(sk_xi.data(), grid.Kxi_processing_loc.data(), n_total_loc_grid_points);
-                    alpha_bfgs[i_bfgs] += grid_value_dot_product(sk_eta.data(), grid.Keta_processing_loc.data(), n_total_loc_grid_points);  
-                    alpha_bfgs[i_bfgs] *= rho[i_bfgs];
+            // --------------- step 1,  initialize q = g_k (in this step, descent_dir is q)
+            // do nothing. 
+            // grid.Ks_processing_loc is the gradient at current model
 
-                    // --------------- substep 3, q = q - alpha_i * y_i
-                    for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
-                        grid.Ks_processing_loc[idx]   -= alpha_bfgs[i_bfgs] * yk_s[idx];
-                        grid.Kxi_processing_loc[idx]  -= alpha_bfgs[i_bfgs] * yk_xi[idx];
-                        grid.Keta_processing_loc[idx] -= alpha_bfgs[i_bfgs] * yk_eta[idx];
-                    }
-                    
-                }
+            // --------------- step 2, loop for i = k-1, k-2, ..., k-Mbfgs  (in this step, descent_dir is q)
+            // alpha_i = rho_i * s_i^T * q
+            // q = q - alpha_i * y_i
+            int n_stored = std::min(i_inv, Mbfgs);
+            for (int i_bfgs = i_inv-1; i_bfgs >= i_inv-n_stored; i_bfgs--) {
+                // --------------- substep 1, calculate rho_i = 1 / (y_i^T * s_i)
+                get_model_dif_slowness(grid, io, i_bfgs, sk_s);        // obtain s_i (model difference)
+                get_model_dif_xi(grid, io, i_bfgs, sk_xi);             // obtain s_i (model difference)
+                get_model_dif_eta(grid, io, i_bfgs, sk_eta);           // obtain s_i (model difference)
+                get_gradient_dif_slowness(grid, io, i_bfgs, yk_s);     // obtain y_i (gradient difference)
+                get_gradient_dif_xi(grid, io, i_bfgs, yk_xi);          // obtain y_i (gradient difference)
+                get_gradient_dif_eta(grid, io, i_bfgs, yk_eta);        // obtain y_i (gradient difference)
+                rho[i_bfgs]     = grid_value_dot_product(yk_s.data(), sk_s.data(), n_total_loc_grid_points);      // for slowness
+                rho[i_bfgs]    += grid_value_dot_product(yk_xi.data(), sk_xi.data(), n_total_loc_grid_points);   // for xi
+                rho[i_bfgs]    += grid_value_dot_product(yk_eta.data(), sk_eta.data(), n_total_loc_grid_points);  // for eta
+                rho[i_bfgs]     = 1.0 / rho[i_bfgs];
 
-                // --------------- step 3, scaling of initial Hessian H0_k  (in this step, descent_dir is z)
-                // substep 1, calculate gamma_k = (s_{k-1}^T * y_{k-1}) / (y_{k-1}^T * y_{k-1})
-                int i_bfgs = i_inv - 1;
-                get_model_dif(grid, io, i_bfgs);     // obtain s_{k-1} (model difference)
-                get_gradient_dif(grid, io, i_bfgs);  // obtain y_{k-1} (gradient difference)
-                CUSTOMREAL sT_y = _0_CR;
-                sT_y  = grid_value_dot_product(sk_s.data(), yk_s.data(), n_total_loc_grid_points);
-                sT_y += grid_value_dot_product(sk_xi.data(), yk_xi.data(), n_total_loc_grid_points);
-                sT_y += grid_value_dot_product(sk_eta.data(), yk_eta.data(), n_total_loc_grid_points);
-                CUSTOMREAL yT_y = _0_CR;
-                yT_y  = grid_value_dot_product(yk_s.data(), yk_s.data(), n_total_loc_grid_points);
-                yT_y += grid_value_dot_product(yk_xi.data(), yk_xi.data(), n_total_loc_grid_points);
-                yT_y += grid_value_dot_product(yk_eta.data(), yk_eta.data(), n_total_loc_grid_points);
-                CUSTOMREAL gamma_k = sT_y / yT_y;
+                // --------------- substep 2, calculate alpha_i = rho_i * s_i^T * q
+                alpha_bfgs[i_bfgs]  = grid_value_dot_product(sk_s.data(), grid.Ks_processing_loc.data(), n_total_loc_grid_points);
+                alpha_bfgs[i_bfgs] += grid_value_dot_product(sk_xi.data(), grid.Kxi_processing_loc.data(), n_total_loc_grid_points);
+                alpha_bfgs[i_bfgs] += grid_value_dot_product(sk_eta.data(), grid.Keta_processing_loc.data(), n_total_loc_grid_points);  
+                alpha_bfgs[i_bfgs] *= rho[i_bfgs];
 
-                // substep 2, z = gamma_k * q (because H0_k = gamma_k * I)
+                // --------------- substep 3, q = q - alpha_i * y_i
                 for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
-                    grid.Ks_processing_loc[idx]   *= gamma_k;
-                    grid.Kxi_processing_loc[idx]  *= gamma_k;
-                    grid.Keta_processing_loc[idx] *= gamma_k;
+                    grid.Ks_processing_loc[idx]   -= alpha_bfgs[i_bfgs] * yk_s[idx];
+                    grid.Kxi_processing_loc[idx]  -= alpha_bfgs[i_bfgs] * yk_xi[idx];
+                    grid.Keta_processing_loc[idx] -= alpha_bfgs[i_bfgs] * yk_eta[idx];
                 }
-
-                // --------------- step 4, loop for i = k-Mbfgs, k-Mbfgs+1, ..., k-1  (in this step, descent_dir is z)
-                for (int i_bfgs = i_inv-n_stored; i_bfgs <= i_inv-1; i_bfgs++) {
-                    // --------------- substep 1, beta = rho_i * y_i^T * z
-                    get_gradient_dif(grid, io, i_bfgs); // obtain y_i (gradient difference)
-                    CUSTOMREAL beta = _0_CR;
-                    beta  = grid_value_dot_product(yk_s.data(), grid.Ks_processing_loc.data(), n_total_loc_grid_points);
-                    beta += grid_value_dot_product(yk_xi.data(), grid.Kxi_processing_loc.data(), n_total_loc_grid_points);
-                    beta += grid_value_dot_product(yk_eta.data(), grid.Keta_processing_loc.data(), n_total_loc_grid_points);
-                    beta *= rho[i_bfgs];
-
-                    // --------------- substep 2, z = z + s_i * (alpha_i - beta)
-                    get_model_dif(grid, io, i_bfgs);     // obtain s_i (model difference)
-                    for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
-                        grid.Ks_processing_loc[idx]   += sk_s[idx] * (alpha_bfgs[i_bfgs] - beta);
-                        grid.Kxi_processing_loc[idx]  += sk_xi[idx] * (alpha_bfgs[i_bfgs] - beta);
-                        grid.Keta_processing_loc[idx] += sk_eta[idx] * (alpha_bfgs[i_bfgs] - beta);
-                    }
-                }
-
-                // --------------- final step, set modified kernels
-                // do nothing. Now, grid.Ks_processing_loc is the descent direction
-
-            } else {
-                // for the first iteration, use steepest descent (do nothing)
+                
             }
-        }
 
-        broadcast_cr_inter_sim(grid.Ks_processing_loc.data(), loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Kxi_processing_loc.data(), loc_I*loc_J*loc_K, 0);
-        broadcast_cr_inter_sim(grid.Keta_processing_loc.data(), loc_I*loc_J*loc_K, 0);
+            // --------------- step 3, scaling of initial Hessian H0_k  (in this step, descent_dir is z)
+            // substep 1, calculate gamma_k = (s_{k-1}^T * y_{k-1}) / (y_{k-1}^T * y_{k-1})
+            int i_bfgs = i_inv - 1;
+            get_model_dif_slowness(grid, io, i_bfgs, sk_s);     // obtain s_{k-1} (model difference)
+            get_model_dif_xi(grid, io, i_bfgs, sk_xi);          // obtain s_{k-1} (model difference)
+            get_model_dif_eta(grid, io, i_bfgs, sk_eta);        // obtain s_{k-1} (model difference)
+            get_gradient_dif_slowness(grid, io, i_bfgs, yk_s);  // obtain y_{k-1} (gradient difference)
+            get_gradient_dif_xi(grid, io, i_bfgs, yk_xi);       // obtain y_{k-1} (gradient difference)
+            get_gradient_dif_eta(grid, io, i_bfgs, yk_eta);     // obtain y_{k-1} (gradient difference)
+            CUSTOMREAL sT_y = _0_CR;
+            sT_y  = grid_value_dot_product(sk_s.data(), yk_s.data(), n_total_loc_grid_points);
+            sT_y += grid_value_dot_product(sk_xi.data(), yk_xi.data(), n_total_loc_grid_points);
+            sT_y += grid_value_dot_product(sk_eta.data(), yk_eta.data(), n_total_loc_grid_points);
+            CUSTOMREAL yT_y = _0_CR;
+            yT_y  = grid_value_dot_product(yk_s.data(), yk_s.data(), n_total_loc_grid_points);
+            yT_y += grid_value_dot_product(yk_xi.data(), yk_xi.data(), n_total_loc_grid_points);
+            yT_y += grid_value_dot_product(yk_eta.data(), yk_eta.data(), n_total_loc_grid_points);
+            CUSTOMREAL gamma_k = sT_y / yT_y;
+
+            // substep 2, z = gamma_k * q (because H0_k = gamma_k * I)
+            for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
+                grid.Ks_processing_loc[idx]   *= gamma_k;
+                grid.Kxi_processing_loc[idx]  *= gamma_k;
+                grid.Keta_processing_loc[idx] *= gamma_k;
+            }
+
+            // --------------- step 4, loop for i = k-Mbfgs, k-Mbfgs+1, ..., k-1  (in this step, descent_dir is z)
+            for (int i_bfgs = i_inv-n_stored; i_bfgs <= i_inv-1; i_bfgs++) {
+                // --------------- substep 1, beta = rho_i * y_i^T * z
+                get_gradient_dif_slowness(grid, io, i_bfgs, yk_s); // obtain y_i (gradient difference)
+                get_gradient_dif_xi(grid, io, i_bfgs, yk_xi);       // obtain y_i (gradient difference)
+                get_gradient_dif_eta(grid, io, i_bfgs, yk_eta);     // obtain y_i (gradient difference)
+                CUSTOMREAL beta = _0_CR;
+                beta  = grid_value_dot_product(yk_s.data(), grid.Ks_processing_loc.data(), n_total_loc_grid_points);
+                beta += grid_value_dot_product(yk_xi.data(), grid.Kxi_processing_loc.data(), n_total_loc_grid_points);
+                beta += grid_value_dot_product(yk_eta.data(), grid.Keta_processing_loc.data(), n_total_loc_grid_points);
+                beta *= rho[i_bfgs];
+
+                // --------------- substep 2, z = z + s_i * (alpha_i - beta)
+                get_model_dif_slowness(grid, io, i_bfgs, sk_s);     // obtain s_i (model difference)
+                get_model_dif_xi(grid, io, i_bfgs, sk_xi);          // obtain s_i (model difference)
+                get_model_dif_eta(grid, io, i_bfgs, sk_eta);        // obtain s_i (model difference)
+                for (int idx = 0; idx < n_total_loc_grid_points; idx++) {
+                    grid.Ks_processing_loc[idx]   += sk_s[idx] * (alpha_bfgs[i_bfgs] - beta);
+                    grid.Kxi_processing_loc[idx]  += sk_xi[idx] * (alpha_bfgs[i_bfgs] - beta);
+                    grid.Keta_processing_loc[idx] += sk_eta[idx] * (alpha_bfgs[i_bfgs] - beta);
+                }
+            }
+
+            // --------------- final step, set modified kernels
+            // do nothing. Now, grid.Ks_processing_loc is the descent direction
+
+        } else {
+            // for the first iteration, use steepest descent (do nothing)
+        }
     }
     
     synchronize_all_world();
@@ -353,85 +398,163 @@ void Optimizer_bfgs::write_bfgs_gradient(Grid& grid, IO_utils& io, int& i_inv){
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
 
-        // write descent direction
+        // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
         io.write_Ks_bfgs(grid, i_inv);
         io.write_Keta_bfgs(grid, i_inv);
         io.write_Kxi_bfgs(grid, i_inv);
     }
 }
 
+void Optimizer_bfgs::read_bfgs_gradient_slowness(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Ks_bfgs_loc){
+    if (id_sim == 0 && subdom_main){
+        // store kernel only in the first src datafile
+        io.change_group_name_for_model();
 
-// backup bfgs gradient
-void Optimizer_bfgs::backup_bfgs_gradient(Grid& grid){
-    if (subdom_main){
-        // backup bfgs gradient
-        Ks_bfgs_loc = grid.Ks_processing_loc;
-        Kxi_bfgs_loc = grid.Kxi_processing_loc;
-        Keta_bfgs_loc = grid.Keta_processing_loc;
+        // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
+        io.read_Ks_bfgs(grid, i_inv);
+        grid.set_array_from_vis(Ks_bfgs_loc.data());
     }
-    synchronize_all_world();
+}
+
+void Optimizer_bfgs::read_bfgs_gradient_xi(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Kxi_bfgs_loc){
+    if (id_sim == 0 && subdom_main){
+        // store kernel only in the first src datafile
+        io.change_group_name_for_model();
+
+        // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
+        io.read_Kxi_bfgs(grid, i_inv);
+        grid.set_array_from_vis(Kxi_bfgs_loc.data());
+    }
+}
+
+void Optimizer_bfgs::read_bfgs_gradient_eta(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& Keta_bfgs_loc){
+    if (id_sim == 0 && subdom_main){
+        // store kernel only in the first src datafile
+        io.change_group_name_for_model();
+
+        // write descent direction (Ks_processing_loc, Keta_processing_loc, Kxi_processing_loc)
+        io.read_Keta_bfgs(grid, i_inv);
+        grid.set_array_from_vis(Keta_bfgs_loc.data());
+    }
 }
 
 
+
+// backup bfgs gradient
+// void Optimizer_bfgs::backup_bfgs_gradient(Grid& grid){
+//     if (subdom_main){
+//         // backup bfgs gradient
+//         Ks_bfgs_loc = grid.Ks_processing_loc;
+//         Kxi_bfgs_loc = grid.Kxi_processing_loc;
+//         Keta_bfgs_loc = grid.Keta_processing_loc;
+//     }
+//     synchronize_all_world();
+// }
+
+
 // read histrorical model difference
-void Optimizer_bfgs::get_model_dif(Grid& grid, IO_utils& io, int& i_inv){
+void Optimizer_bfgs::get_model_dif_slowness(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& sk_s){
     // make h5_group_name_data to be "model"
     io.change_group_name_for_model();
 
     // slowness perturbation, delta ln(1/vel)
     io.read_vel(grid, i_inv + 1);
-    grid.set_array_from_vis(array_3d_forward.data());
+    grid.set_array_from_vis(sk_s.data());   // temporary use sk_s to store model at k+1
+
+    std::vector<CUSTOMREAL> array_3d_backward;
+    array_3d_backward.resize(n_total_loc_grid_points);
     io.read_vel(grid, i_inv);
     grid.set_array_from_vis(array_3d_backward.data());
+
     for (int i = 0; i < n_total_loc_grid_points; i++)
-        sk_s[i] = std::log(1.0/array_3d_forward[i]) - std::log(1.0/array_3d_backward[i]);
-    
+        sk_s[i] = std::log(1.0/sk_s[i]) - std::log(1.0/array_3d_backward[i]);   
+}
+
+void Optimizer_bfgs::get_model_dif_xi(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& sk_xi){
+    // make h5_group_name_data to be "model"
+    io.change_group_name_for_model();
+
     // delta xi
     io.read_xi(grid, i_inv + 1);
-    grid.set_array_from_vis(array_3d_forward.data());
+    grid.set_array_from_vis(sk_xi.data());   // temporary use sk_xi to store model at k+1
+
+    std::vector<CUSTOMREAL> array_3d_backward;
+    array_3d_backward.resize(n_total_loc_grid_points);
     io.read_xi(grid, i_inv);
     grid.set_array_from_vis(array_3d_backward.data());
+
     for (int i = 0; i < n_total_loc_grid_points; i++)
-        sk_xi[i] = array_3d_forward[i] - array_3d_backward[i];
+        sk_xi[i] = sk_xi[i] - array_3d_backward[i];
+}
+
+void Optimizer_bfgs::get_model_dif_eta(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& sk_eta){
+    // make h5_group_name_data to be "model"
+    io.change_group_name_for_model();
 
     // delta eta
     io.read_eta(grid, i_inv + 1);
-    grid.set_array_from_vis(array_3d_forward.data());
+    grid.set_array_from_vis(sk_eta.data());   // temporary use sk_eta to store model at k+1
+
+    std::vector<CUSTOMREAL> array_3d_backward;
+    array_3d_backward.resize(n_total_loc_grid_points);
     io.read_eta(grid, i_inv);
     grid.set_array_from_vis(array_3d_backward.data());
+
     for (int i = 0; i < n_total_loc_grid_points; i++)
-        sk_eta[i] = array_3d_forward[i] - array_3d_backward[i];
+        sk_eta[i] = sk_eta[i] - array_3d_backward[i];
 }
 
 
 // read histrorical gradient difference
-void Optimizer_bfgs::get_gradient_dif(Grid& grid, IO_utils& io, int& i_inv){
+void Optimizer_bfgs::get_gradient_dif_slowness(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& yk_s){
     // make h5_group_name_data to be "model"
     io.change_group_name_for_model();
 
     // slowness gradient difference
     io.read_Ks_bfgs(grid, i_inv + 1);
-    grid.set_array_from_vis(array_3d_forward.data());
+    grid.set_array_from_vis(yk_s.data());   // temporary use yk_s to store gradient at k+1
+
+    std::vector<CUSTOMREAL> array_3d_backward;
+    array_3d_backward.resize(n_total_loc_grid_points);
     io.read_Ks_bfgs(grid, i_inv);
     grid.set_array_from_vis(array_3d_backward.data());
+
     for (int i = 0; i < n_total_loc_grid_points; i++)
-        yk_s[i] = array_3d_forward[i] - array_3d_backward[i];
+        yk_s[i] = yk_s[i] - array_3d_backward[i];
+}
+
+void Optimizer_bfgs::get_gradient_dif_xi(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& yk_xi){
+    // make h5_group_name_data to be "model"
+    io.change_group_name_for_model();
 
     // xi gradient difference
     io.read_Kxi_bfgs(grid, i_inv + 1);
-    grid.set_array_from_vis(array_3d_forward.data());
+    grid.set_array_from_vis(yk_xi.data());   // temporary use yk_xi to store gradient at k+1
+
+    std::vector<CUSTOMREAL> array_3d_backward;
+    array_3d_backward.resize(n_total_loc_grid_points);
     io.read_Kxi_bfgs(grid, i_inv);
     grid.set_array_from_vis(array_3d_backward.data());
+
     for (int i = 0; i < n_total_loc_grid_points; i++)
-        yk_xi[i] = array_3d_forward[i] - array_3d_backward[i];
-        
+        yk_xi[i] = yk_xi[i] - array_3d_backward[i];
+}
+
+void Optimizer_bfgs::get_gradient_dif_eta(Grid& grid, IO_utils& io, int& i_inv, std::vector<CUSTOMREAL>& yk_eta){
+    // make h5_group_name_data to be "model"
+    io.change_group_name_for_model();
+
     // eta gradient difference
     io.read_Keta_bfgs(grid, i_inv + 1);
-    grid.set_array_from_vis(array_3d_forward.data());
+    grid.set_array_from_vis(yk_eta.data());   // temporary use yk_eta to store gradient at k+1
+
+    std::vector<CUSTOMREAL> array_3d_backward;
+    array_3d_backward.resize(n_total_loc_grid_points);
     io.read_Keta_bfgs(grid, i_inv);
-    grid.set_array_from_vis(array_3d_backward.data());
+    grid.set_array_from_vis(array_3d_backward.data());  
+
     for (int i = 0; i < n_total_loc_grid_points; i++)
-        yk_eta[i] = array_3d_forward[i] - array_3d_backward[i];
+        yk_eta[i] = yk_eta[i] - array_3d_backward[i];
 }
 
 

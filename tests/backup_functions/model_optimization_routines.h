@@ -51,7 +51,7 @@ inline void model_optimize(InputParams& IP, Grid& grid, IO_utils& io, int i_inv,
     // smooth kernels (multigrid, and kdensity normalization)
     smooth_kernels(grid, IP);
 
-    // write out modified kernels
+    // write out model_update (perturbation)
     if (id_sim==0 && subdom_main && IP.get_if_output_kernel() && (IP.get_if_output_in_process() || i_inv >= IP.get_max_iter_inv() - 2 || i_inv == 0)) {
         // store kernel only in the first src datafile
         io.change_group_name_for_model();
@@ -174,7 +174,9 @@ inline std::vector<CUSTOMREAL> model_optimize_halve_stepping(InputParams& IP, Gr
     smooth_kernels(grid, IP);
 
     // backup the initial model
-    grid.back_up_fun_xi_eta_bcf();
+    // grid.back_up_fun_xi_eta_bcf();
+    grid.back_up_fun_xi_eta();
+
 
     // update the model with the initial step size
     set_new_model(grid, step_length);
@@ -331,7 +333,8 @@ inline bool model_optimize_lbfgs(InputParams& IP, Grid& grid, IO_utils& io, int 
     }
 
     // backup the initial model
-    grid.back_up_fun_xi_eta_bcf();
+    // grid.back_up_fun_xi_eta_bcf();
+    grid.back_up_fun_xi_eta();
 
     // update the model with the initial step size
     if (IP.get_verbose_output_level() && id_sim==0) {

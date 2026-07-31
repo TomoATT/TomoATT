@@ -17,7 +17,7 @@ public:
     ~Source();
 
     // set source information
-    void set_source_position(InputParams &, Grid &, bool&, const std::string&, bool for_2d_solver=false);
+    void set_source_position(InputParams &, Grid &, bool&, const int, bool for_2d_solver=false);
     //
     // getters
     //

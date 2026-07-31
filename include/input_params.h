@@ -51,24 +51,24 @@ public:
     // source receiver information for processes which stores source receiver information
     std::string                 get_src_rec_file()      {return src_rec_file;};
     bool                        get_src_rec_file_exist(){return src_rec_file_exist;};
-    SrcRecInfo&                 get_src_point(const std::string&);          // return SrcRec object
-    SrcRecInfo&                 get_rec_point(const std::string&);          // return receivers for the current source
+    SrcRecInfo&                 get_src_point(const int id_src_att);          // return SrcRec object
+    SrcRecInfo&                 get_rec_point(const int id_rec_att);          // return receivers for the current source
 
     // source receiver information with broadcast to all subdom_main processes
-    SrcRecInfo                  get_src_point_bcast(const std::string&);    // return SrcRec object
-    SrcRecInfo                  get_rec_point_bcast(const std::string&);    // return receivers for the current source
-    CUSTOMREAL                  get_src_radius(   const std::string&);
-    CUSTOMREAL                  get_src_lat(      const std::string&);
-    CUSTOMREAL                  get_src_lon(      const std::string&);
-    SrcRecInfo                  get_src_point_bcast_2d(const std::string&);    // return SrcRec object
-    CUSTOMREAL                  get_src_radius_2d(const std::string&);
-    CUSTOMREAL                  get_src_lat_2d(   const std::string&);
-    CUSTOMREAL                  get_src_lon_2d(   const std::string&);
-    std::string                 get_src_name(const int&);                   // return source name from in-sim_group id
-    std::string                 get_rec_name(const int&);                   // return receiver name from in-sim_group id
-    std::string                 get_src_name_comm(const int&);              // return source name in common receiver list
-    int                         get_src_id(const std::string&);             // return src global id from src name
-    bool                        get_if_src_teleseismic(const std::string&); // return true if the source is teleseismic
+    SrcRecInfo                  get_src_point_bcast(const int id_src_att);    // return SrcRec object
+    SrcRecInfo                  get_rec_point_bcast(const int id_rec_att);    // return receivers for the current source
+    CUSTOMREAL                  get_src_radius(   const int id_src_att);
+    CUSTOMREAL                  get_src_lat(      const int id_src_att);
+    CUSTOMREAL                  get_src_lon(      const int id_src_att);
+    SrcRecInfo                  get_src_point_bcast_2d(const int id_src_att);    // return SrcRec object
+    CUSTOMREAL                  get_src_radius_2d(const int id_src_att);
+    CUSTOMREAL                  get_src_lat_2d(   const int id_src_att);
+    CUSTOMREAL                  get_src_lon_2d(   const int id_src_att);
+    int                         get_id_src_att(const int, const std::vector<int>&, bool for_2d_solver=false);                   // return id_src_att from src_map
+    std::string                 get_src_name(const int, const std::vector<int>&);                     // return source name from src_map
+    int                         get_id_rec_att(const int, const std::vector<int>&);  // return id_rec_att from rec_map    
+    std::string                 get_rec_name(const int, const std::vector<int>&);                     // return receiver name from rec_map
+    bool                        get_if_src_teleseismic(const int id_src_att); // return true if the source is teleseismic
 
     //
     // others
@@ -200,7 +200,7 @@ public:
     CUSTOMREAL* get_azimuthal_weight_cr_reloc()   {return azimuthal_weight_cr_reloc;};
 
     // get if the T field is written into the file
-    bool get_is_T_written_into_file(const std::string&);
+    bool get_is_T_written_into_file(const int id_src_att);
 
     // prepare source list for this simulation group
     void prepare_src_map();
@@ -222,36 +222,57 @@ public:
     int n_src_2d_this_sim_group = 0;       // number of sources assigned for 2d solver in this simultaneous group
     int n_rec_this_sim_group = 0;          // number of receivers in this simultaneous group
 
-    std::map<std::string, SrcRecInfo> src_map_all;          // map of all sources (full information is only stored by the main process)
-    std::map<std::string, SrcRecInfo> src_map;              // map of sources belonging to this simultaneous group
-    std::map<std::string, SrcRecInfo> src_map_comm_rec;     // map of sources with common receiver
-    std::map<std::string, SrcRecInfo> src_map_2d;           // map of sources assigned for 2d solver
-    std::map<std::string, SrcRecInfo> src_map_tele;         // source list for teleseismic
+    // std::map<std::string, SrcRecInfo> src_map_all;          // map of all sources (full information is only stored by the main process)
+    // std::map<std::string, SrcRecInfo> src_map;              // map of sources belonging to this simultaneous group
+    // std::map<std::string, SrcRecInfo> src_map_comm_rec;     // map of sources with common receiver
+    // std::map<std::string, SrcRecInfo> src_map_2d;           // map of sources assigned for 2d solver
+    // std::map<std::string, SrcRecInfo> src_map_tele;         // source list for teleseismic
 
-    std::map<std::string, SrcRecInfo> rec_map_all;     // map of all receivers (full information is only stored by the main process)
-    std::map<std::string, SrcRecInfo> rec_map;         // map of receivers belonging to this simultaneous group
-    std::map<std::string, SrcRecInfo> rec_map_tele;    // rec list for teleseismic
+    // std::map<std::string, SrcRecInfo> rec_map_all;     // map of all receivers (full information is only stored by the main process)
+    // std::map<std::string, SrcRecInfo> rec_map;         // map of receivers belonging to this simultaneous group
+    // std::map<std::string, SrcRecInfo> rec_map_tele;    // rec list for teleseismic
+
+    std::map< int, SrcRecInfo> src_map_all;          // (id_att -> SrcRecInfo) (main of level 1, 2, 3) map of all sources (full information is only stored by the main process)
+    std::map< int, SrcRecInfo> src_map;              // (id_att -> SrcRecInfo) (main of level 2, 3   ) map of sources belonging to this simultaneous group
+    std::map< int, SrcRecInfo> src_map_comm_rec;     // (id_att -> SrcRecInfo) (main of level 2, 3   ) map of sources with common receiver
+    std::map< int, SrcRecInfo> src_map_2d;           // (id_att -> SrcRecInfo) (main of level 2, 3   ) map of sources assigned for 2d solver
+    std::map< int, SrcRecInfo> src_map_tele;         // (id_att -> SrcRecInfo) (main of level 2, 3   ) source list for teleseismic
+    std::map< int, SrcRecInfo> src_map_back;         // (id_att -> SrcRecInfo) (main of level 1, 2, 3) backup map of sources (before swap)
+
+    std::map< int, SrcRecInfo> rec_map_all;     // (id_att -> SrcRecInfo) (main of level 1, 2, 3) map of all receivers (full information is only stored by the main process)
+    std::map< int, SrcRecInfo> rec_map;         // (id_att -> SrcRecInfo) (main of level 2, 3   ) map of receivers belonging to this simultaneous group
+    std::map< int, SrcRecInfo> rec_map_tele;    // (id_att -> SrcRecInfo) (main of level 2, 3   ) rec list for teleseismic
+    std::map< int, SrcRecInfo> rec_map_back;    // (id_att -> SrcRecInfo) (main of level 1, 2, 3) backup map of receivers (before swap)
 
     // datainfo-vector maps <src_name, rec_name>
-    std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map_all;     // data list for all data (full information is only stored by the main process)
-    std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map;         // data list for this simultaneous group
-    std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map_tele;    // data list for teleseismic
+    // std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map_all;     // data list for all data (full information is only stored by the main process)
+    // std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map;         // data list for this simultaneous group
+    // std::map< std::string, std::map<std::string, std::vector<DataInfo>>> data_map_tele;    // data list for teleseismic
 
-    std::vector<std::string> name_for_reloc;    // name list of receivers (swarpped sources) for location
+    // std::map< int, std::map<int, std::vector<DataInfo>>> data_map_all;   // data list for all data (full information is only stored by the main process)
+    // std::map< int, std::map<int, std::vector<DataInfo>>> data_map;       // data list for this simultaneous group
+    // std::map< int, std::map<int, std::vector<DataInfo>>> data_map_tele;  // data list for teleseismic
+
+    // std::map< int, std::string> data_map_level1_id2name; // map the first level id (src id) to src name
+    // std::map< int, std::string> data_map_level2_id2name; // map the second level id (rec id) to rec name
+
+    std::vector<DataInfo> data_vec_all;     // (main of level 1, 2, 3) data list for all data (full information is only stored by the main process)
+    std::vector<DataInfo> data_vec_tele;    // (main of level 1, 2, 3) (clear after merge) data list for teleseismic (tele is not swapped, and will be aggregated to data_vec_all in merge_region_and_tele_src)
+    std::vector<DataInfo> data_vec;         // (main of level 2, 3) data list for this simultaneous group (including the data whose sources are in ths simultaneous group)
+    
+    
+    // std::vector<std::string> name_for_reloc;    // name list of receivers (swarpped sources) for location
 
     // src id <-> src name relations
-    std::vector<std::string>                           src_id2name;          // name list of sources belonging to this simultaneous group
-    std::vector<std::string>                           rec_id2name;          // name list of receivers belongig to this simultaneous group
-    std::vector<std::string>                           src_id2name_comm_rec; // name list of sources with common receiver
-    std::vector<std::string>                           src_id2name_2d;       // name list of sources assigned for 2d solver.
-    std::vector<std::string>                           src_id2name_all;      // name list of all sources (store the order of sources in src_rec file)
-    std::vector<std::string>                           src_id2name_back;     // back up of name list of all sources (this will not be swapped)
-    std::vector<std::vector<std::vector<std::string>>> rec_id2name_back;     // back up of the name list of all receivers for each source (this will not be swapped)
+    // std::vector<std::string>                           src_id2name;          // name list of sources belonging to this simultaneous group
+    // std::vector<std::string>                           rec_id2name;          // name list of receivers belongig to this simultaneous group
+    // std::vector<std::string>                           src_id2name_comm_rec; // name list of sources with common receiver
+    // std::vector<std::string>                           src_id2name_2d;       // name list of sources assigned for 2d solver.
 
-    // backups used when outputing the data
-    std::map<std::string, SrcRecInfo>                                   src_map_back;
-    std::map<std::string, SrcRecInfo>                                   rec_map_back;
-    std::map<std::string, std::map<std::string, std::vector<DataInfo>>> data_map_back;
+    // std::vector<std::string>                           src_id2name_all;     // name list of all sources (id_att -> name)
+    // std::vector<std::string>                           rec_id2name_all;     // name list of all receivers (id_att -> name)
+    std::vector<int>                                   src_id_in_file;      // sources list in the file (this will not be swapped) (store the order of sources in src_rec file)
+    std::vector<std::vector<std::vector<int>>>         rec_id_in_file;      // receivers list in the file (this will not be swapped) (store the order of sources in src_rec file)
 
     // the number of data
     int N_abs_local_data    = 0;
@@ -266,11 +287,16 @@ public:
     // initialize_adjoint_source
     void initialize_adjoint_source();
     // set adjoint source && adjoint source density
-    void set_adjoint_source(std::string, CUSTOMREAL);
-    void set_adjoint_source_density(std::string, CUSTOMREAL);
+    void set_adjoint_source(int, CUSTOMREAL);
+    void set_adjoint_source_density(int, CUSTOMREAL);
 
     // gather traveltimes and calculate differences of synthetic data
     void gather_traveltimes_and_calc_syn_diff();
+
+    // get travel time given data_vec, src_map, id_src_att, id_rec_att
+    CUSTOMREAL get_travel_time_from_src_rec( std::vector<DataInfo>& data_vec, 
+                                             std::map<int, SrcRecInfo>& src_map, 
+                                             const int id_src_att, const int id_rec_att);
 
     // reduce necessary data in rec_map, which has differed elements in each sim group.
     template <typename T>
@@ -421,10 +447,23 @@ private:
     // gather rec info to main process
     void gather_rec_info_to_main();
 
+    // find ads data in data_vec_all for id_src_att and id_rec_att (not used now)
+    DataInfo& get_data_src_rec_from_all(const int id_src_att, const int id_rec_att);
+    
+    // find cs_dif data in data_vec_all for id_src_att, id_rec1_att and id_rec2_att (not used now)
+    DataInfo& get_data_rec_pair_from_all(const int id_src_att,
+                                         const int id_rec1_att,
+                                         const int id_rec2_att);                                   
+
+    // find cr_dif data in data_vec_all for id_src1_att, id_src2_att and id_rec_att (not used now)
+    DataInfo& get_data_src_pair_from_all(const int id_src1_att,
+                                         const int id_rec_att,
+                                         const int id_src2_att);   
+
     // generate a map of sources which include common receiver double difference data
-    void generate_src_map_with_common_receiver(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,
-                                             std::map<std::string, SrcRecInfo>&,
-                                             std::vector<std::string>&);
+    // void generate_src_map_with_common_receiver(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>&,
+    //                                          std::map<std::string, SrcRecInfo>&,
+    //                                          std::vector<std::string>&);
 
     bool i_first=false, i_last=false, \
          j_first=false, j_last=false, \
@@ -458,117 +497,46 @@ private:
 
     // single precision (float) output mode
     bool single_precision_output = false;
-
-
+          
 };
 
 
 //
 // utils
 //
-inline DataInfo& get_data_src_rec(std::vector<DataInfo>& v){
-    // return the first element in the vector with is_rec_pair = true
-    for (auto it = v.begin(); it != v.end(); it++){
-        if (it->is_src_rec)
-            return *it;
-    }
 
-    // error if no rec pair is found
-    std::cerr << "Error: no src/rec is found in get_data_src_rec" << std::endl;
-    exit(1);
+// inline void set_cr_dif_to_src_pair(std::map<std::string, std::map< std::string, std::vector<DataInfo>>>& v,
+//                                    std::string& name_src1,
+//                                    std::string& name_src2,
+//                                    std::string& name_rec,
+//                                    CUSTOMREAL& cr_dif){
+//     // return the first element in the vector with data_type == DATA_TYPE_CRDIF
 
-    // return the first element in the vector as a dummy
-    return v[0];
-}
+//     std::vector<DataInfo>& vdata = v[name_src1][name_rec];
 
-
-inline DataInfo& get_data_rec_pair(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>& v,
-                                   const std::string& name_src,
-                                   const std::string& name_rec1,
-                                   const std::string& name_rec2){
-    // return the first element in the vector with is_rec_pair = true
-    auto& map1 = v[name_src][name_rec1];
-    auto& map2 = v[name_src][name_rec2];
-
-    for (auto it = map1.begin(); it != map1.end(); it++){
-        if (it->is_rec_pair && it->name_rec_pair[0] == name_rec1 && it->name_rec_pair[1] == name_rec2)
-            return *it;
-    }
-
-    for (auto it = map2.begin(); it != map2.end(); it++){
-        if (it->is_rec_pair && it->name_rec_pair[0] == name_rec1 && it->name_rec_pair[1] == name_rec2)
-            return *it;
-    }
-
-    // error if no rec pair is found
-    std::cerr << "Error: no rec pair is found in get_data_rec_pair" << std::endl;
-    exit(1);
-
-    // return the first element in the vector as a dummy
-    return v[name_src][name_rec1][0];
-}
+//     for (auto it = vdata.begin(); it != vdata.end(); it++){
+//         if (it->data_type == DATA_TYPE_CRDIF
+//         && ( (it->name_src_pair[0] == name_src1 && it->name_src_pair[1] == name_src2)
+//          ||  (it->name_src_pair[0] == name_src2 && it->name_src_pair[1] == name_src1) )) {
+//             it->dif_travel_time = cr_dif;
+//         }
+//     }
+// }
 
 
-inline DataInfo& get_data_src_pair(std::map<std::string, std::map<std::string, std::vector<DataInfo>>>& v,
-                                   const std::string& name_src1,
-                                   const std::string& name_src2,
-                                   const std::string& name_rec){
+// inline bool get_if_any_src_pair(std::vector<DataInfo>& v){
+//     // return the first element in the vector with data_type == DATA_TYPE_CRDIF
+//     for (auto it = v.begin(); it != v.end(); it++){
+//         if (it->data_type == DATA_TYPE_CRDIF)
+//             return true;
+//     }
 
-    // return the first element in the vector with is_rec_pair = true
-    auto& map1 = v[name_src1][name_rec];
-    auto& map2 = v[name_src2][name_rec];
+//     // or maybe this will be enough
+//     //return v.size() > 1;
 
-    for (auto it = map1.begin(); it != map1.end(); it++){
-        if (it->is_src_pair && it->name_src_pair[0] == name_src1 && it->name_src_pair[1] == name_src2)
-            return *it;
-    }
-
-    for (auto it = map2.begin(); it != map2.end(); it++){
-        if (it->is_src_pair && it->name_src_pair[0] == name_src2 && it->name_src_pair[1] == name_src1)
-            return *it;
-    }
-
-    // error if no src pair is found
-    std::cerr << "Error: no src pair is found in get_data_src_pair" << std::endl;
-    exit(1);
-
-    // return the first element in the vector as a dummy
-    return v[name_src1][name_rec][0];
-}
-
-
-inline void set_cr_dif_to_src_pair(std::map<std::string, std::map< std::string, std::vector<DataInfo>>>& v,
-                                   std::string& name_src1,
-                                   std::string& name_src2,
-                                   std::string& name_rec,
-                                   CUSTOMREAL& cr_dif){
-    // return the first element in the vector with is_rec_pair = true
-
-    std::vector<DataInfo>& vdata = v[name_src1][name_rec];
-
-    for (auto it = vdata.begin(); it != vdata.end(); it++){
-        if (it->is_src_pair
-        && ( (it->name_src_pair[0] == name_src1 && it->name_src_pair[1] == name_src2)
-         ||  (it->name_src_pair[0] == name_src2 && it->name_src_pair[1] == name_src1) )) {
-            it->cr_dif_travel_time = cr_dif;
-        }
-    }
-}
-
-
-inline bool get_if_any_src_pair(std::vector<DataInfo>& v){
-    // return the first element in the vector with is_rec_pair = true
-    for (auto it = v.begin(); it != v.end(); it++){
-        if (it->is_src_pair)
-            return true;
-    }
-
-    // or maybe this will be enough
-    //return v.size() > 1;
-
-    // return false if no rec pair is found
-    return false;
-}
+//     // return false if no rec pair is found
+//     return false;
+// }
 
 
 #endif

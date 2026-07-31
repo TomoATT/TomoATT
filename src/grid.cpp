@@ -4,14 +4,24 @@ Grid::Grid(InputParams& IP, IO_utils& io) {
     stdout_by_main("--- grid object initialization starts. ---");
 
     // Initialize all MPI_Win variables to NULL to ensure proper cleanup
-    init_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
-                   &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    // init_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
+    //                &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    //                &win_tau_loc, &win_fun_loc, &win_is_changed,
+    //                &win_T_loc, &win_tau_old_loc,
+    //                &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+    //                &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
+    //                &win_Tadj_loc, &win_Tadj_density_loc,
+    //                &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
+    //                &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
+    init_mpi_wins({&win_T0v_loc,
                    &win_tau_loc, &win_fun_loc, &win_is_changed,
                    &win_T_loc, &win_tau_old_loc,
-                   &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+                   &win_xi_loc, &win_eta_loc,
                    &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
-                   &win_Tadj_loc, &win_Tadj_density_loc});
-
+                   &win_coe_r_loc_T0r, &win_coe_t_loc_T0t, &win_coe_t_loc_T0p, &win_coe_p_loc_T0t, &win_coe_p_loc_T0p,
+                   &win_Tadj_loc, &win_Tadj_density_loc,
+                   &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
+                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
     // initialize grid parameters are done by only the main process of each subdomain
     if (subdom_main) {
         // domain decomposition
@@ -351,18 +361,18 @@ void Grid::memory_allocation() {
 
         xi_loc      = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 2);
         eta_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 3);
-        zeta_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 4);
+        // zeta_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 4);
         T_loc       = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 5);
         tau_old_loc = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 6);
 
-        T0r_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 7);
-        T0t_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 8);
-        T0p_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 9);
+        // T0r_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 7);
+        // T0t_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 8);
+        // T0p_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 9);
         T0v_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 10);
-        fac_a_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 11);
-        fac_b_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 12);
-        fac_c_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 13);
-        fac_f_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 14);
+        // fac_a_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 11);
+        // fac_b_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 12);
+        // fac_c_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 13);
+        // fac_f_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 14);
         fun_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 15);
         is_changed  = allocateMemory<bool>(n_total_loc_grid_points, 16);
 
@@ -370,6 +380,20 @@ void Grid::memory_allocation() {
         p_loc_1d    = allocateMemory<CUSTOMREAL>(loc_I, 17);
         t_loc_1d    = allocateMemory<CUSTOMREAL>(loc_J, 18);
         r_loc_1d    = allocateMemory<CUSTOMREAL>(loc_K, 19);
+
+        coe_r_loc_T0r = allocateMemory<CUSTOMREAL>(loc_K, 20);
+        coe_t_loc_T0t = allocateMemory<CUSTOMREAL>(loc_J, 21);
+        coe_t_loc_T0p = allocateMemory<CUSTOMREAL>(loc_J, 22);
+        coe_p_loc_T0t = allocateMemory<CUSTOMREAL>(loc_I, 23);
+        coe_p_loc_T0p = allocateMemory<CUSTOMREAL>(loc_I, 24);
+
+        one_over_r_loc_1d        = allocateMemory<CUSTOMREAL>(loc_K, 9001);
+        one_over_r_loc_1d_sq     = allocateMemory<CUSTOMREAL>(loc_K, 9002);
+        one_over_cos_t_loc       = allocateMemory<CUSTOMREAL>(loc_J, 9003);
+        one_over_cos_t_loc_sq    = allocateMemory<CUSTOMREAL>(loc_J, 9004);
+        sin_t_loc                = allocateMemory<CUSTOMREAL>(loc_J, 9005);
+        cos_t_loc_m0p5           = allocateMemory<CUSTOMREAL>(loc_J, 9006);
+        cos_t_loc_p0p5           = allocateMemory<CUSTOMREAL>(loc_J, 9007);
     }
 
     if (if_test)
@@ -531,23 +555,27 @@ void Grid::memory_allocation() {
             Kxi_density_inv_loc      = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid_ani, 100);
             Keta_density_inv_loc     = allocateMemory<CUSTOMREAL>(n_total_loc_inv_grid_ani, 101);
 
-            Ks_update_loc            = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 99);
-            Kxi_update_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 100);
-            Keta_update_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 101);
-            Ks_density_update_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
-            Kxi_density_update_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
-            Keta_density_update_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
+        
+            if (id_sim == 0 && subdom_main){
+                Ks_update_loc            = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 99);
+                Kxi_update_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 100);
+                Keta_update_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 101);
+                Ks_density_update_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
+                Kxi_density_update_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
+                Keta_density_update_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
+                
+                Ks_update_loc_previous   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
+                Kxi_update_loc_previous  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
+                Keta_update_loc_previous = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
 
-            Ks_update_loc_previous   = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 102);
-            Kxi_update_loc_previous  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 103);
-            Keta_update_loc_previous = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 104);
 
-            Ks_processing_loc.resize(n_total_loc_grid_points);
-            Kxi_processing_loc.resize(n_total_loc_grid_points);
-            Keta_processing_loc.resize(n_total_loc_grid_points);
-            Ks_density_processing_loc.resize(n_total_loc_grid_points);
-            Kxi_density_processing_loc.resize(n_total_loc_grid_points);
-            Keta_density_processing_loc.resize(n_total_loc_grid_points);
+                Ks_processing_loc.resize(n_total_loc_grid_points);
+                Kxi_processing_loc.resize(n_total_loc_grid_points);
+                Keta_processing_loc.resize(n_total_loc_grid_points);
+                Ks_density_processing_loc.resize(n_total_loc_grid_points);
+                Kxi_density_processing_loc.resize(n_total_loc_grid_points);
+                Keta_density_processing_loc.resize(n_total_loc_grid_points);
+            }
         }
 
         if (sub_nprocs <= 1){
@@ -555,67 +583,6 @@ void Grid::memory_allocation() {
             Tadj_density_loc = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 106);
         }
 
-        // if (optim_method==HALVE_STEPPING_MODE) {
-        //     fac_b_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 107);
-        //     fac_c_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 108);
-        //     fac_f_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 109);
-        //     xi_loc_back  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 110);
-        //     eta_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 111);
-        //     fun_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 112);
-        // }
-
-        // if (optim_method==LBFGS_MODE) {
-        //     fac_b_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 113);
-        //     fac_c_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 114);
-        //     fac_f_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 115);
-        //     xi_loc_back  = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 116);
-        //     eta_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 117);
-        //     fun_loc_back = allocateMemory<CUSTOMREAL>(n_total_loc_grid_points, 118);
-
-        //     int n_total_loc_lbfgs = n_total_loc_grid_points * Mbfgs;
-        //     Ks_descent_dir_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 119);
-        //     Kxi_descent_dir_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 120);
-        //     Keta_descent_dir_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 121);
-        //     // initialize
-        //     std::fill(Ks_descent_dir_loc,   Ks_descent_dir_loc   + n_total_loc_lbfgs, _0_CR);
-        //     std::fill(Kxi_descent_dir_loc,  Kxi_descent_dir_loc  + n_total_loc_lbfgs, _0_CR);
-        //     std::fill(Keta_descent_dir_loc, Keta_descent_dir_loc + n_total_loc_lbfgs, _0_CR);
-
-        //     if (id_sim==0){
-        //         Ks_grad_store_loc    = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 122);
-        //         Kxi_grad_store_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 123);
-        //         Keta_grad_store_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 124);
-        //         Ks_model_store_loc   = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 125);
-        //         Kxi_model_store_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 126);
-        //         Keta_model_store_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 127);
-        //         fun_gradient_regularization_penalty_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 128);
-        //         xi_gradient_regularization_penalty_loc  = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 129);
-        //         eta_gradient_regularization_penalty_loc = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 130);
-        //         fun_regularization_penalty_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 131);
-        //         xi_regularization_penalty_loc           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 132);
-        //         eta_regularization_penalty_loc          = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 133);
-        //         fun_prior_loc                           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 134);
-        //         xi_prior_loc                            = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 135);
-        //         eta_prior_loc                           = allocateMemory<CUSTOMREAL>(n_total_loc_lbfgs, 136);
-
-        //         // initialize
-        //         std::fill(Ks_grad_store_loc,                       Ks_grad_store_loc                       + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(Kxi_grad_store_loc,                      Kxi_grad_store_loc                      + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(Keta_grad_store_loc,                     Keta_grad_store_loc                     + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(Ks_model_store_loc,                      Ks_model_store_loc                      + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(Kxi_model_store_loc,                     Kxi_model_store_loc                     + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(Keta_model_store_loc,                    Keta_model_store_loc                    + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(fun_gradient_regularization_penalty_loc, fun_gradient_regularization_penalty_loc + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(xi_gradient_regularization_penalty_loc,  xi_gradient_regularization_penalty_loc  + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(eta_gradient_regularization_penalty_loc, eta_gradient_regularization_penalty_loc + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(fun_regularization_penalty_loc,          fun_regularization_penalty_loc          + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(xi_regularization_penalty_loc,           xi_regularization_penalty_loc           + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(eta_regularization_penalty_loc,          eta_regularization_penalty_loc          + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(fun_prior_loc,                           fun_prior_loc                           + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(xi_prior_loc,                            xi_prior_loc                            + n_total_loc_lbfgs, _0_CR);
-        //         std::fill(eta_prior_loc,                           eta_prior_loc                           + n_total_loc_lbfgs, _0_CR);
-        //     }
-        // }
     } // end of if inverse_flag
 
     stdout_by_main("Memory allocation done.");
@@ -634,23 +601,37 @@ void Grid::shm_memory_allocation() {
     prepare_shm_array_cr(n_total_loc_grid_points, tau_old_loc, win_tau_old_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, xi_loc, win_xi_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, eta_loc, win_eta_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, zeta_loc, win_zeta_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, zeta_loc, win_zeta_loc);
 
-    prepare_shm_array_cr(n_total_loc_grid_points, T0r_loc, win_T0r_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, T0t_loc, win_T0t_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, T0p_loc, win_T0p_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, T0r_loc, win_T0r_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, T0t_loc, win_T0t_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, T0p_loc, win_T0p_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, T0v_loc, win_T0v_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, tau_loc, win_tau_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, fac_a_loc, win_fac_a_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, fac_b_loc, win_fac_b_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, fac_c_loc, win_fac_c_loc);
-    prepare_shm_array_cr(n_total_loc_grid_points, fac_f_loc, win_fac_f_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, fac_a_loc, win_fac_a_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, fac_b_loc, win_fac_b_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, fac_c_loc, win_fac_c_loc);
+    // prepare_shm_array_cr(n_total_loc_grid_points, fac_f_loc, win_fac_f_loc);
     prepare_shm_array_cr(n_total_loc_grid_points, fun_loc, win_fun_loc);
     prepare_shm_array_bool(n_total_loc_grid_points, is_changed, win_is_changed);
 
     prepare_shm_array_cr(loc_I, p_loc_1d, win_p_loc_1d);
     prepare_shm_array_cr(loc_J, t_loc_1d, win_t_loc_1d);
     prepare_shm_array_cr(loc_K, r_loc_1d, win_r_loc_1d);
+
+    prepare_shm_array_cr(loc_K, coe_r_loc_T0r, win_coe_r_loc_T0r);
+    prepare_shm_array_cr(loc_J, coe_t_loc_T0t, win_coe_t_loc_T0t);
+    prepare_shm_array_cr(loc_J, coe_t_loc_T0p, win_coe_t_loc_T0p);
+    prepare_shm_array_cr(loc_I, coe_p_loc_T0t, win_coe_p_loc_T0t);
+    prepare_shm_array_cr(loc_I, coe_p_loc_T0p, win_coe_p_loc_T0p);
+
+    prepare_shm_array_cr(loc_J, one_over_cos_t_loc, win_one_over_cos_t_loc);
+    prepare_shm_array_cr(loc_J, one_over_cos_t_loc_sq, win_one_over_cos_t_loc_sq);
+    prepare_shm_array_cr(loc_J, sin_t_loc, win_sin_t_loc);
+    prepare_shm_array_cr(loc_J, cos_t_loc_m0p5, win_cos_t_loc_m0p5);
+    prepare_shm_array_cr(loc_J, cos_t_loc_p0p5, win_cos_t_loc_p0p5);
+    prepare_shm_array_cr(loc_K, one_over_r_loc_1d, win_one_over_r_loc_1d);
+    prepare_shm_array_cr(loc_K, one_over_r_loc_1d_sq, win_one_over_r_loc_1d_sq);
 
     // inversion
     prepare_shm_array_cr(n_total_loc_grid_points, Tadj_loc, win_Tadj_loc);
@@ -661,13 +642,24 @@ void Grid::shm_memory_allocation() {
 void Grid::shm_memory_deallocation() {
     // Free MPI shared memory windows before MPI_Finalize to avoid Intel OneAPI errors
     // These windows were allocated in shm_memory_allocation()
-    cleanup_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
-                      &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    // cleanup_mpi_wins({&win_fac_a_loc, &win_fac_b_loc, &win_fac_c_loc, &win_fac_f_loc,
+    //                   &win_T0r_loc, &win_T0p_loc, &win_T0t_loc, &win_T0v_loc,
+    //                   &win_tau_loc, &win_fun_loc, &win_is_changed,
+    //                   &win_T_loc, &win_tau_old_loc,
+    //                   &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+    //                   &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
+    //                   &win_Tadj_loc, &win_Tadj_density_loc,
+    //                   &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
+    //                   &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
+    cleanup_mpi_wins({&win_T0v_loc,
                       &win_tau_loc, &win_fun_loc, &win_is_changed,
                       &win_T_loc, &win_tau_old_loc,
-                      &win_xi_loc, &win_eta_loc, &win_zeta_loc,
+                      &win_xi_loc, &win_eta_loc,
                       &win_r_loc_1d, &win_t_loc_1d, &win_p_loc_1d,
-                      &win_Tadj_loc, &win_Tadj_density_loc});
+                      &win_coe_r_loc_T0r, &win_coe_t_loc_T0t, &win_coe_t_loc_T0p, &win_coe_p_loc_T0t, &win_coe_p_loc_T0p,
+                      &win_Tadj_loc, &win_Tadj_density_loc,
+                      &win_one_over_r_loc_1d, &win_one_over_r_loc_1d_sq, &win_one_over_cos_t_loc,
+                      &win_one_over_cos_t_loc_sq, &win_sin_t_loc, &win_cos_t_loc_m0p5, &win_cos_t_loc_p0p5});
 }
 
 // function for memory allocation, called only for subdomain.
@@ -685,24 +677,38 @@ void Grid::memory_deallocation() {
 #endif
         delete[] xi_loc;
         delete[] eta_loc;
-        delete[] zeta_loc;
+        // delete[] zeta_loc;
         delete[] T_loc;
         delete[] tau_old_loc;
 
-        delete[] T0r_loc;
-        delete[] T0t_loc;
-        delete[] T0p_loc;
+        // delete[] T0r_loc;
+        // delete[] T0t_loc;
+        // delete[] T0p_loc;
         delete[] T0v_loc;
-        delete[] fac_a_loc;
-        delete[] fac_b_loc;
-        delete[] fac_c_loc;
-        delete[] fac_f_loc;
+        // delete[] fac_a_loc;
+        // delete[] fac_b_loc;
+        // delete[] fac_c_loc;
+        // delete[] fac_f_loc;
         delete[] fun_loc;
         delete[] is_changed;
 
         delete[] t_loc_1d;
         delete[] p_loc_1d;
         delete[] r_loc_1d;
+
+        delete[] coe_r_loc_T0r;
+        delete[] coe_t_loc_T0t;
+        delete[] coe_t_loc_T0p;
+        delete[] coe_p_loc_T0t;
+        delete[] coe_p_loc_T0p;
+
+        delete[] one_over_r_loc_1d;
+        delete[] one_over_r_loc_1d_sq;
+        delete[] one_over_cos_t_loc;
+        delete[] one_over_cos_t_loc_sq;
+        delete[] sin_t_loc;
+        delete[] cos_t_loc_m0p5;
+        delete[] cos_t_loc_p0p5;
 
     }
 
@@ -854,6 +860,9 @@ void Grid::memory_deallocation() {
             delete[] Ks_density_inv_loc;
             delete[] Kxi_density_inv_loc;
             delete[] Keta_density_inv_loc;
+        }
+
+        if (subdom_main && id_sim == 0){
             delete[] Ks_update_loc;
             delete[] Kxi_update_loc;
             delete[] Keta_update_loc;
@@ -870,44 +879,28 @@ void Grid::memory_deallocation() {
             delete[] Tadj_density_loc;
        }
 
-        // if (optim_method==HALVE_STEPPING_MODE) {
-        //     delete[] fac_b_loc_back;
-        //     delete[] fac_c_loc_back;
-        //     delete[] fac_f_loc_back;
-        //     delete[] fun_loc_back;
-        //     delete[] xi_loc_back;
-        //     delete[] eta_loc_back;
-        // }
-
-        // if (optim_method==LBFGS_MODE) {
-        //     delete[] fac_b_loc_back;
-        //     delete[] fac_c_loc_back;
-        //     delete[] fac_f_loc_back;
-        //     delete[] fun_loc_back;
-        //     delete[] xi_loc_back;
-        //     delete[] eta_loc_back;
-
-        //     if (id_sim==0){
-        //         delete[] Ks_grad_store_loc;
-        //         delete[] Kxi_grad_store_loc;
-        //         delete[] Keta_grad_store_loc;
-        //         delete[] Ks_model_store_loc;
-        //         delete[] Kxi_model_store_loc;
-        //         delete[] Keta_model_store_loc;
-        //         delete[] fun_gradient_regularization_penalty_loc;
-        //         delete[] xi_gradient_regularization_penalty_loc;
-        //         delete[] eta_gradient_regularization_penalty_loc;
-        //         delete[] fun_regularization_penalty_loc;
-        //         delete[] xi_regularization_penalty_loc;
-        //         delete[] eta_regularization_penalty_loc;
-        //         delete[] fun_prior_loc;
-        //         delete[] xi_prior_loc;
-        //         delete[] eta_prior_loc;
-        //     }
-        // }
     } // end if inverse_flag
 
     stdout_by_main("Memory deallocation done.");
+}
+
+void Grid::memory_deallocation_for_3D_grid() {
+    delete[] x_loc_3d;
+    x_loc_3d = nullptr;
+    delete[] y_loc_3d;
+    y_loc_3d = nullptr;
+    delete[] z_loc_3d;
+    z_loc_3d = nullptr;
+    delete[] p_loc_3d;
+    p_loc_3d = nullptr;
+    delete[] t_loc_3d;
+    t_loc_3d = nullptr;
+    delete[] r_loc_3d;
+    r_loc_3d = nullptr;
+    delete[] elms_conn;
+    elms_conn = nullptr;
+    delete[] my_proc_dump;
+    my_proc_dump = nullptr;
 }
 
 
@@ -958,6 +951,26 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         p_loc_1d[i] = lon_min + (tmp_offset_i + i)*dlon;
     }
 
+    // pre-calculate inverses, sines and cosines.
+    for (int k = 0; k < loc_K; k++) {
+        one_over_r_loc_1d[k] = 1/r_loc_1d[k];
+        one_over_r_loc_1d_sq[k] = my_square(one_over_r_loc_1d[k]);
+    }
+
+    for (int j = 0; j < loc_J; j++) {
+        one_over_cos_t_loc[j] = 1/std::cos(t_loc_1d[j]);
+        one_over_cos_t_loc_sq[j] = my_square(one_over_cos_t_loc[j]);
+        sin_t_loc[j] = std::sin(t_loc_1d[j]);
+    }
+
+    for (int j = 1; j < loc_J; j++) {
+        cos_t_loc_m0p5[j] = 1 / std::cos((t_loc_1d[j-1]+t_loc_1d[j])*_0_5_CR);
+    }
+
+    for (int j = 0; j < loc_J - 1; j++) {
+        cos_t_loc_p0p5[j] = 1 / std::cos((t_loc_1d[j]+t_loc_1d[j+1])*_0_5_CR);
+    }
+
     for (int i = 0; i < nprocs; i++) {
         synchronize_all_inter();
         if (i == myrank && id_sim == 0) {
@@ -990,7 +1003,7 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         }
 
         // set zeta = 0 (optimization for zeta is not implemented yet)
-        std::fill(zeta_loc, zeta_loc + loc_I*loc_J*loc_K, _0_CR);
+        // std::fill(zeta_loc, zeta_loc + loc_I*loc_J*loc_K, _0_CR);
 
         // copy initial model to prior model arrays
         // if (optim_method==LBFGS_MODE){
@@ -1005,7 +1018,7 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
     int n_total_loc_grid_points = loc_I * loc_J * loc_K;
     broadcast_cr_inter_sim(xi_loc,    n_total_loc_grid_points, 0);
     broadcast_cr_inter_sim(eta_loc,   n_total_loc_grid_points, 0);
-    broadcast_cr_inter_sim(zeta_loc,  n_total_loc_grid_points, 0);
+    // broadcast_cr_inter_sim(zeta_loc,  n_total_loc_grid_points, 0);
     broadcast_cr_inter_sim(fun_loc,   n_total_loc_grid_points, 0); // here passing velocity array
     if(if_test) {
         broadcast_cr_inter_sim(u_loc, n_total_loc_grid_points, 0);
@@ -1024,10 +1037,10 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
                 fun_loc[I2V(i_lon, j_lat, k_r)] = _1_CR / fun_loc[I2V(i_lon, j_lat, k_r)];
 
                 // calculate fac_a_loc, fac_b_loc, fac_c_loc, fac_f_loc
-                fac_a_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR * zeta_loc[I2V(i_lon, j_lat, k_r)];
-                fac_b_loc[I2V(i_lon, j_lat, k_r)] = _1_CR - _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
-                fac_c_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
-                fac_f_loc[I2V(i_lon, j_lat, k_r)] =       - _2_CR *  eta_loc[I2V(i_lon, j_lat, k_r)];
+                // fac_a_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR * zeta_loc[I2V(i_lon, j_lat, k_r)];
+                // fac_b_loc[I2V(i_lon, j_lat, k_r)] = _1_CR - _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
+                // fac_c_loc[I2V(i_lon, j_lat, k_r)] = _1_CR + _2_CR *   xi_loc[I2V(i_lon, j_lat, k_r)];
+                // fac_f_loc[I2V(i_lon, j_lat, k_r)] =       - _2_CR *  eta_loc[I2V(i_lon, j_lat, k_r)];
 
                 // construct 3d coordinate arrays and node connectivity for visualization
                 // exclude the ghost nodes
@@ -1208,50 +1221,54 @@ void Grid::get_array_for_3d_output(const CUSTOMREAL *arr_in, CUSTOMREAL* arr_out
 }
 
 
-void Grid::reinitialize_abcf(){
-    if (subdom_main) {
-        for (int k_r = 0; k_r < loc_K; k_r++) {
-            for (int j_lat = 0; j_lat < loc_J; j_lat++) {
-                for (int i_lon = 0; i_lon < loc_I; i_lon++) {
-                    // initialize arrays
-                    fac_a_loc[I2V(i_lon,j_lat,k_r)] = fac_a_loc[I2V(i_lon,j_lat,k_r)];
-                    fac_b_loc[I2V(i_lon,j_lat,k_r)] = fac_b_loc[I2V(i_lon,j_lat,k_r)]/ my_square(r_loc_1d[k_r]);
-                    fac_c_loc[I2V(i_lon,j_lat,k_r)] = fac_c_loc[I2V(i_lon,j_lat,k_r)]/(my_square(r_loc_1d[k_r])*my_square(std::cos(t_loc_1d[j_lat])));
-                    fac_f_loc[I2V(i_lon,j_lat,k_r)] = fac_f_loc[I2V(i_lon,j_lat,k_r)]/(my_square(r_loc_1d[k_r])*          std::cos(t_loc_1d[j_lat]));
-                }
-            }
-        }
-    }
-}
+// void Grid::reinitialize_abcf(){
+//     if (subdom_main) {
+//         for (int k_r = 0; k_r < loc_K; k_r++) {
+//             for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+//                 for (int i_lon = 0; i_lon < loc_I; i_lon++) {
+//                     // initialize arrays
+//                     fac_a_loc[I2V(i_lon,j_lat,k_r)] = fac_a_loc[I2V(i_lon,j_lat,k_r)];
+//                     fac_b_loc[I2V(i_lon,j_lat,k_r)] = fac_b_loc[I2V(i_lon,j_lat,k_r)]/ my_square(r_loc_1d[k_r]);
+//                     fac_c_loc[I2V(i_lon,j_lat,k_r)] = fac_c_loc[I2V(i_lon,j_lat,k_r)]/(my_square(r_loc_1d[k_r])*my_square(std::cos(t_loc_1d[j_lat])));
+//                     fac_f_loc[I2V(i_lon,j_lat,k_r)] = fac_f_loc[I2V(i_lon,j_lat,k_r)]/(my_square(r_loc_1d[k_r])*          std::cos(t_loc_1d[j_lat]));
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
-void Grid::rejuvenate_abcf(){
-    if (subdom_main) {
-        for (int k_r = 0; k_r < loc_K; k_r++) {
-            for (int j_lat = 0; j_lat < loc_J; j_lat++) {
-                for (int i_lon = 0; i_lon < loc_I; i_lon++) {
-                    // initialize arrays
-                    fac_a_loc[I2V(i_lon,j_lat,k_r)] = fac_a_loc[I2V(i_lon,j_lat,k_r)];
-                    fac_b_loc[I2V(i_lon,j_lat,k_r)] = _1_CR - _2_CR * xi_loc[I2V(i_lon,j_lat,k_r)];
-                    fac_c_loc[I2V(i_lon,j_lat,k_r)] = _1_CR + _2_CR * xi_loc[I2V(i_lon,j_lat,k_r)];
-                    fac_f_loc[I2V(i_lon,j_lat,k_r)] =       - _2_CR * eta_loc[I2V(i_lon,j_lat,k_r)];
-                }
-            }
-        }
-    }
-}
+// void Grid::rejuvenate_abcf(){
+//     if (subdom_main) {
+//         for (int k_r = 0; k_r < loc_K; k_r++) {
+//             for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+//                 for (int i_lon = 0; i_lon < loc_I; i_lon++) {
+//                     // initialize arrays
+//                     fac_a_loc[I2V(i_lon,j_lat,k_r)] = fac_a_loc[I2V(i_lon,j_lat,k_r)];
+//                     fac_b_loc[I2V(i_lon,j_lat,k_r)] = _1_CR - _2_CR * xi_loc[I2V(i_lon,j_lat,k_r)];
+//                     fac_c_loc[I2V(i_lon,j_lat,k_r)] = _1_CR + _2_CR * xi_loc[I2V(i_lon,j_lat,k_r)];
+//                     fac_f_loc[I2V(i_lon,j_lat,k_r)] =       - _2_CR * eta_loc[I2V(i_lon,j_lat,k_r)];
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
 void Grid::setup_factors(Source &src){
 
     // calculate factors for the source
-    a0   = src.get_fac_at_source(fac_a_loc);
-    b0   = src.get_fac_at_source(fac_b_loc);
-    c0   = src.get_fac_at_source(fac_c_loc);
-    f0   = src.get_fac_at_source(fac_f_loc);
-    fun0 = src.get_fac_at_source(fun_loc, false); // true for debug
-}
+    // a0   = src.get_fac_at_source(fac_a_loc);
+    // b0   = src.get_fac_at_source(fac_b_loc);
+    // c0   = src.get_fac_at_source(fac_c_loc);
+    // f0   = src.get_fac_at_source(fac_f_loc);
+    // fun0 = src.get_fac_at_source(fun_loc, false); // true for debug
 
+    xi0   = src.get_fac_at_source(xi_loc);
+    eta0  = src.get_fac_at_source(eta_loc);
+    // zeta0 = src.get_fac_at_source(zeta_loc);
+    fun0  = src.get_fac_at_source(fun_loc, false); // true for debug
+}
 
 void Grid::initialize_fields(Source& src, InputParams& IP){
 
@@ -1261,21 +1278,46 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
     CUSTOMREAL src_p = src.get_src_p();
 
     // std out src positions
+    a0 = _1_CR;
+    b0 = (_1_CR - _2_CR * xi0) / my_square(src_r);
+    c0 = (_1_CR + _2_CR * xi0) / my_square(src_r) / my_square(std::cos(src_t));
+    f0 = (     - _2_CR * eta0) / my_square(src_r) / std::cos(src_t);
+
     CUSTOMREAL c0b0_minus_f0f0 = c0*b0 - f0*f0;
+
+    // T0r = coe_r_loc_T0r[k_r] / T0v
+    // T0t = (coe_t_loc_T0t[j_lat] + coe_p_loc_T0t[i_lon]) / T0v
+    // T0p = (coe_t_loc_T0p[j_lat] + coe_p_loc_T0p[i_lon]) / T0v
+
+    CUSTOMREAL dr_from_src;
+    CUSTOMREAL dt_from_src;
+    CUSTOMREAL dp_from_src;
+
+    for (int k_r = 0; k_r < loc_K; k_r++) {
+        dr_from_src = r_loc_1d[k_r]   - src_r;
+        coe_r_loc_T0r[k_r] = my_square(fun0)*(_1_CR/a0*dr_from_src);
+    }
+    for (int j_lat = 0; j_lat < loc_J; j_lat++) {
+        dt_from_src = t_loc_1d[j_lat] - src_t;
+        coe_t_loc_T0t[j_lat] = my_square(fun0)*(c0/(c0b0_minus_f0f0)*dt_from_src);
+        coe_t_loc_T0p[j_lat] = my_square(fun0)*(f0/(c0b0_minus_f0f0)*dt_from_src);
+    }
+    for (int i_lon = 0; i_lon < loc_I; i_lon++) {
+        dp_from_src = p_loc_1d[i_lon] - src_p;
+        coe_p_loc_T0t[i_lon] = my_square(fun0)*f0/(c0b0_minus_f0f0)*dp_from_src;
+        coe_p_loc_T0p[i_lon] = my_square(fun0)*b0/(c0b0_minus_f0f0)*dp_from_src;
+    }
+
 
     // debug
     int n_source_node = 0;
 
-    // std::cout << a0 << ' ' << b0 << ' ' << c0 << ' ' << f0 << ' ' << std::endl;
-
-
-
     for (int k_r = 0; k_r < loc_K; k_r++) {
         for (int j_lat = 0; j_lat < loc_J; j_lat++) {
             for (int i_lon = 0; i_lon < loc_I; i_lon++) {
-                CUSTOMREAL dr_from_src = r_loc_1d[k_r]   - src_r;
-                CUSTOMREAL dt_from_src = t_loc_1d[j_lat] - src_t;
-                CUSTOMREAL dp_from_src = p_loc_1d[i_lon] - src_p;
+                dr_from_src = r_loc_1d[k_r]   - src_r;
+                dt_from_src = t_loc_1d[j_lat] - src_t;
+                dp_from_src = p_loc_1d[i_lon] - src_p;
 
                 T0v_loc[I2V(i_lon,j_lat,k_r)] = fun0 * std::sqrt( _1_CR/a0                  *my_square(dr_from_src) \
                                                                 + c0/(c0b0_minus_f0f0)      *my_square(dt_from_src) \
@@ -1284,15 +1326,15 @@ void Grid::initialize_fields(Source& src, InputParams& IP){
 
                 is_changed[I2V(i_lon,j_lat,k_r)] = true;
 
-                if (isZero(T0v_loc[I2V(i_lon,j_lat,k_r)])) {
-                    T0r_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
-                    T0t_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
-                    T0p_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
-                } else {
-                    T0r_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(_1_CR/a0*dr_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
-                    T0t_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(c0/(c0b0_minus_f0f0)*dt_from_src+f0/(c0b0_minus_f0f0)*dp_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
-                    T0p_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(b0/(c0b0_minus_f0f0)*dp_from_src+f0/(c0b0_minus_f0f0)*dt_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
-                }
+                // if (isZero(T0v_loc[I2V(i_lon,j_lat,k_r)])) {
+                //     T0r_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
+                //     T0t_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
+                //     T0p_loc[I2V(i_lon,j_lat,k_r)] = _0_CR;
+                // } else {
+                //     T0r_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(_1_CR/a0*dr_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
+                //     T0t_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(c0/(c0b0_minus_f0f0)*dt_from_src+f0/(c0b0_minus_f0f0)*dp_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
+                //     T0p_loc[I2V(i_lon,j_lat,k_r)] = my_square(fun0)*(b0/(c0b0_minus_f0f0)*dp_from_src+f0/(c0b0_minus_f0f0)*dt_from_src)/T0v_loc[I2V(i_lon,j_lat,k_r)];
+                // }
 
                 if (IP.get_stencil_order() == 1){
                     source_width = _1_CR * 0.9;
@@ -1396,28 +1438,6 @@ void Grid::update_Tadj_density() {
     std::copy(tau_loc, tau_loc+loc_I*loc_J*loc_K, Tadj_density_loc);
 }
 
-void Grid::back_up_fun_xi_eta_bcf() {
-    if (!subdom_main) return;
-
-    std::copy(fun_loc, fun_loc+loc_I*loc_J*loc_K, fun_loc_back);
-    std::copy(xi_loc,  xi_loc +loc_I*loc_J*loc_K, xi_loc_back);
-    std::copy(eta_loc, eta_loc+loc_I*loc_J*loc_K, eta_loc_back);
-    std::copy(fac_b_loc, fac_b_loc+loc_I*loc_J*loc_K, fac_b_loc_back);
-    std::copy(fac_c_loc, fac_c_loc+loc_I*loc_J*loc_K, fac_c_loc_back);
-    std::copy(fac_f_loc, fac_f_loc+loc_I*loc_J*loc_K, fac_f_loc_back);
-}
-
-
-void Grid::restore_fun_xi_eta_bcf() {
-    if (!subdom_main) return;
-
-    std::copy(fun_loc_back, fun_loc_back+loc_I*loc_J*loc_K, fun_loc);
-    std::copy(xi_loc_back,  xi_loc_back +loc_I*loc_J*loc_K, xi_loc);
-    std::copy(eta_loc_back, eta_loc_back+loc_I*loc_J*loc_K, eta_loc);
-    std::copy(fac_b_loc_back, fac_b_loc_back+loc_I*loc_J*loc_K, fac_b_loc);
-    std::copy(fac_c_loc_back, fac_c_loc_back+loc_I*loc_J*loc_K, fac_c_loc);
-    std::copy(fac_f_loc_back, fac_f_loc_back+loc_I*loc_J*loc_K, fac_f_loc);
-}
 
 
 void Grid::calc_L1_and_Linf_diff(CUSTOMREAL& L1_diff, CUSTOMREAL& Linf_diff) {
@@ -1432,7 +1452,6 @@ void Grid::calc_L1_and_Linf_diff(CUSTOMREAL& L1_diff, CUSTOMREAL& Linf_diff) {
                 for (int i_lon = i_start_loc; i_lon <= i_end_loc; i_lon++) {
                     L1_diff   +=                    std::abs(tau_loc[I2V(i_lon,j_lat,k_r)] - tau_old_loc[I2V(i_lon,j_lat,k_r)]) * T0v_loc[I2V(i_lon,j_lat,k_r)];
                     Linf_diff  = std::max(Linf_diff,std::abs(tau_loc[I2V(i_lon,j_lat,k_r)] - tau_old_loc[I2V(i_lon,j_lat,k_r)]) * T0v_loc[I2V(i_lon,j_lat,k_r)]);
-                    // std::cout << R_earth-r_loc_3d[k_r] << ' ' << t_loc_3d[j_lat] << ' ' << p_loc_3d[i_lon] << ' ' << T0v_loc[I2V(i_lon,j_lat,k_r)] << ' ' << std::endl;
                 }
             }
         }

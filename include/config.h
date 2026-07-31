@@ -147,6 +147,11 @@ inline      bool hybrid_stencil_order = false; // if true, code at first run 1st
 inline const int NON_UPWIND = 0;
 inline const int UPWIND     = 1;
 
+// DATA TYPE FLAG
+inline const int DATA_TYPE_ABS      = 0;
+inline const int DATA_TYPE_CSDIF    = 1;
+inline const int DATA_TYPE_CRDIF    = 2;
+
 // convert depth <-> radius
 inline CUSTOMREAL depth2radius(CUSTOMREAL depth) {
     return R_earth - depth;
@@ -183,7 +188,7 @@ inline int      sub_rank;         // mpi rank of this process within a subdomain
 inline int      inter_sub_rank;   // mpi rank of this process in the inter-subdomain communicator: 0 to (n_l2 - 1), but is only valid when subdom_main == true (it is the main proc of a subdomain)
 inline int      inter_sub_nprocs; // number of processes in the inter-subdomain communicator
 inline int      nprocs;           // = n subdomains
-inline int      myrank;           // = id subdomain if submain_main == true; else = -9999
+inline int      myrank;           // = id subdomain if submain_main == true; else = -9999. myrank == 0 means id_subdomain == 0 and subdom_main = True.
 inline MPI_Comm sim_comm, inter_sim_comm, sub_comm, inter_sub_comm; // mpi communicator for simulation, inter-simulation, subdomain, and inter subdomains
 inline int      n_sims           = 1; // number of mpi groups for simultaneous runs
 inline int      n_procs_each_sim = 1; // number of processes in each simulation group
@@ -228,8 +233,8 @@ inline bool     subdom_main      = false; // true if this process is main proces
 
 
 // flags for explaining the process's role
-inline bool proc_read_srcrec = false;  // true if this process is reading source file
-inline bool proc_store_srcrec = false; // true if this process is storing srcrec file
+inline bool proc_read_srcrec = false;  // main ol levels 1,2,3 (subdom_main && id_subdomain==0 && id_sim==0) true if this process is reading source file
+inline bool proc_store_srcrec = false; // main ol levels 2,3 (subdom_main && id_subdomain==0) true if this process is storing srcrec file
 
 // MNMN stop using these global variable for avoiding misleadings during the sources' iteration loop
 //inline int      id_sim_src       = 0; // id of current target source
