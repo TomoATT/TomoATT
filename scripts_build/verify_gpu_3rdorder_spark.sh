@@ -28,15 +28,21 @@ restore_baseline () {
 trap restore_baseline EXIT
 # normalize before starting (idempotent)
 restore_baseline
+for YML in input_params.yml input_params_pre.yml; do
+  grep -qE "^\s*sweep_type\s*:" $YML || sed -i -E "/^parallel:/a\\  sweep_type: 1 # inserted by verify script" $YML
+done
 
 set_flags () {
-  local flag=$1
-  # use_gpu toggle (insert if missing)
+  local gpuflag=$1
+  # CPU reference runs the LEGACY sweep (sweep_type 0): the CPU LEVEL-3rd path
+  # is broken on the main branch (diverges at max iter). GPU always runs level
+  # decomposition. Mathematically both sweep orders solve the same LF-3rd system.
+  local sweept=$2
   for YML in input_params.yml input_params_pre.yml; do
     if grep -qE "^\s*use_gpu:" $YML; then
-      sed -i -E "s/^(\s*)use_gpu: .*/\1use_gpu: ${flag} # toggled by verify script/" $YML
+      sed -i -E "s/^(\s*)use_gpu: .*/\1use_gpu: ${gpuflag} # toggled by verify script/" $YML
     else
-      sed -i -E "/^parallel:/a\\  use_gpu: ${flag} # toggled by verify script" $YML
+      sed -i -E "/^parallel:/a\\  use_gpu: ${gpuflag} # toggled by verify script" $YML
     fi
     # stencil_order -> 3, stencil_type -> 0 (LF) so we exercise the real LF-3rd solver
     if grep -qE "^\s*stencil_order\s*:" $YML; then
@@ -45,13 +51,16 @@ set_flags () {
     if grep -qE "^\s*stencil_type\s*:" $YML; then
       sed -i -E "s/^(\s*)stencil_type\s*:.*/\1stencil_type: 0 # toggled by verify script/" $YML
     fi
+    if grep -qE "^\s*sweep_type\s*:" $YML; then
+      sed -i -E "s/^(\s*)sweep_type\s*:.*/\1sweep_type: ${sweept} # toggled by verify script/" $YML
+    fi
   done
-  echo "--- flags now:"; grep -nE "^\s*(use_gpu|stencil_order|stencil_type)\s*:" input_params.yml input_params_pre.yml
+  echo "--- flags now:"; grep -nE "^\s*(use_gpu|stencil_order|stencil_type|sweep_type)\s*:" input_params.yml input_params_pre.yml
 }
 
 run_case () {
-  local tag=$1 gpuflag=$2
-  set_flags $gpuflag
+  local tag=$1 gpuflag=$2 sweept=$3
+  set_flags $gpuflag $sweept
   rm -f cuda_device_info.txt
   $BIN -i input_params_pre.yml > ${tag}_3rd_pre.log 2>&1
   $BIN -i input_params.yml     > ${tag}_3rd_main.log 2>&1
@@ -62,10 +71,10 @@ run_case () {
   cp -r OUTPUT_FILES OUTPUT_FILES_${tag}_3rd
 }
 
-echo "=== CPU 3rd-order run ==="
-run_case cpu false
-echo "=== GPU 3rd-order run ==="
-run_case gpu true
+echo "=== CPU 3rd-order run (legacy sweep) ==="
+run_case cpu false 0
+echo "=== GPU 3rd-order run (level sweep) ==="
+run_case gpu true 1
 
 echo "===== ITERATION COUNTS (3rd order) ====="
 echo "-- CPU pre:"; grep -E "converged at iteration" cpu_3rd_pre.log | sort | uniq -c || true
