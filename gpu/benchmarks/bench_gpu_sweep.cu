@@ -12,6 +12,7 @@
 //
 #include <cuda_runtime.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -137,10 +138,14 @@ BenchResult benchmark_sweep(int n, int warmup, int iters) {
 
     double graph_ms = ms_t(t3 - t2).count() / iters;
 
-    // Compute memory usage
+    // Compute memory usage. NOTE: the CUDA caching allocator can return memory to its
+    // free pool after a warmup run (free_after > free_before), so an unsigned
+    // free_before - free_after wraps to ~2^64. Use signed arithmetic and clamp.
     size_t free_after;
     cudaMemGetInfo(&free_after, &total);
-    double mem_mb = static_cast<double>(free_before - free_after) / (1024.0 * 1024.0);
+    double mem_mb = std::max(0.0,
+        static_cast<double>(free_before) / (1024.0 * 1024.0)
+      - static_cast<double>(free_after) / (1024.0 * 1024.0));
 
     // Compute effective bandwidth
     // Each sweep reads: tau, T0v, T0r, T0t, T0p, fac_a, fac_b, fac_c, fac_f, fun, is_changed (11 arrays)
