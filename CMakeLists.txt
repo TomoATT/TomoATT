@@ -117,9 +117,6 @@ add_definitions(-DUSE_HDF5_IO_COLLECTIVE)
 # This builds the new GPU backend as a separate static library (tomogpu)
 # and is independent of the legacy cuda/ code.
 option(USE_CUDA_V2 "Build the clean-slate GPU backend (gpu/)" OFF)
-if(USE_CUDA_V2 AND CUDA_FOUND)
-    add_subdirectory(gpu)
-endif()
 
 # use SIMD (SSE/AVX/AVX2/AVX512) for vectorization, which is faster than the default but use a little more memory.
 if (USE_SIMD)
@@ -137,6 +134,11 @@ else()
   message(STATUS "TomoATT is compiled without cuda, because -DUSE_CUDA=True is not defined")
 endif()
 
+# clean-slate GPU backend (gpu/) is added only after CUDA was found above
+if(USE_CUDA_V2 AND CUDA_FOUND)
+    add_subdirectory(gpu)
+endif()
+
 if(CUDA_FOUND) # TODO : add HIP here in the future
   message(STATUS "CUDA_FOUND: ${CUDA_FOUND}")
   add_definitions(-DUSE_CUDA)
@@ -146,13 +148,29 @@ if(CUDA_FOUND) # TODO : add HIP here in the future
   file(GLOB SOURCES_CUDA "cuda/*.cu")
   file(GLOB HEADERS_CUDA "cuda/*.cuh")
 
+  # GPU SM architecture. Override with -DTOMOATT_CUDA_ARCH=<sm> (e.g. 121 for GB10,
+  # 90 for H100, 61 for P100). Default: auto-detect from the GPU on this machine.
+  if(NOT TOMOATT_CUDA_ARCH)
+    include(FindCUDA/select_compute_arch)
+    CUDA_DETECT_INSTALLED_GPUS(_tomoatt_gpu_list)
+    if(_tomoatt_gpu_list)
+      list(GET _tomoatt_gpu_list 0 TOMOATT_CUDA_ARCH)
+      # strip version suffix like "9.0+PTX" -> "90"
+      string(REGEX REPLACE "\\..*$" "" TOMOATT_CUDA_ARCH "${TOMOATT_CUDA_ARCH}")
+      string(REGEX REPLACE "\\+PTX$" "" TOMOATT_CUDA_ARCH "${TOMOATT_CUDA_ARCH}")
+    else()
+      set(TOMOATT_CUDA_ARCH "75")
+    endif()
+  endif()
+  message(STATUS "TomoATT CUDA SM architecture: ${TOMOATT_CUDA_ARCH}")
+
   # cuda flag
   #
   # for production
-  set(CMAKE_CUDA_FLAGS "-fPIC -O3 -use_fast_math -extra-device-vectorization -gencode arch=compute_61,code=sm_61")
+  set(CMAKE_CUDA_FLAGS "-fPIC -O3 -use_fast_math -extra-device-vectorization -gencode arch=compute_${TOMOATT_CUDA_ARCH},code=sm_${TOMOATT_CUDA_ARCH}")
   #
   # for debugging
-  #set(CMAKE_CUDA_FLAGS "-fPIC -lineinfo -g -G -O0 -gencode arch=compute_61,code=sm_61")
+  #set(CMAKE_CUDA_FLAGS "-fPIC -lineinfo -g -G -O0 -gencode arch=compute_${TOMOATT_CUDA_ARCH},code=sm_${TOMOATT_CUDA_ARCH}")
   set(CMAKE_CUDA_STANDARD "11")
   message(STATUS, "TomoATT will be compiled with cuda.")
 else()
@@ -303,8 +321,8 @@ foreach( execsourcefile ${APP_SOURCES} )
   if (CUDA_FOUND)
 
     #set_target_properties(${CUDA_LIBRARY_NAME} PROPERTIES CUDA_ARCHITECTURES "35;50;72")
-    set_target_properties(${CUDA_LIBRARY_NAME} PROPERTIES CUDA_ARCHITECTURES "61")
-    set_property(TARGET ${CUDA_LIBRARY_NAME} PROPERTY CUDA_ARCHITECTURES 61)
+    set_target_properties(${CUDA_LIBRARY_NAME} PROPERTIES CUDA_ARCHITECTURES "${TOMOATT_CUDA_ARCH}")
+    set_property(TARGET ${CUDA_LIBRARY_NAME} PROPERTY CUDA_ARCHITECTURES ${TOMOATT_CUDA_ARCH})
 
     target_link_libraries(${EXEC_NAME} PRIVATE ${CUDA_LIBRARY_NAME})
     target_link_libraries(${CUDA_LIBRARY_NAME} PUBLIC MPI::MPI_CXX)

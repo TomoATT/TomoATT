@@ -109,20 +109,27 @@ void initialize_cuda(){
         fprintf(fp,"features:\n");
         fprintf(fp,"  Compute capability of the device = %d.%d\n", deviceProp.major, deviceProp.minor);
         fprintf(fp,"  multiProcessorCount: %d\n",deviceProp.multiProcessorCount);
-        if (deviceProp.canMapHostMemory){
-          fprintf(fp,"  canMapHostMemory: TRUE\n");
-        }else{
-          fprintf(fp,"  canMapHostMemory: FALSE\n");
-        }
-        if (deviceProp.deviceOverlap){
-          fprintf(fp,"  deviceOverlap: TRUE\n");
-        }else{
-          fprintf(fp,"  deviceOverlap: FALSE\n");
-        }
-        if (deviceProp.concurrentKernels){
-          fprintf(fp,"  concurrentKernels: TRUE\n");
-        }else{
-          fprintf(fp,"  concurrentKernels: FALSE\n");
+        // CUDA 13 removed some cudaDeviceProp fields (e.g. deviceOverlap);
+        // read them via the attribute API which is stable across versions.
+        {
+            int _attr = 0;
+            if (cudaDeviceGetAttribute(&_attr, cudaDevAttrCanMapHostMemory, device) == cudaSuccess && _attr){
+                fprintf(fp,"  canMapHostMemory: TRUE\n");
+            }else{
+                fprintf(fp,"  canMapHostMemory: FALSE\n");
+            }
+            _attr = 0;
+            if (cudaDeviceGetAttribute(&_attr, cudaDevAttrGpuOverlap, device) == cudaSuccess && _attr){
+                fprintf(fp,"  deviceOverlap: TRUE\n");
+            }else{
+                fprintf(fp,"  deviceOverlap: FALSE\n");
+            }
+            _attr = 0;
+            if (cudaDeviceGetAttribute(&_attr, cudaDevAttrConcurrentKernels, device) == cudaSuccess && _attr){
+                fprintf(fp,"  concurrentKernels: TRUE\n");
+            }else{
+                fprintf(fp,"  concurrentKernels: FALSE\n");
+            }
         }
         // outputs initial memory infos via cudaMemGetInfo()
         double free_db,used_db,total_db;

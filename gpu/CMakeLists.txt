@@ -20,12 +20,11 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 # Architecture flags: target Blackwell (sm_100) plus common dev architectures.
 # NOTE: CUDA 13.x dropped sm_70 (Volta) support. Adjust this list based on
-# the installed CUDA toolkit version.
-set(GPU_ARCHS
-    sm_90   # Hopper (dev/CI fallback)
-    sm_100  # Blackwell B100/B200 (production target)
-)
-set(CMAKE_CUDA_ARCHITECTURES 90 100)
+# the installed CUDA toolkit version. Override from the command line with
+# -DCMAKE_CUDA_ARCHITECTURES=<list> (e.g. "121" for GB10 / DGX Spark).
+if(NOT CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES 90 100)
+endif()
 
 # CUDA compiler flags
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 -use_fast_math --expt-relaxed-constexpr")
