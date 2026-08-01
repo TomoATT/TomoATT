@@ -3,7 +3,7 @@
 #SBATCH -N 1
 #SBATCH -J tatt_vtel
 #SBATCH -t 02:00:00
-#SBATCH --exclude=spark-edge-0
+#SBATCH --nodelist=dgx-spark-0
 #SBATCH -o %x_%j.out
 # Verify teleseismic UPWIND GPU solver vs CPU on a synthetic mini-tele case.
 # Teleseismic sources are auto-detected when a source lies outside the domain,
