@@ -252,16 +252,30 @@ Runtime verification harness: `scripts_build/verify_gpu_tele_spark.sh`
 `have_tele_data: true`, forward-only CPU vs GPU comparison).
 
 ### 8.3 Third-order stencil — findings (pre-existing upstream issues)
-1. **CPU LEVEL-sweep 3rd-order is broken on the main branch** (reproduced on
-   commit `3fe822b`, before all this GPU work): every source diverges to the
-   max-iteration limit and the run segfaults in HDF5 at finalize. The **legacy
-   sweep (`sweep_type: 0`) converges normally** (~20–41 iters). Root cause
-   unknown; CPU-path specific (GPU-level-3rd does NOT diverge).
+1. **The whole LF (non-UPWIND) LEVEL-sweep family is broken on the main
+   branch** (reproduced on `3fe822b` and verified with a macOS CPU build in
+   this campaign):
+   - `stencil_type=0, order=1, sweep_type=1`: converges (it5) but the final
+     fields are **wrong** vs the legacy sweep (`mean|d| ≈ 56, max|d| ≈ 106`
+     out of 25000 nodes!). The convergence detector is fooled.
+   - `stencil_type=0, order=3, sweep_type=1`: 29/30 sources diverge to the
+     iteration cap and the travel-time field goes **negative**.
+   - The same configurations on the **legacy sweep** or on the **UPWIND
+     solver** are clean and verified end-to-end elsewhere in this report.
+   - A numpy replica of the exact list/flip/stencil converges identically to
+     legacy (even with heterogeneity + anisotropy + fac_f coupling), so the
+     defect is not the level-set topology itself; it is implementation-side.
+     Experiments: an UPWIND-style flip change and out-of-bounds `is_changed`
+     guards improved nothing numerically (guards kept purely as UB hygiene).
+   - Recommendation: prefer the UPWIND 1st-order solver (`stencil_type=1`)
+     until this is fixed upstream. Keep the legacy sweep if LF+level is
+     needed for comparisons.
 2. **GPU 3rd-order kernel accuracy gap (~8.5%)** (`verify job 3152`,
    GPU-level vs CPU-legacy): both converge, but `initial objective` differs
    (CPU 49593 vs GPU 53787) and inverted models differ at ~20k grid points.
    This is the **pre-existing `cuda_do_sweep_level_kernel_3rd`**, not the new
-   UPWIND port. Needs an upstream investigation pass.
+   UPWIND port — given (1), expect it to be the same family defect carried
+   over to a numerically nicer GPU trajectory. Needs an upstream pass.
 
 ### 8.4 Multi-GPU readiness
 - Device selection now uses the **node-local rank**

@@ -179,6 +179,12 @@ void Iterator_level_1st_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
                 if (p_dirc < 0) iip = np-iip; //ii-1;
                 else            iip = iip-1;  //np-ii;
 
+                // The LF flip maps virtual boundary-face nodes OUT OF RANGE
+                // (nr or -1). Skip them: otherwise is_changed is read at an
+                // invalid index and the stencil would write out-of-range cells.
+                if (iip < 0 || jjt < 0 || kkr < 0 || iip >= np || jjt >= nt || kkr >= nr)
+                    continue;
+
                 //
                 // calculate stencils
                 //
@@ -465,8 +471,10 @@ void Iterator_level_3rd_order::do_sweep(int iswp, Grid& grid, InputParams& IP){
                 else            kkr = kkr-1;  //nr-kk;
                 if (t_dirc < 0) jjt = nt-jjt; //jj-1;
                 else            jjt = jjt-1;  //nt-jj;
-                if (p_dirc < 0) iip = np-iip; //ii-1;
-                else            iip = iip-1;  //np-ii;
+                // Skip nodes whose indices fall outside the grid (should not
+                // happen with the UPWIND-aligned flip above, but kept as a guard).
+                if (iip < 0 || jjt < 0 || kkr < 0 || iip >= np || jjt >= nt || kkr >= nr)
+                    continue;
 
                 //
                 // calculate stencils
