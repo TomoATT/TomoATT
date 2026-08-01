@@ -360,12 +360,14 @@ void Iterator::assign_processes_for_levels(Grid& grid, InputParams& IP) {
     vv_fac_c = preload_array(grid.fac_c_loc);
     vv_fac_f = preload_array(grid.fac_f_loc);
     vv_fun   = preload_array(grid.fun_loc);
-    if(!is_teleseismic) {
-        vv_T0v   = preload_array(grid.T0v_loc);
-        vv_T0r   = preload_array(grid.T0r_loc);
-        vv_T0t   = preload_array(grid.T0t_loc);
-        vv_T0p   = preload_array(grid.T0p_loc);
-    }
+    // NOTE: always preload the T0 arrays (they are unconditionally allocated in
+    // Grid::shm_memory_allocation). Teleseismic kernels never read them, but
+    // cuda_initialize_grid_* indexes vv_T0*.at(0..7) unconditionally, so leaving
+    // them empty crashes tele+GPU initialization with vector::at out_of_range.
+    vv_T0v   = preload_array(grid.T0v_loc);
+    vv_T0r   = preload_array(grid.T0r_loc);
+    vv_T0t   = preload_array(grid.T0t_loc);
+    vv_T0p   = preload_array(grid.T0p_loc);
     if(!use_gpu)
         vv_change = preload_array(grid.is_changed);
     else

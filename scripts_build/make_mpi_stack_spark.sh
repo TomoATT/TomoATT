@@ -17,12 +17,13 @@ NPROC=$(nproc)
 echo "node: $(hostname)"
 
 # ---------- libevent 2.2 (PMIx 5 needs event_getcode4name; Ubuntu has 2.1.12) ----------
+LEV_VER=2.2.2-alpha
 if [ ! -f $S/libevent/lib/libevent.so ]; then
-  if [ ! -d libevent-2.2.1-alpha-dev ]; then
-    curl -LO https://github.com/libevent/libevent/releases/download/release-2.2.1-alpha-dev/libevent-2.2.1-alpha-dev.tar.gz
-    tar xf libevent-2.2.1-alpha-dev.tar.gz
+  if [ ! -d libevent-${LEV_VER} ]; then
+    curl -fLO https://github.com/libevent/libevent/releases/download/release-${LEV_VER}/libevent-${LEV_VER}.tar.gz
+    tar xf libevent-${LEV_VER}.tar.gz
   fi
-  cd libevent-2.2.1-alpha-dev
+  cd libevent-${LEV_VER}
   ./configure --prefix=$S/libevent --disable-openssl --disable-samples >/dev/null
   make -j$NPROC >/dev/null && make install >/dev/null
   cd $SRC
