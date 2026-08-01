@@ -39,6 +39,8 @@ echo "=== srun -N2 -n2 hello ==="
 srun -N 2 -n 2 --mpi=pmix_v5 --export=ALL $S/bin/hello_mpi | sort
 echo "=== srun -N2 -n4 hello ==="
 srun -N 2 -n 4 --mpi=pmix_v5 --export=ALL $S/bin/hello_mpi | sort
+NODES=$(scontrol show hostnames $SLURM_JOB_NODELIST | paste -sd, -)
+echo "nodes for mpirun: $NODES"
 
 # ---- 2) TOMOATT 2-rank multi-node GPU run ----
 BIN=$HOME/TomoATT/build_spark_mpi/bin/TOMOATT
@@ -68,11 +70,13 @@ grep -nE "^\s*(use_gpu|ndiv_rtp)\s*:" input_params_pre.yml input_params.yml
 
 echo "=== 2-rank GPU pre run ==="
 rm -f cuda_device_info.txt
-srun -N 2 -n 2 --mpi=pmix_v5 --export=ALL $BIN -i input_params_pre.yml > mn_pre.log 2>&1
+# launch via mpirun (ORTE) rather than inner srun steps: batch+nested srun gets
+# torn down after ~90s on this cluster (exit 15:0), while direct batches are fine.
+$S/ompi/bin/mpirun -H $NODES -n 2 --map-by node --bind-to none $BIN -i input_params_pre.yml > mn_pre.log 2>&1
 [ -f cuda_device_info.txt ] && head -1 cuda_device_info.txt
 
 echo "=== 2-rank GPU main run ==="
-srun -N 2 -n 2 --mpi=pmix_v5 --export=ALL $BIN -i input_params.yml > mn_main.log 2>&1
+$S/ompi/bin/mpirun -H $NODES -n 2 --map-by node --bind-to none $BIN -i input_params.yml > mn_main.log 2>&1
 grep -E "converged at iteration" mn_main.log | sort | uniq -c | head -6
 grep -E "converged at iteration" mn_pre.log  | sort | uniq -c | head -6
 
