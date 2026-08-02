@@ -26,10 +26,24 @@ branch `feature/gpu_update`, GB10 `spark` node on RIKEN TENJO).
   (machine feed `web-db-run?request=STNARRIVALS`, mb ≥ 5.5, 30-90° window,
   ≥10 usable picks/event) → **473 teleseismic events / 9 454 P picks / 72 stations**
   (`1_data_acquisition/isc_teleseismic/`).
-- Merger `2_data_processing/make_src_rec_with_tele.py` appends tele event
-  blocks (sources lie outside the study region ⇒ treated as teleseismic with
-  1-D iasp91 outside-traveltime) to the Jan-2020 regional set →
-  `src_rec_file_japan_tele.dat` (**6 048 sources, 57 073 arrivals** total).
+- Merger `2_data_processing/make_src_rec_with_tele.py` builds common-source
+  differential pairs per tele event with PyTomoATT
+  (`generate_double_difference`, max_azi_gap 30° / max_dist_gap 5°) and
+  appends them to the Jan-2020 regional set →
+  `src_rec_file_japan_tele.dat` (**5 575 local + 473 tele = 6 048 sources**,
+  47 619 abs lines + **51 633 cs pair lines**, 14-token `P,cs` records in the
+  official TomoATT differential format — sources outside the study region are
+  treated as teleseismic with 1-D iasp91 outside-traveltime).
+- Verified locally (debug-instrumented forward run, 2026-08-02): full parse,
+  tele 2-D boundary solve, and synthesis of all `P,cs` lines in
+  `src_rec_file_forward.dat`.
+- Data-format lessons:
+  - receiver lines are `<src_id> <rec_id> ...` — column 0 is the SOURCE index
+    (PyTomoATT's pairing key; the C++ parser ignores it);
+  - when slicing blocks out of a catalog, do not key on 14-token line count —
+    cs pair lines share it with source headers; detect headers by the
+    `ev_`/`tel_` name token. A header with n_data declared but no data lines
+    crashes the parser with `bad_alloc`.
 - Inversion uses `have_tele_data: true` + `cs_dif_time: true` for the tele
   blocks (kills origin-time/mislocation and the outside-path errors),
   `abs_time` for regional events, `balance_data_weight: true` — schema copied
