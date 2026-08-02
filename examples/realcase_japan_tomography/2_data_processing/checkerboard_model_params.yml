@@ -1,0 +1,14 @@
+domain:
+  min_max_dep:
+  - -10
+  - 200
+  min_max_lat:
+  - 24
+  - 46
+  min_max_lon:
+  - 122
+  - 148
+  n_rtp:
+  - 142
+  - 111
+  - 131

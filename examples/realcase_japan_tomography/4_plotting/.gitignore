@@ -1,0 +1,8 @@
+# fetched datasets (28 MB, reproducible via fetch_overlay_data.py)
+overlay_data/
+# test outputs
+figs_test/
+figs_overlays/
+figs_cb_compare/
+__pycache__/
+*.pyc

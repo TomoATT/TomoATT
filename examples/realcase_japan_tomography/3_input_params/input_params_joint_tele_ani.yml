@@ -1,0 +1,106 @@
+version: 3
+
+# Japan production v2:
+#   - regional JMA/Hi-net events (abs_time) + ISC teleseismic sources (cs_dif)
+#   - joint inversion for P velocity AND azimuthal anisotropy (xi, eta)
+#   - 20 inversion iterations (same schedule as v1 production run)
+
+domain:
+  min_max_dep: [-10, 200]
+  min_max_lat: [24, 46]
+  min_max_lon: [122, 148]
+  n_rtp: [50, 111, 131]
+
+source:
+  src_rec_file: ../2_data_processing/src_rec_file_japan_tele.dat
+  swap_src_rec: false
+
+model:
+  init_model_path: ../../eg_japan_initial_model/japan_model.h5
+  model_1d_name: iasp91
+
+parallel:
+  n_sims: 1
+  ndiv_rtp: [1, 1, 1]
+  nproc_sub: 1
+  use_gpu: false
+
+output_setting:
+  output_dir: ../OUTPUT_FILES_joint_tele_ani
+  output_source_field: false
+  output_kernel: true
+  output_final_model: true
+  output_in_process: true
+  output_in_process_data: true
+  single_precision_output: false
+  verbose_output_level: 0
+  output_file_format: 0
+
+run_mode: 1
+
+have_tele_data: true
+
+ignore_velocity_discontinuity: True
+
+calculation:
+  convergence_tolerance: 1.0e-4
+  max_iterations: 500
+  stencil_order: 1
+  stencil_type: 1
+  sweep_type: 1
+
+model_update:
+  max_iterations: 20
+  optim_method: 0       # gradient descent
+  step_length: 0.01     # 1% perturbation per iteration
+
+  optim_method_0:
+    step_length_gradient_angle: 120
+    step_length_change: [0.5, 1.41]
+    Kdensity_coe: 0.3
+
+  n_inversion_grid: 5
+  uniform_inv_grid_dep: false
+  uniform_inv_grid_lat: false
+  uniform_inv_grid_lon: false
+  n_inv_dep_lat_lon: [3, 11, 11]
+  min_max_dep_inv: [-10, 200]
+  min_max_lat_inv: [24, 46]
+  min_max_lon_inv: [122, 148]
+  dep_inv: [-10, 0, 5, 10, 20, 30, 50, 80, 120, 200]
+  lat_inv: [24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46]
+  lon_inv: [122, 124, 126, 128, 130, 132, 134, 136, 138, 140, 142, 144, 146, 148]
+  trapezoid: [1, 0, 200]
+  invgrid_ani: true
+  dep_inv_ani: [-10, 0, 10, 30, 80, 200]
+  lat_inv_ani: [24, 28, 32, 36, 40, 46]
+  lon_inv_ani: [122, 126, 130, 134, 138, 148]
+  trapezoid_ani: [1, 0, 200]
+
+  # --- local events: absolute P times --------------------------------------
+  abs_time:
+    use_abs_time: true
+    residual_weight: [1, 3, 1, 1]
+    distance_weight: [100, 200, 1, 1]
+
+  # --- teleseismic sources: common-source differential times ----------------
+  cs_dif_time:
+    use_cs_time: true
+    residual_weight: [1, 3, 1, 1]
+    azimuthal_weight: [15, 30, 1, 1]
+
+  cr_dif_time:
+    use_cr_time: false
+
+  global_weight:
+    balance_data_weight: true
+    abs_time_weight: 1
+    cs_dif_time_local_weight: 1
+    cr_dif_time_local_weight: 1
+
+  # joint inversion: velocity + azimuthal anisotropy
+  update_slowness: true
+  update_azi_ani: true
+  update_rad_ani: false
+
+  depth_taper: [-1e+07, -1e+07]

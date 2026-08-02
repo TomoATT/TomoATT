@@ -1,0 +1,95 @@
+version: 3
+
+# Checkerboard (velocity) — INVERSION run recovering from unperturbed
+# japan_model.h5 using the synthetic data synthesized through
+# checker_vel_coarse.h5 (OUTPUT_FILES_cb_forward_vel/src_rec_file_forward.dat).
+
+domain:
+  min_max_dep: [-10, 200]
+  min_max_lat: [24, 46]
+  min_max_lon: [122, 148]
+  n_rtp: [50, 111, 131]
+
+source:
+  src_rec_file: ../OUTPUT_FILES_cb_forward_vel/src_rec_file_forward.dat
+  swap_src_rec: false
+
+model:
+  init_model_path: ../../eg_japan_initial_model/japan_model.h5
+  model_1d_name: iasp91
+
+parallel:
+  n_sims: 1
+  ndiv_rtp: [1, 1, 1]
+  nproc_sub: 1
+  use_gpu: false
+
+output_setting:
+  output_dir: ../OUTPUT_FILES_cb_inversion_vel
+  output_source_field: false
+  output_kernel: false
+  output_final_model: true
+  output_in_process: true
+  output_in_process_data: true
+  single_precision_output: false
+  verbose_output_level: 0
+  output_file_format: 0
+
+run_mode: 1
+
+have_tele_data: true
+
+ignore_velocity_discontinuity: True
+
+calculation:
+  convergence_tolerance: 1.0e-4
+  max_iterations: 500
+  stencil_order: 1
+  stencil_type: 1
+  sweep_type: 1
+
+model_update:
+  max_iterations: 10    # checkerboard recovery: 10 iterations suffice
+  optim_method: 0
+  step_length: 0.01
+
+  optim_method_0:
+    step_length_gradient_angle: 120
+    step_length_change: [0.5, 1.41]
+    Kdensity_coe: 0.3
+
+  n_inversion_grid: 5
+  uniform_inv_grid_dep: false
+  uniform_inv_grid_lat: false
+  uniform_inv_grid_lon: false
+  n_inv_dep_lat_lon: [3, 11, 11]
+  min_max_dep_inv: [-10, 200]
+  min_max_lat_inv: [24, 46]
+  min_max_lon_inv: [122, 148]
+  dep_inv: [-10, 0, 5, 10, 20, 30, 50, 80, 120, 200]
+  lat_inv: [24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46]
+  lon_inv: [122, 124, 126, 128, 130, 132, 134, 136, 138, 140, 142, 144, 146, 148]
+  trapezoid: [1, 0, 200]
+
+  abs_time:
+    use_abs_time: true
+    residual_weight: [1, 3, 1, 1]
+    distance_weight: [100, 200, 1, 1]
+  cs_dif_time:
+    use_cs_time: true
+    residual_weight: [1, 3, 1, 1]
+    azimuthal_weight: [15, 30, 1, 1]
+  cr_dif_time:
+    use_cr_time: false
+
+  global_weight:
+    balance_data_weight: true
+    abs_time_weight: 1
+    cs_dif_time_local_weight: 1
+    cr_dif_time_local_weight: 1
+
+  update_slowness: true
+  update_azi_ani: false
+  update_rad_ani: false
+
+  depth_taper: [-1e+07, -1e+07]
