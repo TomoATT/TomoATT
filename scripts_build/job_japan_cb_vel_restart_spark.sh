@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH -p spark
 #SBATCH -N 1
+#SBATCH --gres=gpu:GB10:1
 #SBATCH --time=48:00:00
 #SBATCH -J jap_cbvr
 #SBATCH -o %x_%j.out
