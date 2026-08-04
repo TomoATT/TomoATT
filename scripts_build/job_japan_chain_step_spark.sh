@@ -59,6 +59,19 @@ time $BIN -i $VAR
 echo "=== STEP DONE rc=$? ==="
 test -s "$FINAL"
 
+# preserve the per-iteration objective across chained restarts: TOMOATT
+# overwrites objective_function.txt at every program start, so append this
+# step's rows (without the header) to a running history file.
+HIST=$CASE/$OUTDIR/objective_history.txt
+CUR=$CASE/$OUTDIR/objective_function.txt
+if [ -s "$CUR" ]; then
+  if [ ! -s "$HIST" ]; then
+    head -1 "$CUR" > "$HIST"
+  fi
+  tail -n +2 "$CUR" >> "$HIST"
+  cp "$CUR" $CASE/$OUTDIR/objective_step_$STEP.txt
+fi
+
 NEXT=$((STEP+1))
 if [ "$NEXT" -le "$STEPS" ]; then
   cd ~/TomoATT
