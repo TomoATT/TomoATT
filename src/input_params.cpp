@@ -1116,6 +1116,7 @@ void InputParams::write_params_to_file() {
     fout << "    step_method: " << step_method << "  # the method to modulate step size. 0: according to objective function; 1: according to gradient direction " << std::endl;
     fout << "    # if step_method:0. if objective function increase, step size -> step length * step_length_decay. " << std::endl;
     fout << "    step_length_decay: " << step_length_decay << " # default: 0.9" << std::endl;
+    fout << std::endl;
     fout << "    # if step_method:1. if the angle between the current and the previous gradients is greater than step_length_gradient_angle, step size -> step length * step_length_change[0]. " << std::endl;
     fout << "    #                                                                                                                otherwise, step size -> step length * step_length_change[1]. " << std::endl;
     fout << "    step_length_gradient_angle: " <<  step_length_gradient_angle << " # default: 120.0 " << std::endl;
@@ -1360,7 +1361,7 @@ void InputParams::write_params_to_file() {
     // fout << "  update_rad_ani  : " << update_rad_ani  << " # update radial anisotropy (in future) or not.    default: false" << std::endl;
     fout << std::endl;
 
-    fout << "  # -------------- for teleseismic inversion (under development) --------------" << std::endl;
+    fout << "  # -------------- for teleseismic inversion --------------" << std::endl;
     fout << "  # depth_taper : [d1,d2] means: " << std::endl;
     fout << "  # if       XXX < d1, kernel <- kernel * 0.0 " << std::endl;
     fout << "  # if d1 <= XXX < d2, kernel <- kernel * (XXX-d1)/(d2-d1),  (linear interpolation) " << std::endl;
