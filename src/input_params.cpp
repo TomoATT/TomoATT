@@ -980,10 +980,11 @@ void InputParams::write_params_to_file() {
     fout << "#            computational domian               #" << std::endl;
     fout << "#################################################" << std::endl;
     fout << "domain:" << std::endl;
-    fout << "  min_max_dep: [" << min_dep << ", " << max_dep << "] # depth in km" << std::endl;
-    fout << "  min_max_lat: [" << min_lat << ", " << max_lat << "] # latitude in degree" << std::endl;
-    fout << "  min_max_lon: [" << min_lon << ", " << max_lon << "] # longitude in degree" << std::endl;
-    fout << "  n_rtp: [" << ngrid_k << ", " << ngrid_j << ", " << ngrid_i << "] # number of nodes in depth,latitude,longitude direction" << std::endl;
+    fout << "  min_max_dep: [" << min_dep << ", " << max_dep << "] # depth in km. " << std::endl;
+    fout << "  min_max_lat: [" << min_lat << ", " << max_lat << "] # latitude in degree. " << std::endl;
+    fout << "  min_max_lon: [" << min_lon << ", " << max_lon << "] # longitude in degree. " << std::endl;
+    fout << "  n_rtp: [" << ngrid_k << ", " << ngrid_j << ", " << ngrid_i << "] # number of nodes in depth,latitude,longitude direction. " << std::endl;
+    fout << "  # The grid spacing should not exceed (2km, 0.10 degree, 0.10 degree) to ensure accuracy; a spacing of less than (1km, 0.05 degree, 0.05 degree) is recommended." << std::endl;
     fout << std::endl;
 
     fout << "#################################################" << std::endl;
