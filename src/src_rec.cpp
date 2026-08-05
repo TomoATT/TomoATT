@@ -210,6 +210,17 @@ void parse_src_rec_file(std::string& src_rec_file,
                         rec_map[rec.id_att] = rec; // store the receiver info in rec_map with id_rec_att as key
                     } else {
                         rec.id_att = rec_name2id_att[rec.name]; // if the receiver already exists, use the existing id_rec_att
+                        // check location consistency
+                        CUSTOMREAL lat_diff = std::abs(rec.lat - rec_map[rec.id_att].lat);
+                        CUSTOMREAL lon_diff = std::abs(rec.lon - rec_map[rec.id_att].lon);
+                        CUSTOMREAL dep_diff = std::abs(rec.dep - rec_map[rec.id_att].dep);
+                        if (lat_diff > LOC_EPS || lon_diff > LOC_EPS || dep_diff > LOC_EPS) {
+                            std::cout << "Error: Inconsistent receiver location for receiver " << rec.name << " in src_rec file." << std::endl;
+                            std::cout << "Previous location: lat = " << rec_map[rec.id_att].lat << ", lon = " << rec_map[rec.id_att].lon << ", dep = " << rec_map[rec.id_att].dep << std::endl;
+                            std::cout << "Current location: lat = " << rec.lat << ", lon = " << rec.lon << ", dep = " << rec.dep << std::endl;
+                            std::cout << std::endl << "Error: Please check line: " << cc+1 << " in src_rec file." << std::endl << std::endl;
+                            exit(1);
+                        }   
                     }
 
                     // store temporary receiver id list for each source
@@ -261,7 +272,17 @@ void parse_src_rec_file(std::string& src_rec_file,
                         rec_map[rec.id_att] = rec; // store the receiver info in rec_map with id_rec_att as key
                     } else {
                         rec.id_att = rec_name2id_att[rec.name]; // if the receiver already exists, use the existing id_rec_att
-
+                        // check location consistency
+                        CUSTOMREAL lat_diff = std::abs(rec.lat - rec_map[rec.id_att].lat);
+                        CUSTOMREAL lon_diff = std::abs(rec.lon - rec_map[rec.id_att].lon);
+                        CUSTOMREAL dep_diff = std::abs(rec.dep - rec_map[rec.id_att].dep);
+                        if (lat_diff > LOC_EPS || lon_diff > LOC_EPS || dep_diff > LOC_EPS) {
+                            std::cout << "Error: Inconsistent receiver location for receiver " << rec.name << " in src_rec file." << std::endl;
+                            std::cout << "Previous location: lat = " << rec_map[rec.id_att].lat << ", lon = " << rec_map[rec.id_att].lon << ", dep = " << rec_map[rec.id_att].dep << std::endl;
+                            std::cout << "Current location: lat = " << rec.lat << ", lon = " << rec.lon << ", dep = " << rec.dep << std::endl;
+                            std::cout << std::endl << "Error: Please check line: " << cc+1 << " in src_rec file." << std::endl << std::endl;
+                            exit(1);
+                        }   
                     }
                     // store temporary receiver id list for each source
                     rec_id_list_one_line.push_back(rec.id_att);
@@ -339,6 +360,17 @@ void parse_src_rec_file(std::string& src_rec_file,
                             rec_map[rec2.id_att] = rec2; // store the receiver info in rec_map with id_rec_att as key
                         } else {
                             rec2.id_att = rec_name2id_att[rec2.name]; // if the receiver already exists, use the existing id_rec_att
+                            // check location consistency
+                            CUSTOMREAL lat_diff = std::abs(rec2.lat - rec_map[rec2.id_att].lat);
+                            CUSTOMREAL lon_diff = std::abs(rec2.lon - rec_map[rec2.id_att].lon);
+                            CUSTOMREAL dep_diff = std::abs(rec2.dep - rec_map[rec2.id_att].dep);
+                            if (lat_diff > LOC_EPS || lon_diff > LOC_EPS || dep_diff > LOC_EPS) {
+                                std::cout << "Error: Inconsistent receiver location for receiver " << rec2.name << " in src_rec file." << std::endl;
+                                std::cout << "Previous location: lat = " << rec_map[rec2.id_att].lat << ", lon = " << rec_map[rec2.id_att].lon << ", dep = " << rec_map[rec2.id_att].dep << std::endl;
+                                std::cout << "Current location: lat = " << rec2.lat << ", lon = " << rec2.lon << ", dep = " << rec2.dep << std::endl;
+                                std::cout << std::endl << "Error: Please check line: " << cc+1 << " in src_rec file." << std::endl << std::endl;
+                                exit(1);
+                            }
                         }
 
                         // store temporary receiver id list for each source

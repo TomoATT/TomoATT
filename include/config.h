@@ -69,6 +69,7 @@ inline void V2I(const int& ijk, int& i, int& j, int& k) {
 
 inline const CUSTOMREAL eps    = 1e-12;
 inline const CUSTOMREAL epsAdj = 1e-6;
+inline const CUSTOMREAL LOC_EPS = 1e-6;
 
 inline bool isZero(CUSTOMREAL x) {
     return fabs(x) < eps;
