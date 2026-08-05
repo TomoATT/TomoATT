@@ -1917,7 +1917,7 @@ def read_objective_function_file(path):
             full_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele,step_length])
             if tag.__contains__("relocation"):
                 location_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele,step_length])
-            if tag.__contains__("model"):
+            if tag.__contains__("model") or tag.__contains__("1d inversion"):
                 model_curve.append([obj,obj_abs,obj_cs,obj_cr,obj_tele,mean,std,mean_abs,std_abs,mean_cs,std_cs,mean_cr,std_cr,mean_tele,std_tele,step_length])
     return np.array(full_curve),np.array(location_curve),np.array(model_curve)
 

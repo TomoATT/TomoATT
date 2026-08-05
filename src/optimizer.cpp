@@ -231,6 +231,8 @@ std::vector<CUSTOMREAL> Optimizer::determine_step_length_line_search(InputParams
     alpha_L = _0_CR;    // lower bound of step length
     alpha_R = _0_CR;    // upper bound of step length
 
+    only_check_armijo_condition = false;    // if true, only check Armijo condition in line search, not check curvature condition
+                                            // it will be set true when both Armijo and curvature conditions are not satisfied in BFGS mode (check_conditions_for_line_search).
     // main line search iteration
     for(int sub_iter = 0; sub_iter <= 1000; sub_iter++){
 
