@@ -69,6 +69,7 @@ inline void V2I(const int& ijk, int& i, int& j, int& k) {
 
 inline const CUSTOMREAL eps    = 1e-12;
 inline const CUSTOMREAL epsAdj = 1e-6;
+inline const CUSTOMREAL LOC_EPS = 1e-6;
 
 inline bool isZero(CUSTOMREAL x) {
     return fabs(x) < eps;
@@ -344,7 +345,7 @@ inline const std::string OUTPUT_DIR_2D      = "/2D_TRAVEL_TIME_FIELD/"; // outpu
 inline CUSTOMREAL       step_length_src_reloc       = 0.01;  // step length for source relocation
 inline CUSTOMREAL       step_length_decay_src_reloc = 0.9;
 inline int              N_ITER_MAX_SRC_RELOC        = 501;  // max iteration for source location
-inline CUSTOMREAL       TOL_SRC_RELOC               = 1e-3; // threshold of the norm of gradient for stopping single earthquake location
+inline CUSTOMREAL       TOL_SRC_RELOC               = 1e-4; // threshold of the norm of gradient for stopping single earthquake location
 inline const CUSTOMREAL TOL_step_length             = 1e-4; // threshold of the max step size for stopping single earthquake location
 inline CUSTOMREAL       rescaling_dep               = 10.0;
 inline CUSTOMREAL       rescaling_lat               = 5.0;

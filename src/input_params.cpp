@@ -980,10 +980,11 @@ void InputParams::write_params_to_file() {
     fout << "#            computational domian               #" << std::endl;
     fout << "#################################################" << std::endl;
     fout << "domain:" << std::endl;
-    fout << "  min_max_dep: [" << min_dep << ", " << max_dep << "] # depth in km" << std::endl;
-    fout << "  min_max_lat: [" << min_lat << ", " << max_lat << "] # latitude in degree" << std::endl;
-    fout << "  min_max_lon: [" << min_lon << ", " << max_lon << "] # longitude in degree" << std::endl;
-    fout << "  n_rtp: [" << ngrid_k << ", " << ngrid_j << ", " << ngrid_i << "] # number of nodes in depth,latitude,longitude direction" << std::endl;
+    fout << "  min_max_dep: [" << min_dep << ", " << max_dep << "] # depth in km. " << std::endl;
+    fout << "  min_max_lat: [" << min_lat << ", " << max_lat << "] # latitude in degree. " << std::endl;
+    fout << "  min_max_lon: [" << min_lon << ", " << max_lon << "] # longitude in degree. " << std::endl;
+    fout << "  n_rtp: [" << ngrid_k << ", " << ngrid_j << ", " << ngrid_i << "] # number of nodes in depth,latitude,longitude direction. " << std::endl;
+    fout << "  # The grid spacing should not exceed (2km, 0.10 degree, 0.10 degree) to ensure accuracy; a spacing of less than (1km, 0.05 degree, 0.05 degree) is recommended." << std::endl;
     fout << std::endl;
 
     fout << "#################################################" << std::endl;
@@ -999,12 +1000,12 @@ void InputParams::write_params_to_file() {
     fout << "#################################################" << std::endl;
     fout << "model:" << std::endl;
     fout << "  init_model_path: " << init_model_path << " # path to initial model file " << std::endl;
-    // check if model_1d_name has any characters
-    if (model_1d_name.size() > 0)
-        fout << "  model_1d_name: " << model_1d_name;
-    else
-        fout << "#   model_1d_name: " << "dummy_model_1d_name";
-    fout << " # 1D model name used in teleseismic 2D solver (iasp91, ak135, user_defined is available), defined in include/1d_model.h" << std::endl;
+    // // check if model_1d_name has any characters. 20260805, JC: not necessary for users.
+    // if (model_1d_name.size() > 0)
+    //     fout << "  model_1d_name: " << model_1d_name;
+    // else
+    //     fout << "#   model_1d_name: " << "dummy_model_1d_name";
+    // fout << " # 1D model name used in teleseismic 2D solver (iasp91, ak135, user_defined is available), defined in include/1d_model.h" << std::endl;
     fout << std::endl;
 
 
@@ -1015,7 +1016,7 @@ void InputParams::write_params_to_file() {
     fout << "  n_sims: "    << n_sims << " # number of simultanoues runs (parallel the sources)" << std::endl;
     fout << "  ndiv_rtp: [" << ndiv_k << ", " << ndiv_j << ", " << ndiv_i << "] # number of subdivision on each direction (parallel the computional domain)" << std::endl;
     fout << "  nproc_sub: " << n_subprocs << " # number of processors for sweep parallelization (parallel the fast sweep method)" << std::endl;
-    fout << "  use_gpu: "   << use_gpu << " # true if use gpu (EXPERIMENTAL)" << std::endl;
+    // fout << "  use_gpu: "   << use_gpu << " # true if use gpu (EXPERIMENTAL)" << std::endl; (unavailable on 20260805, JC)
     fout << std::endl;
 
     fout << "############################################" << std::endl;
@@ -1030,15 +1031,15 @@ void InputParams::write_params_to_file() {
     fout << "  output_in_process:       " << output_in_process           << " # True: output at each inv iteration, otherwise, only output step 0, Niter-1, Niter. Default: true. File: 'out_data_sim_group_0'." << std::endl;
     fout << "  output_in_process_data:  " << output_in_process_data      << " # True: output src_rec_file at each inv iteration, otherwise, only output step 0, Niter-2, Niter-1. Default: true. File: 'src_rec_file_step_XXXX.dat'" << std::endl;
     fout << "  single_precision_output: " << single_precision_output     << " # True: output results in single precision. Default: false.   " << std::endl;
-    fout << "  verbose_output_level:    " << verbose_output_level        << " # output internal parameters, (to do)." << std::endl;
-    int ff_flag=0;
-    if (output_format == OUTPUT_FORMAT_HDF5) ff_flag = 0;
-    else if (output_format == OUTPUT_FORMAT_ASCII) ff_flag = 1;
-    else {
-        std::cout << "Error: output_format is not defined!" << std::endl;
-        exit(1);
-    }
-    fout << "  output_file_format: " << ff_flag << " # 0: hdf5, 1: ascii" << std::endl;
+    // fout << "  verbose_output_level:    " << verbose_output_level        << " # output internal parameters, (to do)." << std::endl; (unavailable on 20260805, JC)
+    // int ff_flag=0;
+    // if (output_format == OUTPUT_FORMAT_HDF5) ff_flag = 0;
+    // else if (output_format == OUTPUT_FORMAT_ASCII) ff_flag = 1;
+    // else {
+    //     std::cout << "Error: output_format is not defined!" << std::endl;
+    //     exit(1);
+    // }
+    // fout << "  output_file_format: " << ff_flag << " # 0: hdf5, 1: ascii" << std::endl; (not necessary for users, JC 20260805)
     fout << std::endl;
     fout << "# output files:" << std::endl;
     fout << "# File: 'out_data_grid.h5'. Keys: ['Mesh']['elem_conn'], element index; " << std::endl;
@@ -1116,6 +1117,7 @@ void InputParams::write_params_to_file() {
     fout << "    step_method: " << step_method << "  # the method to modulate step size. 0: according to objective function; 1: according to gradient direction " << std::endl;
     fout << "    # if step_method:0. if objective function increase, step size -> step length * step_length_decay. " << std::endl;
     fout << "    step_length_decay: " << step_length_decay << " # default: 0.9" << std::endl;
+    fout << std::endl;
     fout << "    # if step_method:1. if the angle between the current and the previous gradients is greater than step_length_gradient_angle, step size -> step length * step_length_change[0]. " << std::endl;
     fout << "    #                                                                                                                otherwise, step size -> step length * step_length_change[1]. " << std::endl;
     fout << "    step_length_gradient_angle: " <<  step_length_gradient_angle << " # default: 120.0 " << std::endl;
@@ -1127,18 +1129,19 @@ void InputParams::write_params_to_file() {
     fout << "  # parameters for optim_method 1 (lbfgs)" << std::endl;
     fout << "  optim_method_1:" << std::endl;
     fout << "    max_sub_iterations: "    << max_sub_iterations << " # maximum number of each sub-iteration" << std::endl;
-    fout << "    regularization_weight: " << regularization_weight << " # weight value for regularization (lbfgs mode only)" << std::endl;
+    // fout << "    regularization_weight: " << regularization_weight << " # weight value for regularization (lbfgs mode only)" << std::endl;  // removed on 20260805, JC
 
-    fout << "    coefs_regulalization_rtp: [" << regul_lr << ", " << regul_lt << ", " << regul_lp << "] # regularization coefficients for rtp (lbfgs mode only)" << std::endl;
+    // fout << "    coefs_regulalization_rtp: [" << regul_lr << ", " << regul_lt << ", " << regul_lp << "] # regularization coefficients for rtp (lbfgs mode only)" << std::endl;  // removed on 20260805, JC
     fout << std::endl;
 
-    fout << "  # smoothing" << std::endl;
-    fout << "  smoothing:" << std::endl;
-    fout << "    smooth_method: " << smooth_method << " # 0: multiparametrization, 1: laplacian smoothing (EXPERIMENTAL)" << std::endl;
-    fout << "    l_smooth_rtp: ["         << smooth_lr << ", " << smooth_lt << ", " << smooth_lp << "] # smoothing coefficients for laplacian smoothing" << std::endl;
-    fout << std::endl;
+    // only smooth_method 0 is available on 20260805, JC 
+    // fout << "  # smoothing" << std::endl;
+    // fout << "  smoothing:" << std::endl;
+    // fout << "    smooth_method: " << smooth_method << " # 0: multiparametrization, 1: laplacian smoothing (EXPERIMENTAL)" << std::endl;
+    // fout << "    l_smooth_rtp: ["         << smooth_lr << ", " << smooth_lt << ", " << smooth_lp << "] # smoothing coefficients for laplacian smoothing" << std::endl;
+    // fout << std::endl;
 
-    fout << "  # parameters for smooth method 0 (multigrid model parametrization)" << std::endl;
+    // fout << "  # parameters for smooth method 0 (multigrid model parametrization)" << std::endl;
     fout << "  # inversion grid can be viewed in OUTPUT_FILES/inversion_grid.txt" << std::endl;
     fout << "  n_inversion_grid: "   << n_inversion_grid << " # number of inversion grid sets" << std::endl;
     fout << std::endl;
@@ -1268,8 +1271,8 @@ void InputParams::write_params_to_file() {
     // fout << "  invgrid_volume_rescale: " << invgrid_volume_rescale << std::endl;
     fout << std::endl;
 
-    fout << "  # path to station correction file (under development)" << std::endl;
-    fout << "  use_sta_correction: " << use_sta_correction << std::endl;
+    fout << "  # station correction terms for teleseismic data" << std::endl;
+    fout << "  use_sta_correction: " << use_sta_correction << " # 'true' for using station correction terms; 'false' for not using. Default: false" << std::endl;
     if (sta_correction_file_exist)
         fout << "  initial_sta_correction_file: " << sta_correction_file;
     else
@@ -1359,7 +1362,7 @@ void InputParams::write_params_to_file() {
     // fout << "  update_rad_ani  : " << update_rad_ani  << " # update radial anisotropy (in future) or not.    default: false" << std::endl;
     fout << std::endl;
 
-    fout << "  # -------------- for teleseismic inversion (under development) --------------" << std::endl;
+    fout << "  # -------------- for teleseismic inversion --------------" << std::endl;
     fout << "  # depth_taper : [d1,d2] means: " << std::endl;
     fout << "  # if       XXX < d1, kernel <- kernel * 0.0 " << std::endl;
     fout << "  # if d1 <= XXX < d2, kernel <- kernel * (XXX-d1)/(d2-d1),  (linear interpolation) " << std::endl;
@@ -1376,6 +1379,7 @@ void InputParams::write_params_to_file() {
     fout << std::endl;
 
     fout << "  # relocation_strategy" << std::endl;
+    fout << "  # at each iteration, the maximum change of dep, lat, lon, ortime = step_length * rescaling_dep_lat_lon_ortime" << std::endl;
     fout << "  step_length : " << step_length_src_reloc << " # initial step length of relocation perturbation. 0.01 means maximum 1% perturbation for each iteration." << std::endl;
     fout << "  step_length_decay : " << step_length_decay_src_reloc << " # if objective function increase, step size -> step length * step_length_decay. default: 0.9" << std::endl;
 
@@ -1387,7 +1391,8 @@ void InputParams::write_params_to_file() {
     fout << max_change_dep << ", " << max_change_lat << ", " << max_change_lon << ", " << max_change_ortime;
     fout << "]     # the change of dep,lat,lon,ortime do not exceed max_change. Unit: km,km,km,second" << std::endl;
     fout << "  max_iterations : " << N_ITER_MAX_SRC_RELOC <<" # maximum number of iterations for relocation" << std::endl;
-    fout << "  tol_gradient : " << TOL_SRC_RELOC << " # if the norm of gradient is smaller than the tolerance, the iteration of relocation terminates" << std::endl;
+    // tol_gradient is usually unuseful (20260805, JC)
+    // fout << "  tol_gradient : " << TOL_SRC_RELOC << " # if the norm of gradient is smaller than the tolerance, the iteration of relocation terminates" << std::endl;
     fout << std::endl;
 
     fout << "  # -------------- using absolute traveltime data --------------" << std::endl;
@@ -1476,14 +1481,15 @@ void InputParams::write_params_to_file() {
     fout << "    max_loop : " << max_loop_mode1 << std::endl;
     fout << std::endl;
 
-    fout << "# keep these setting unchanged, unless you are familiar with the eikonal solver in this code" << std::endl;
-    fout << "calculation:" << std::endl;
-    fout << "   convergence_tolerance: " << conv_tol << " # threshold value for checking the convergence for each forward/adjoint run"<< std::endl;
-    fout << "   max_iterations: " << max_iter << " # number of maximum iteration for each forward/adjoint run" << std::endl;
-    fout << "   stencil_order: " << stencil_order << " # order of stencil, 1 or 3" << std::endl;
-    fout << "   stencil_type: " << stencil_type << " # 0: , 1: first-order upwind scheme (only sweep_type 0 is supported) " << std::endl;
-    fout << "   sweep_type: " << sweep_type << " # 0: legacy, 1: cuthill-mckee with shm parallelization" << std::endl;
-    fout << std::endl;
+    // usually, the following parameters are not required to be changed by users, (JC, 20260805)
+    // fout << "# keep these setting unchanged, unless you are familiar with the eikonal solver in this code" << std::endl;
+    // fout << "calculation:" << std::endl;
+    // fout << "   convergence_tolerance: " << conv_tol << " # threshold value for checking the convergence for each forward/adjoint run"<< std::endl;
+    // fout << "   max_iterations: " << max_iter << " # number of maximum iteration for each forward/adjoint run" << std::endl;
+    // fout << "   stencil_order: " << stencil_order << " # order of stencil, 1 or 3" << std::endl;
+    // fout << "   stencil_type: " << stencil_type << " # 0: , 1: first-order upwind scheme (only sweep_type 0 is supported) " << std::endl;
+    // fout << "   sweep_type: " << sweep_type << " # 0: legacy, 1: cuthill-mckee with shm parallelization" << std::endl;
+    // fout << std::endl;
     //fout << std::endl;
     //fout << "debug:" << std::endl;
     //fout << "   debug_mode: " << int(if_test) << std::endl;

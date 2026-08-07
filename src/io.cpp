@@ -1711,6 +1711,98 @@ void IO_utils::insert_data_xdmf(std::string& group_name, std::string& dset_name_
 }
 
 
+void IO_utils::check_model_dataset_shape(std::string& model_fname, const char* dset_name_in) {
+
+    if (not(id_sim == 0 && id_subdomain == 0 && subdom_main)) {
+        std::cout << "check_model_dataset_shape: only rank 0 of subdomain 0 of simulation 0 can check model dataset shape" << std::endl;
+        return;
+    }
+
+    if (output_format==OUTPUT_FORMAT_HDF5){
+
+#ifdef USE_HDF5
+        std::string dset_name(dset_name_in);
+
+        // Input model datasets are read as 3D arrays.  The HDF5 file layout is
+        // [k, j, i], matching the global YAML n_rtp order [r, lat, lon].
+        const int expected_rank = 3;
+        hsize_t expected_dims[expected_rank] = {
+            static_cast<hsize_t>(ngrid_k),
+            static_cast<hsize_t>(ngrid_j),
+            static_cast<hsize_t>(ngrid_i)
+        };
+
+        // This shape check is intentionally called by rank 0 only before the
+        // collective model read.  Use serial HDF5 access here so the check does
+        // not require participation from every rank in inter_sub_comm.
+        file_id = H5Fopen(model_fname.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+        if (file_id < 0) {
+            std::cout << "Error: cannot open model file " << model_fname << std::endl;
+            exit(1);
+        }
+        h5_open_dataset_no_group(dset_name);
+
+        hid_t model_space_id = H5Dget_space(dset_id);
+        if (model_space_id < 0) {
+            std::cout << "Error: H5Dget_space for model dataset " << dset_name << " failed" << std::endl;
+            
+            h5_close_dataset();
+            H5Fclose(file_id);
+            exit(1);
+        }
+
+        int model_rank = H5Sget_simple_extent_ndims(model_space_id);
+        hsize_t model_dims[expected_rank] = {0, 0, 0};
+        if (model_rank == expected_rank) {
+            H5Sget_simple_extent_dims(model_space_id, model_dims, NULL);
+        }
+
+        bool shape_matches = (model_rank == expected_rank);
+        for (int i_dim = 0; i_dim < expected_rank && shape_matches; i_dim++) {
+            shape_matches = (model_dims[i_dim] == expected_dims[i_dim]);
+        }
+
+        if (!shape_matches) {
+            
+            std::cout << "Error: model dataset " << dset_name
+                        << " has incompatible shape in " << model_fname << "." << std::endl;
+            std::cout << "       Expected HDF5 shape [k, j, i] = ["
+                        << expected_dims[0] << ", " << expected_dims[1] << ", " << expected_dims[2]
+                        << "], from n_rtp." << std::endl;
+            if (model_rank == expected_rank) {
+                std::cout << "       Actual HDF5 shape   [k, j, i] = ["
+                            << model_dims[0] << ", " << model_dims[1] << ", " << model_dims[2]
+                            << "]." << std::endl;
+            } else {
+                std::cout << "       Actual HDF5 rank is " << model_rank
+                            << "; expected rank is " << expected_rank << "." << std::endl;
+            }
+            
+            H5Sclose(model_space_id);
+            h5_close_dataset();
+            H5Fclose(file_id);
+            exit(1);
+        }
+
+        // If we reach this point, the model dataset shape matches the expected shape.
+        std::cout   << "--- checked model dataset shape " << dset_name << " : ["
+                    << model_dims[0] << ", " << model_dims[1] << ", " << model_dims[2]
+                    << "] ---" << std::endl;
+        
+
+        H5Sclose(model_space_id);
+        h5_close_dataset();
+        H5Fclose(file_id);
+
+#else
+        std::cout << "ERROR: HDF5 is not enabled" << std::endl;
+        exit(1);
+#endif
+
+    }
+}
+
+
 void IO_utils::read_model(std::string& model_fname, const char* dset_name_in, CUSTOMREAL* darr, \
                           int offset_i, int offset_j, int offset_k) {
 

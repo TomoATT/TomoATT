@@ -33,6 +33,9 @@ protected:
     CUSTOMREAL alpha_R;                 // upper bound of step length
     CUSTOMREAL alpha_L;                 // lower bound of step length
 
+    // for bfgs
+    bool only_check_armijo_condition = false;   // if true, only check Armijo condition in line search, not check curvature condition
+
     // ---------------------------------------------------
     // ------------------ main function ------------------
     // ---------------------------------------------------

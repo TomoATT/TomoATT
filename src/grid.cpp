@@ -989,6 +989,18 @@ void Grid::setup_grid_params(InputParams &IP, IO_utils& io) {
         }
     }
 
+    //  check HDF5 array shape before reading model data
+    if (id_sim == 0 && id_subdomain == 0 && subdom_main) {
+        // check by world rank 0
+        std::string f_model_path = IP.get_init_model_path();
+        io.check_model_dataset_shape(f_model_path, "xi");
+        io.check_model_dataset_shape(f_model_path, "eta");
+        io.check_model_dataset_shape(f_model_path, "vel");
+        if(if_test) {
+            io.check_model_dataset_shape(f_model_path, "u");
+        }
+    }
+
     // independent read model data
     if (id_sim == 0){
         // read init model
@@ -2327,5 +2339,3 @@ void Grid::calc_residual() {
         }
     }
 }
-
-
