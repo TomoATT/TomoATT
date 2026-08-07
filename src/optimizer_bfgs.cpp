@@ -190,7 +190,7 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
 
         if ((alpha_R < step_length_min + epsAdj) && (alpha < step_length_min - epsAdj)){
             if (myrank == 0 && id_sim == 0){
-                std::cout   << "Quit line search becuase step lenght is less than step_length_min " 
+                std::cout   << "Quit line search because step lenght is less than step_length_min " 
                             << step_length_min << ". But Armijo condition is not satisfied. " << std::endl;
                 std::cout   << "Keep the initial step length to " << step_length_min << " at the next iteration." << std::endl;
             }
@@ -206,7 +206,7 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             exit_flag = true;
         } else {
             if (myrank == 0 && id_sim == 0){
-                std::cout << "Armijo condition not satisfied at sub-iteration" << sub_iter 
+                std::cout << "Armijo condition not satisfied at sub-iteration " << sub_iter 
                         << ", step length may be too large, Reduce the searching step length from " << alpha_R 
                         << " to " << alpha << std::endl;
             }
@@ -231,7 +231,7 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
 
             if ((alpha_L > step_length_max - epsAdj) && (alpha > step_length_max + epsAdj)){
                 if (myrank == 0 && id_sim == 0){
-                    std::cout   << "Quit line search becuase step lenght is larger than step_length_max " 
+                    std::cout   << "Quit line search because step lenght is larger than step_length_max " 
                                 << step_length_max << ". But Curvature condition is not satisfied. " << std::endl;
                     std::cout   << "Keep the initial step length to " << step_length_max << " at the next iteration." << std::endl;
                 }
@@ -301,7 +301,7 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             alpha = step_length_max;
             if (myrank == 0 && id_sim == 0){
                 std::cout << std::endl;
-                std::cout << "step length is larger than step_length_max. Set it to be step_length_max: " << step_length_max << std::endl;
+                std::cout << "Because the step length is larger than step_length_max. Set it to be step_length_max: " << step_length_max << " in the next iteration" << std::endl;
             }
         }
 
@@ -309,7 +309,7 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             alpha = step_length_min;
             if (myrank == 0 && id_sim == 0){
                 std::cout << std::endl;
-                std::cout << "step length is smaller than step_length_min. Set it to be step_length_min: " << step_length_min << std::endl;
+                std::cout << "Because the step length is smaller than step_length_min. Set it to be step_length_min: " << step_length_min << " in the next iteration" << std::endl;
             }
         }
     }
