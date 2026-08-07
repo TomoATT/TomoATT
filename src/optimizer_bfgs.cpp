@@ -179,14 +179,19 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             std::cout << "Satisfy Wolfe conditions at sub-iteration " << sub_iter 
                     << ", step length alpha = " << alpha 
                     << ", obj = " << v_obj_try << std::endl;
-            std::cout << "In the next iteration, the initial step length increases set to " << std::min(1.2*alpha, step_length_max) << std::endl << std::endl;
+            std::cout << "In the next iteration, the initial step length is set to " << std::min(alpha, step_length_max) << std::endl << std::endl;
         }
-        alpha = std::min(1.2*alpha, step_length_max);
+        alpha = std::min(alpha, step_length_max);
+        alpha = std::max(alpha, step_length_min);
         exit_flag = true;
     } else if (!cond_armijo && cond_curvature){
         // only satisfy curvature condition, step length is too large
         alpha_R = alpha;
         alpha = (alpha_L + alpha_R) / 2.0;
+
+        alpha = std::min(alpha, step_length_max);
+        alpha = std::max(alpha, step_length_min);
+
         if (sub_iter == quit_sub_iter) {
             if (myrank == 0 && id_sim == 0){
                 std::cout   << "Quit line search due to too many tries. Armijo condition not satisfied. "
@@ -206,9 +211,9 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             if(myrank == 0 && id_sim == 0){
                 std::cout << "Only check Armijo condition at sub-iteration " << sub_iter << ", satisfied" << std::endl;
                 std::cout << "    step length alpha = " << alpha << ", obj = " << v_obj_try << std::endl;
-                std::cout << "In the next iteration, the initial step length increases set to " << std::min(1.2*alpha, step_length_max) << std::endl << std::endl;
+                std::cout << "In the next iteration, the initial step length is set to " << std::min(alpha, step_length_max) << std::endl << std::endl;
             }
-            alpha = std::min(1.2*alpha, step_length_max);
+            alpha = std::min(alpha, step_length_max);
             exit_flag = true;
         } else {
             // only satisfy Armijo condition, step length is too small
@@ -218,6 +223,9 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
             } else {
                 alpha = 2.0 * alpha;
             }
+            alpha = std::min(alpha, step_length_max);
+            alpha = std::max(alpha, step_length_min);
+
             if (sub_iter == quit_sub_iter) {
                 if (myrank == 0 && id_sim == 0){
                     std::cout << "Quit line search due to too many tries. Curvature condition not satisfied. "
@@ -238,6 +246,10 @@ bool Optimizer_bfgs::check_conditions_for_line_search(InputParams& IP, Grid& gri
         // neither condition is satisfied
         alpha_R = alpha;
         alpha = (alpha_L + alpha_R) / 2.0;
+
+        alpha = std::min(alpha, step_length_max);
+        alpha = std::max(alpha, step_length_min);
+
         if (sub_iter == quit_sub_iter) {
             if (myrank == 0 && id_sim == 0){
                 std::cout   << "Quit line search due to too many tries. Curvature and Armijo conditions not satisfied. "
