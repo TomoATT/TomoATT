@@ -167,6 +167,9 @@ public:
 
     // read model data
     void read_model(std::string&, const char*, CUSTOMREAL*, int, int, int);
+    // check that a 3D HDF5 input model dataset has the same global shape as n_rtp.
+    // TomoATT stores model datasets in HDF5 as [k, j, i] = [r, lat, lon].
+    void check_model_dataset_shape(std::string&, const char*);
     // read Travel time from file for earthquake relocation and common receiver double-difference
     void read_T(Grid&);
     // read Travel time from a temporal file for earthquake relocation and common receiver double-difference
