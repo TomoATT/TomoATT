@@ -15,21 +15,21 @@
 #include "iterator_level.h"
 #include "source.h"
 #include "receiver.h"
-#include "kernel.h"
-#include "model_update.h"
-#include "lbfgs.h"
+// #include "kernel.h"
+// #include "model_update.h"
+// #include "lbfgs.h"
 
 
 inline void calculate_or_read_traveltime_field(InputParams& IP, Grid& grid, IO_utils& io, const int i_src, const int N_src, bool first_init,
-                                               std::unique_ptr<Iterator>& It, const std::string& name_sim_src, const bool& prerun=false){
+                                               std::unique_ptr<Iterator>& It, const int id_src_att, const bool& prerun=false){
 
-    if (IP.get_is_T_written_into_file(name_sim_src)){
+    if (IP.get_is_T_written_into_file(id_src_att)){ // if field has been written into file, read it from file
         // load travel time field on grid.T_loc
-        if (myrank == 0){
+        if (myrank == 0){  // main of level 2 and 3
             std::cout << "id_sim: " << id_sim << ", reading source (" << i_src+1 << "/" << N_src
                     << "), name: "
-                    << name_sim_src << ", lat: " << IP.src_map[name_sim_src].lat
-                    << ", lon: " << IP.src_map[name_sim_src].lon << ", dep: " << IP.src_map[name_sim_src].dep
+                    << IP.src_map[id_src_att].name << ", lat: " << IP.src_map[id_src_att].lat
+                    << ", lon: " << IP.src_map[id_src_att].lon << ", dep: " << IP.src_map[id_src_att].dep
                     << std::endl;
         }
 
@@ -40,8 +40,8 @@ inline void calculate_or_read_traveltime_field(InputParams& IP, Grid& grid, IO_u
         if (myrank == 0){
             std::cout << "id_sim: " << id_sim << ", calculating source (" << i_src+1 << "/" << N_src
                     << "), name: "
-                    << name_sim_src << ", lat: " << IP.src_map[name_sim_src].lat
-                    << ", lon: " << IP.src_map[name_sim_src].lon << ", dep: " << IP.src_map[name_sim_src].dep
+                    << IP.src_map[id_src_att].name << ", lat: " << IP.src_map[id_src_att].lat
+                    << ", lon: " << IP.src_map[id_src_att].lon << ", dep: " << IP.src_map[id_src_att].dep
                     << std::endl;
         }
 
@@ -54,11 +54,10 @@ inline void calculate_or_read_traveltime_field(InputParams& IP, Grid& grid, IO_u
             io.write_T_tmp(grid);
 
             if (proc_store_srcrec) // only proc_store_srcrec has the src_map object
-                IP.src_map[name_sim_src].is_T_written_into_file = true;
+                IP.src_map[id_src_att].is_T_written_into_file = true;
         }
    }
 }
-
 
 
 inline void pre_run_forward_only(InputParams& IP, Grid& grid, IO_utils& io, int i_inv){
@@ -68,35 +67,42 @@ inline void pre_run_forward_only(InputParams& IP, Grid& grid, IO_utils& io, int 
     Source src;
     Receiver recs;
 
-    // noted that src_map_comm_rec is the subset of src_map
+    // i_src (1:N) -> id_src_att (key of src_map_comm_rec)
+    std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map_comm_rec);      // main of level 2 and 3
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec.size() != IP.n_src_comm_rec_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     for (int i_src = 0; i_src < IP.n_src_comm_rec_this_sim_group; i_src++){
 
         // check if this is the first iteration of entire inversion process
         bool first_init = (i_inv == 0 && i_src==0);
 
         // get source info
-        std::string name_sim_src   = IP.get_src_name_comm(i_src);
-        int         id_sim_src     = IP.get_src_id(name_sim_src); // global source id
-        bool        is_teleseismic = IP.get_if_src_teleseismic(name_sim_src); // get is_teleseismic flag
+        int         id_src_att     = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
+        std::string name_src       = IP.get_src_name(i_src, id_src_att_vec);         // level 2 and level 3
+        bool        is_teleseismic = IP.get_if_src_teleseismic(id_src_att); // get is_teleseismic flag  (level 2 and level 3)
 
-        // set simu group id and source name for output files/dataset names
-        io.reset_source_info(id_sim_src, name_sim_src);
+        // set source name for output files/dataset names
+        io.reset_source_info(name_src);
 
         // set source position
-        src.set_source_position(IP, grid, is_teleseismic, name_sim_src);
+        src.set_source_position(IP, grid, is_teleseismic, id_src_att, false); 
 
-     // initialize iterator object
+        // initialize iterator object
         std::unique_ptr<Iterator> It;
 
-        select_iterator(IP, grid, src, io, name_sim_src, first_init, is_teleseismic, It, false);
+        select_iterator(IP, grid, src, io, first_init, is_teleseismic, It, false);
 
         // calculate or read traveltime field
         bool prerun_mode = true;
-        calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_comm_rec_this_sim_group, first_init, It, name_sim_src, prerun_mode);
+        calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_comm_rec_this_sim_group, first_init, It, id_src_att, prerun_mode);
 
         // interpolate and store  traveltime, cs_dif. For cr_dif, only store the traveltime.
-        recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, name_sim_src);
-        // CHS: At this point, all the synthesised arrival times for all the co-located stations are recorded in syn_time_map_sr. When you need to use it later, you can just look it up.
+        recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, id_src_att);
+        
     }
 
 
@@ -114,15 +120,237 @@ inline void pre_run_forward_only(InputParams& IP, Grid& grid, IO_utils& io, int 
 }
 
 
+// calculate sensitivity kernel
+inline void calculate_sensitivity_kernel(Grid& grid, InputParams& IP, const int id_src_att){
+    // calculate sensitivity kernel
+
+    // kernel calculation will be done only by the subdom_main
+    if (subdom_main) {
+        // get the necessary parameters
+        int np             = loc_I;
+        int nt             = loc_J;
+        int nr             = loc_K;
+        CUSTOMREAL dr      = grid.dr;
+        CUSTOMREAL dt      = grid.dt;
+        CUSTOMREAL dp      = grid.dp;
+        CUSTOMREAL src_lon = IP.get_src_lon(   id_src_att);
+        CUSTOMREAL src_lat = IP.get_src_lat(   id_src_att);
+        CUSTOMREAL src_r   = IP.get_src_radius(id_src_att);
+
+        CUSTOMREAL weight   = _1_CR;
+
+        // inner points
+        for (int kkr = 1; kkr < nr-1; kkr++) {
+            for (int jjt = 1; jjt < nt-1; jjt++) {
+                for (int iip = 1; iip < np-1; iip++) {
+
+                    // calculate the kernel
+                    CUSTOMREAL Tr_km     = (grid.T_loc[I2V(iip,jjt,kkr+1)] - grid.T_loc[I2V(iip,jjt,kkr-1)]) / (_2_CR * dr);
+                    CUSTOMREAL Ttheta_km = (grid.T_loc[I2V(iip,jjt+1,kkr)] - grid.T_loc[I2V(iip,jjt-1,kkr)]) / (_2_CR * dt) / grid.r_loc_1d[kkr];
+                    CUSTOMREAL Tphi_km   = (grid.T_loc[I2V(iip+1,jjt,kkr)] - grid.T_loc[I2V(iip-1,jjt,kkr)]) / (_2_CR * dp) / (grid.r_loc_1d[kkr]*std::cos(grid.t_loc_1d[jjt]));
+
+                    CUSTOMREAL azi_ratio = std::sqrt((my_square(Ttheta_km) + my_square(Tphi_km))/(my_square(Tr_km) + my_square(Ttheta_km) + my_square(Tphi_km)));
+                    
+                    // mask within one grid around the source
+                    if ((std::abs(grid.r_loc_1d[kkr] - src_r) >= dr) ||
+                        (std::abs(grid.t_loc_1d[jjt] - src_lat) >= dt) ||
+                        (std::abs(grid.p_loc_1d[iip] - src_lon) >= dp)) {
+                        // density of ks
+                        grid.Ks_density_loc[I2V(iip,jjt,kkr)]   += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)];  
+                        
+                        // density of kxi
+                        // grid.Kxi_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)]; 
+                        grid.Kxi_density_loc[I2V(iip,jjt,kkr)]  += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)] * azi_ratio;
+                                                                
+                        // density of keta
+                        // grid.Keta_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)]; 
+                        grid.Keta_density_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_density_loc[I2V(iip,jjt,kkr)] * azi_ratio;
+        
+
+                        if (IP.get_update_slowness()==1){      // we need to update slowness
+                            // Kernel w r t slowness s
+                            grid.Ks_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] * my_square(grid.fun_loc[I2V(iip,jjt,kkr)]);                                                  
+                        } else {
+                            grid.Ks_loc[I2V(iip,jjt,kkr)] = _0_CR;
+                        }
+
+
+                        if (IP.get_update_azi_ani()){      // we need to update azimuthal anisotropy
+                            // Kernel w r t anisotrophy xi
+                            if (isZero(std::sqrt(my_square(grid.xi_loc[I2V(iip,jjt,kkr)])+my_square(grid.eta_loc[I2V(iip,jjt,kkr)])))) {
+                                grid.Kxi_loc[I2V(iip,jjt,kkr)]  += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] \
+                                                                * (my_square(Ttheta_km) - my_square(Tphi_km));
+
+                                grid.Keta_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] \
+                                                                * ( -_2_CR * Ttheta_km * Tphi_km );
+
+                            } else {
+                                grid.Kxi_loc[I2V(iip,jjt,kkr)]  += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] \
+                                                            * ((- GAMMA * grid.xi_loc[I2V(iip,jjt,kkr)] / \
+                                                                        std::sqrt(my_square(grid.xi_loc[ I2V(iip,jjt,kkr)]) + my_square(grid.eta_loc[I2V(iip,jjt,kkr)]))) * my_square(Tr_km) \
+                                                                + my_square(Ttheta_km) 
+                                                                - my_square(Tphi_km));
+
+                                grid.Keta_loc[I2V(iip,jjt,kkr)] += weight * grid.Tadj_loc[I2V(iip,jjt,kkr)] \
+                                                            * (( - GAMMA * grid.eta_loc[I2V(iip,jjt,kkr)]/ \
+                                                                            std::sqrt(my_square(grid.xi_loc[I2V(iip,jjt,kkr)]) + my_square(grid.eta_loc[I2V(iip,jjt,kkr)]))) * my_square(Tr_km) \
+                                                                    - _2_CR * Ttheta_km * Tphi_km );
+                            }
+                        } else {
+                            grid.Kxi_loc[I2V(iip,jjt,kkr)]  = _0_CR;
+                            grid.Keta_loc[I2V(iip,jjt,kkr)] = _0_CR;
+                        }
+
+                    } else{
+                        grid.Ks_loc[I2V(iip,jjt,kkr)]   += _0_CR;
+                        grid.Kxi_loc[I2V(iip,jjt,kkr)]  += _0_CR;
+                        grid.Keta_loc[I2V(iip,jjt,kkr)] += _0_CR;
+
+                        grid.Ks_density_loc[I2V(iip,jjt,kkr)]   += _0_CR;
+                        grid.Kxi_density_loc[I2V(iip,jjt,kkr)]  += _0_CR;
+                        grid.Keta_density_loc[I2V(iip,jjt,kkr)] += _0_CR;
+        
+                    }
+                }
+            }
+        }
+
+        // boundary
+        for (int kkr = 0; kkr < nr; kkr++) {
+            for (int jjt = 0; jjt < nt; jjt++) {
+                // set Ks Kxi Keta to zero
+                if (grid.i_first()){
+                    grid.Ks_loc[I2V(0,jjt,kkr)]             = _0_CR;
+                    grid.Kxi_loc[I2V(0,jjt,kkr)]            = _0_CR;
+                    grid.Keta_loc[I2V(0,jjt,kkr)]           = _0_CR;
+                    grid.Ks_density_loc[I2V(0,jjt,kkr)]     = _0_CR;
+                    grid.Kxi_density_loc[I2V(0,jjt,kkr)]    = _0_CR;
+                    grid.Keta_density_loc[I2V(0,jjt,kkr)]   = _0_CR;
+                }
+                if (grid.i_last()){
+                    grid.Ks_loc[I2V(np-1,jjt,kkr)]          = _0_CR;
+                    grid.Kxi_loc[I2V(np-1,jjt,kkr)]         = _0_CR;
+                    grid.Keta_loc[I2V(np-1,jjt,kkr)]        = _0_CR;
+                    grid.Ks_density_loc[I2V(np-1,jjt,kkr)]  = _0_CR;
+                    grid.Kxi_density_loc[I2V(np-1,jjt,kkr)] = _0_CR;
+                    grid.Keta_density_loc[I2V(np-1,jjt,kkr)]= _0_CR;
+                }
+           }
+        }
+        for (int kkr = 0; kkr < nr; kkr++) {
+            for (int iip = 0; iip < np; iip++) {
+                // set Ks Kxi Keta to zero
+                if (grid.j_first()){
+                    grid.Ks_loc[I2V(iip,0,kkr)]             = _0_CR;
+                    grid.Kxi_loc[I2V(iip,0,kkr)]            = _0_CR;
+                    grid.Keta_loc[I2V(iip,0,kkr)]           = _0_CR;
+                    grid.Ks_density_loc[I2V(iip,0,kkr)]     = _0_CR;
+                    grid.Kxi_density_loc[I2V(iip,0,kkr)]    = _0_CR;
+                    grid.Keta_density_loc[I2V(iip,0,kkr)]   = _0_CR;
+                }
+                if (grid.j_last()){
+                    grid.Ks_loc[I2V(iip,nt-1,kkr)]          = _0_CR;
+                    grid.Kxi_loc[I2V(iip,nt-1,kkr)]         = _0_CR;
+                    grid.Keta_loc[I2V(iip,nt-1,kkr)]        = _0_CR;
+                    grid.Ks_density_loc[I2V(iip,nt-1,kkr)]  = _0_CR;
+                    grid.Kxi_density_loc[I2V(iip,nt-1,kkr)] = _0_CR;
+                    grid.Keta_density_loc[I2V(iip,nt-1,kkr)]= _0_CR;
+                }
+            }
+        }
+        for (int jjt = 0; jjt < nt; jjt++) {
+            for (int iip = 0; iip < np; iip++) {
+                // set Ks Kxi Keta to zero
+                if (grid.k_first()){
+                    grid.Ks_loc[I2V(iip,jjt,0)]             = _0_CR;
+                    grid.Kxi_loc[I2V(iip,jjt,0)]            = _0_CR;
+                    grid.Keta_loc[I2V(iip,jjt,0)]           = _0_CR;
+                    grid.Ks_density_loc[I2V(iip,jjt,0)]     = _0_CR;
+                    grid.Kxi_density_loc[I2V(iip,jjt,0)]    = _0_CR;
+                    grid.Keta_density_loc[I2V(iip,jjt,0)]   = _0_CR;
+                }
+                if (grid.k_last()){
+                    grid.Ks_loc[I2V(iip,jjt,nr-1)]          = _0_CR;
+                    grid.Kxi_loc[I2V(iip,jjt,nr-1)]         = _0_CR;
+                    grid.Keta_loc[I2V(iip,jjt,nr-1)]        = _0_CR;
+                    grid.Ks_density_loc[I2V(iip,jjt,nr-1)]  = _0_CR;
+                    grid.Kxi_density_loc[I2V(iip,jjt,nr-1)] = _0_CR;
+                    grid.Keta_density_loc[I2V(iip,jjt,nr-1)]= _0_CR;
+                }
+            }
+        }
+
+    } // end if subdom_main
+}
+
+
+// check kernel density
+inline void check_kernel_density(InputParams& IP, Grid& grid) {
+    if(subdom_main){
+        // check local kernel density positivity
+        for (int i_loc = 0; i_loc < loc_I; i_loc++) {
+            for (int j_loc = 0; j_loc < loc_J; j_loc++) {
+                for (int k_loc = 0; k_loc < loc_K; k_loc++) {
+                    if (isNegative(grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)])){
+                        std::cout   << "Warning, id_sim: " << id_sim << ", grid.Ks_density_loc[I2V(" << i_loc << "," << j_loc << "," << k_loc << ")] is less than 0, = " 
+                                    << grid.Ks_density_loc[I2V(i_loc,j_loc,k_loc)]   
+                                    << std::endl;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// sum up kernels from all simulateous group (level 1)
+inline void sumup_kernels(Grid& grid) {
+    if(subdom_main){
+        int n_grids = loc_I*loc_J*loc_K;
+
+        allreduce_cr_sim_inplace(grid.Ks_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Kxi_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Keta_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Ks_density_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Kxi_density_loc, n_grids);
+        allreduce_cr_sim_inplace(grid.Keta_density_loc, n_grids);
+
+        // share the values on boundary
+        grid.send_recev_boundary_data(grid.Ks_loc);
+        grid.send_recev_boundary_data(grid.Kxi_loc);
+        grid.send_recev_boundary_data(grid.Keta_loc);
+        grid.send_recev_boundary_data(grid.Ks_density_loc);
+        grid.send_recev_boundary_data(grid.Kxi_density_loc);
+        grid.send_recev_boundary_data(grid.Keta_density_loc);
+
+        grid.send_recev_boundary_data_kosumi(grid.Ks_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Kxi_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Keta_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Ks_density_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Kxi_density_loc);
+        grid.send_recev_boundary_data_kosumi(grid.Keta_density_loc);
+    }
+
+    synchronize_all_world();
+}
+
+
 // run forward and adjoint simulation and calculate current objective function value and sensitivity kernel if requested
-inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, bool& first_src, bool line_search_mode, bool is_save_T){
+inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& grid, IO_utils& io, int i_inv, bool line_search_mode, bool is_save_T){
+    // line_search_mode: if true, time field and adjoint field will not be written into file
+    // is_save_T: if true, save temperory traveltime field into file (just for earthquake)
+
+    int n_src_map_size = IP.src_map.size();
+    int n_rec_map_size = IP.rec_map.size();
+
 
     // initialize kernel arrays
     if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC)
         grid.initialize_kernels();
 
     // reinitialize factors
-    grid.reinitialize_abcf();
+    // grid.rejuvenate_abcf();     // vel, xi, eta -> a, b, c, f
+    // grid.reinitialize_abcf();   // a, b, c, f -> a, b/r^2, c/(r^2*cos^2), f/(r^2*cos)
 
     ///////////////////////////////////////////////////////////////////////
     //  compute the synthetic common receiver differential traveltime first
@@ -142,12 +370,21 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
     // loop over all sources
     //
 
+
     Source src;
     Receiver recs;
 
     if(world_rank == 0)
         std::cout << "computing traveltime field, adjoint field and kernel ..." << std::endl;
 
+    // i_src (1:N) -> id_src_att (key of src_map)
+    std::vector<int> id_src_att_vec = srcrec_id_2_id_att(IP.src_map);      // main of level 2 and 3
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec.size() != IP.n_src_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     // iterate over sources
     for (int i_src = 0; i_src < IP.n_src_this_sim_group; i_src++){
 
@@ -155,38 +392,29 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         bool first_init = (i_inv == 0 && i_src==0);
 
         // get source info
-        const std::string name_sim_src   = IP.get_src_name(i_src);                  // source name
-        const int         id_sim_src     = IP.get_src_id(name_sim_src);             // global source id
-        bool              is_teleseismic = IP.get_if_src_teleseismic(name_sim_src); // get is_teleseismic flag
+        int         id_src_att     = IP.get_id_src_att(i_src, id_src_att_vec);       // level 2 and level 3
+        std::string name_src       = IP.get_src_name(i_src, id_src_att_vec);         // level 2 and level 3
+        bool        is_teleseismic = IP.get_if_src_teleseismic(id_src_att);         // get is_teleseismic flag
 
-        // set simu group id and source name for output files/dataset names
-        io.reset_source_info(id_sim_src, name_sim_src);
+        // set source name for output files/dataset names
+        io.reset_source_info(name_src);
 
-        // output initial field
-        if(first_src && IP.get_if_output_source_field()) {
-            // write true solution
-            if (if_test){
-                io.write_true_solution(grid);
-            }
-
-            first_src = false;
-        }
 
         /////////////////////////
         // run forward simulation
         /////////////////////////
 
         // (re) initialize source object and set to grid
-        src.set_source_position(IP, grid, is_teleseismic, name_sim_src);
+        src.set_source_position(IP, grid, is_teleseismic, id_src_att, false);
 
         // initialize iterator object
         std::unique_ptr<Iterator> It;
 
         if (!hybrid_stencil_order){
-            select_iterator(IP, grid, src, io, name_sim_src, first_init, is_teleseismic, It, false);
+            select_iterator(IP, grid, src, io, first_init, is_teleseismic, It, false);
 
             // if traveltime field has been wriiten into the file, we choose to read the traveltime data.
-            calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It, name_sim_src, is_save_T);
+            calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It, id_src_att, is_save_T);
 
         } else {
             // hybrid stencil mode
@@ -196,14 +424,14 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
             std::unique_ptr<Iterator> It_pre;
             IP.set_stencil_order(1);
             IP.set_conv_tol(IP.get_conv_tol()*100.0);
-            select_iterator(IP, grid, src, io, name_sim_src, first_init, is_teleseismic, It_pre, false);
-            calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It_pre, name_sim_src, is_save_T);
+            select_iterator(IP, grid, src, io, first_init, is_teleseismic, It_pre, false);
+            calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It_pre, id_src_att, is_save_T);
 
             // run 3rd order forward simulation
             IP.set_stencil_order(3);
             IP.set_conv_tol(IP.get_conv_tol()/100.0);
-            select_iterator(IP, grid, src, io, name_sim_src, first_init, is_teleseismic, It, true);
-            calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It, name_sim_src, is_save_T);
+            select_iterator(IP, grid, src, io, first_init, is_teleseismic, It, true);
+            calculate_or_read_traveltime_field(IP, grid, io, i_src, IP.n_src_this_sim_group, first_init, It, id_src_att, is_save_T);
         }
 
         // output the result of forward simulation
@@ -225,30 +453,28 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
             //    io.write_residual(grid); // this will over write the u_loc, so we need to call write_u_h5 first
         }
         // calculate the arrival times at each receivers
-        recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, name_sim_src);
+        recs.interpolate_and_store_arrival_times_at_rec_position(IP, grid, id_src_att);
 
         /////////////////////////
         // run adjoint simulation
         /////////////////////////
 
-        // if (myrank == 0){
-        //     std::cout << "calculating adjoint field, source (" << i_src+1 << "/" << (int)IP.src_id2name.size() << "), name: "
-        //             << name_sim_src << ", lat: " << IP.src_map[name_sim_src].lat
-        //             << ", lon: " << IP.src_map[name_sim_src].lon << ", dep: " << IP.src_map[name_sim_src].dep
-        //             << std::endl;
-        // }
-
         if (IP.get_run_mode()==DO_INVERSION || IP.get_run_mode()==INV_RELOC){
             // calculate adjoint source
-            recs.calculate_adjoint_source(IP, name_sim_src);
+
+            recs.calculate_adjoint_source(IP, id_src_att);
             // run iteration for adjoint field calculation
+
             int adj_type = 0;   // compute adjoint field
             It->run_iteration_adjoint(IP, grid, io, adj_type);
+
             // run iteration for density of the adjoint field
             adj_type = 1;   // compute adjoint field
             It->run_iteration_adjoint(IP, grid, io, adj_type);
+
             // calculate sensitivity kernel
-            calculate_sensitivity_kernel(grid, IP, name_sim_src);
+            calculate_sensitivity_kernel(grid, IP, id_src_att);
+
             if (subdom_main && !line_search_mode && IP.get_if_output_source_field()) {
                 // adjoint field will be output only at the end of subiteration
                 // output the result of adjoint simulation
@@ -265,14 +491,14 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
             // }
 
         } // end if run_mode == DO_INVERSION
-
-        // wait for all processes to finish
+         // wait for all processes to finish
         // this should not be called here, for the case that the simultaneous run group has different number of sources
         //synchronize_all_world();
 
     } // end for i_src
     // synchronize all processes
     synchronize_all_world();
+
 
     // gather all the traveltime to the main process and distribute to all processes
     // for calculating the synthetic common receiver differential traveltime
@@ -281,13 +507,36 @@ inline std::vector<CUSTOMREAL> run_simulation_one_step(InputParams& IP, Grid& gr
         (!IP.get_use_cs() &&  IP.get_is_srcrec_swap())){     // case 2-2, we do inversion, but we do not use cr data (cs +    swap)
         IP.gather_traveltimes_and_calc_syn_diff();
     }
+
+
     // compute all residual and obj
     std::vector<CUSTOMREAL> obj_residual = recs.calculate_obj_and_residual(IP);
 
 
+    // check kernel density and sum up kernels from all simulateous group (level 1)
+    if (IP.get_run_mode() == DO_INVERSION || IP.get_run_mode() == INV_RELOC){
+        check_kernel_density(IP, grid);     // check kernel density
+        sumup_kernels(grid); // allreduce kernels from all simulateous group (level 1) Ks_loc, Ks_density_loc
+    }
+
+    // check src_map and rec_map are not changed after the simulation
+    if (proc_store_srcrec) {
+       if(n_src_map_size != (int)IP.src_map.size()){
+            std::cout << "ERROR, id_sim: " << id_sim << ", size of src_map has been changed after simulation, before: " << n_src_map_size << ", after: " << IP.src_map.size() << std::endl;
+            exit(1);
+        }
+        if(n_rec_map_size != (int)IP.rec_map.size()){
+            std::cout << "ERROR, id_sim: " << id_sim << ", size of rec_map has been changed after simulation, before: " << n_rec_map_size << ", after: " << IP.rec_map.size() << std::endl;
+            exit(1);
+        }
+    }
+
     // return current objective function value
     return obj_residual;
 }
+
+
+
 
 
 #endif // MAIN_ROUTINES_INVERSION_MODE_H

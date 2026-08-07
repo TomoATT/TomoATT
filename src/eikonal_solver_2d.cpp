@@ -21,26 +21,32 @@ void prepare_teleseismic_boundary_conditions(InputParams& IP, Grid& grid, IO_uti
     // pre calculation of 2d travel time fields
     //
 
+    // i_src (1:N) -> id_src_att (key of src_map) -> src info
+    std::vector<int> id_src_att_vec_2d = srcrec_id_2_id_att(IP.src_map_2d); // main of level 2 and 3
+    if (proc_store_srcrec){
+        if ((int)id_src_att_vec_2d.size() != IP.n_src_2d_this_sim_group){
+            std::cout << "Error: number of sources in this simulation group is not equal to the number of sources in src_map." << std::endl;
+            exit(1);
+        }
+    }
     for (int i_src = 0; i_src < IP.n_src_2d_this_sim_group; i_src++){
 
-        std::string name_sim_src;
+        // std::string name_sim_src;
 
-        if (proc_store_srcrec)
-            name_sim_src = IP.src_id2name_2d[i_src];
-        broadcast_str(name_sim_src, 0);
-
-        // get source info
-        bool is_teleseismic = true; // the object in src_id2name_2d is always teleseismic
         // #BUG: src in src_id2name_2d includes the srcs in other sim groups.
         bool for_2d_solver = true;
+        int  id_src_att  = IP.get_id_src_att(i_src, id_src_att_vec_2d, for_2d_solver);
+        
+        // get source info
+        bool is_teleseismic = true; // the object in src_id2name_2d is always teleseismic
 
         Source src;
-        src.set_source_position(IP, grid, is_teleseismic, name_sim_src, for_2d_solver);
+        src.set_source_position(IP, grid, is_teleseismic, id_src_att, for_2d_solver);
 
         // run 2d eikonal solver for teleseismic boundary conditions if teleseismic event
-        if (proc_store_srcrec){
+        if (proc_store_srcrec){     // only for main of level 2 and 3, and only for the process which stores source receiver information
             if (myrank==0)
-                std::cout << "solve 2d eikonal equation for src: " << name_sim_src << std::endl;
+                std::cout << "solve 2d eikonal equation for src: " << IP.src_map_2d[id_src_att].name << std::endl;
             run_2d_solver(IP, src, io);
         }
     }
@@ -1029,12 +1035,20 @@ void load_2d_traveltime(InputParams& IP, Source& src, Grid& grid, IO_utils& io) 
                 // North boundary
                 if (grid.j_last()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(loc_J-1-l), grid.get_lon_by_index(i), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(i, loc_J-1-l, k)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(k));
                     grid.is_changed[I2V(i, loc_J-1-l, k)] = false;
                 }
                 // South boundary
                 if (grid.j_first()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(l), grid.get_lon_by_index(i), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(i, l, k)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(k));
                     grid.is_changed[I2V(i, l, k)] = false;
                 }
@@ -1046,12 +1060,20 @@ void load_2d_traveltime(InputParams& IP, Source& src, Grid& grid, IO_utils& io) 
                 // East boundary
                 if (grid.i_last()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(j), grid.get_lon_by_index(loc_I-1-l), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(loc_I-1-l, j, k)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(k));
                     grid.is_changed[I2V(loc_I-1-l, j, k)] = false;
                 }
                 // West boundary
                 if (grid.i_first()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(j), grid.get_lon_by_index(l), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(l, j, k)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(k));
                     grid.is_changed[I2V(l, j, k)] = false;
                 }
@@ -1063,6 +1085,10 @@ void load_2d_traveltime(InputParams& IP, Source& src, Grid& grid, IO_utils& io) 
                 // Bottom boundary
                 if (grid.k_first()){
                     Epicentral_distance_sphere(plain_grid.src_t, plain_grid.src_p, grid.get_lat_by_index(j), grid.get_lon_by_index(i), tmp_dist);
+                    if(tmp_dist >= tmax_2d){
+                        std::cout << "epicenter distance exceeds tmax_2d:" << tmp_dist/PI*180.0 << "degree" << std::endl;
+                        exit(1);
+                    }
                     grid.T_loc[I2V(i, j, l)] = interp2d(plain_grid, tmp_dist, grid.get_r_by_index(l));
                     grid.is_changed[I2V(i, j, l)] = false;
                 }

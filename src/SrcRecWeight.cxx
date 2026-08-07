@@ -396,10 +396,10 @@ void write_src_rec_file_with_weight(std::string src_rec_file_out, \
             for (const auto& data : v_data){
 
                 // absolute traveltime data
-                if (data.is_src_rec){
+                if (data.data_type == DATA_TYPE_ABS) {
                     SrcRecInfo  rec      = rec_map[name_rec];
 
-                    CUSTOMREAL  travel_time = data.travel_time_obs; // write the observed travel time
+                    CUSTOMREAL  travel_time = data.time_observation; // write the observed travel time
 
                     // receiver line : id_src id_rec name_rec lat lon elevation_m phase epicentral_distance_km arival_time
                     ofs << std::setw(7) << std::right << std::setfill(' ') << src.id << " "
@@ -417,7 +417,7 @@ void write_src_rec_file_with_weight(std::string src_rec_file_out, \
                 }else {
                     std::cout << "Error: data type is not defined." << std::endl;
                     exit(1);
-                } // end of if (data.is_src_rec)
+                }
 
             } // end of for (const auto& data : v_data)
         } // end of for (auto iter = data_map_back[name_src].begin(); iter != data_map_back[name_src].end(); iter++)

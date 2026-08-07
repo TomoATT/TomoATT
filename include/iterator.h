@@ -24,13 +24,13 @@
 
 class Iterator {
 public:
-    Iterator(InputParams&, Grid&, Source&, IO_utils&, const std::string&, bool, bool, bool);
+    Iterator(InputParams&, Grid&, Source&, IO_utils&, bool, bool, bool);
     virtual ~Iterator();
     // regional source
     void run_iteration_forward(InputParams&, Grid&, IO_utils&, bool&); // run forward iteration till convergence
     void run_iteration_adjoint(InputParams&, Grid&, IO_utils&, int);        // run adjoint iteration till convergence
 
-    void initialize_arrays(InputParams&, IO_utils&, Grid&, Source&, const std::string&); // initialize factors etc.
+    void initialize_arrays(InputParams&, IO_utils&, Grid&, Source&); // initialize factors etc.
 
 protected:
     void assign_processes_for_levels(Grid&, InputParams&); // assign intra-node processes for each sweeping level
@@ -75,6 +75,7 @@ protected:
     int ed_level;                   // end level for sweeping
     std::vector< std::vector<int> > ijk_for_this_subproc; // ijk=I2V(i,j,k) for this process (level, ijk)
     int max_n_nodes_plane;                                // maximum number of nodes on a plane
+    CUSTOMREAL dr_inv, dt_inv, dp_inv; // inverse of dr, dt, dp.
 
 
 #if defined USE_SIMD || defined USE_CUDA
@@ -132,8 +133,10 @@ protected:
     CUSTOMREAL at1, bt1, at2, bt2, at, bt;
     CUSTOMREAL ar1, br1, ar2, br2, ar, br;
 
-    CUSTOMREAL bc_f2, eqn_a, eqn_b, eqn_c, eqn_Delta;
-    CUSTOMREAL tmp_tau, tmp_T;
+    CUSTOMREAL fac_a, fac_b, fac_c, fac_f;
+    CUSTOMREAL T0r, T0t, T0p, one_over_T0v;
+    CUSTOMREAL bc_f2, eqn_a, eqn_b, eqn_c, eqn_Delta, eqn_Delta_sqrt, fun_loc_sq, fun_loc_sqrt, one_over_a;
+    CUSTOMREAL tmp_tau, tmp_T, bc_over_b, bc_over_c;
     CUSTOMREAL T_r, T_t, T_p, charact_r, charact_t, charact_p;
     bool is_causality;
     int count_cand;

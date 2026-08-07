@@ -85,7 +85,7 @@ private:
     void FSM_2d();
     void calculate_stencil(const int&, const int&);
     
-    void calculate_synthetic_traveltime_and_adjoint_source(InputParams&, int& );
+    void calculate_synthetic_traveltime_and_adjoint_source(InputParams&, int);
     CUSTOMREAL interpolate_2d_traveltime(const CUSTOMREAL&, const CUSTOMREAL&);
 
     void adjoint_solver_2d(InputParams&, const int&, const int&);
