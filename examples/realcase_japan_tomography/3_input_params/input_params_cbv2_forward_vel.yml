@@ -1,0 +1,46 @@
+version: 3
+
+# Resolution-attack checkerboard — FORWARD synthesis with the v1 regime
+# (local sources only, swap_src_rec=true => 1105 solver sources, leak-free).
+
+domain:
+  min_max_dep: [-10, 200]
+  min_max_lat: [24, 46]
+  min_max_lon: [122, 148]
+  n_rtp: [50, 111, 131]
+
+source:
+  src_rec_file: ../2_data_processing/src_rec_file_japan_filtered.dat
+  swap_src_rec: true
+
+model:
+  init_model_path: ../2_data_processing/checkerboard_models/checker_vel_coarse.h5
+  model_1d_name: iasp91
+
+parallel:
+  n_sims: 1
+  ndiv_rtp: [1, 1, 1]
+  nproc_sub: 1
+  use_gpu: true
+
+output_setting:
+  output_dir: ../OUTPUT_FILES_cbv2_forward_vel
+  output_source_field: false
+  output_kernel: false
+  output_final_model: true
+  output_in_process: true
+  output_in_process_data: true
+  single_precision_output: false
+  verbose_output_level: 0
+  output_file_format: 0
+
+run_mode: 0
+
+ignore_velocity_discontinuity: True
+
+calculation:
+  convergence_tolerance: 1.0e-4
+  max_iterations: 500
+  stencil_order: 1
+  stencil_type: 1
+  sweep_type: 1

@@ -223,6 +223,66 @@ This is an important, honest finding for the publication cycle: it tells us that
 - future checker suite: repeat with several regularizations to (later in the study)
   quantify which choice recovers the cells.
 
+### 5.4 Analytic resolution bound (mapping from data geometry alone)
+
+Independently of any inversion, we can bound the maximum meaningful resolution of
+this dataset from three ingredients:
+
+**Station Nyquist.** 1 176 stations, nearest-neighbour spacing p25/median/p75 =
+7.7/12.1/16.2 km; 2× median ≈ **24 km (0.22°)** — the finest scale a surface
+station web can ever hold reliably.
+
+**First-Fresnel width.**
+At mantle path lengths the wave-based taper is √(λ·L) ≈ 55–130 km (~0.5–1.2°)
+even before inversion-side smoothing: any claim finer than ~0.5° in the mantle
+is beyond the dataset's physics.
+
+**Ray illumination per column.** Per 2°×2° column built from the real catalog:
+the share of columns `hits ≥ 100` **and** `≥6/12 source-side azimuth bins` **and**
+`≥2 dip classes` plummets from 26 % (0–15 km) → 21 % (15–30) → 14 % (30–50) →
+6 % (50–70) → 1 % (70–90) → **0 % below 90 km** — even with the full teleseismic
+pair fan. The bottleneck is **source-side azimuth diversity**, not hit count —
+the teleseismic fan is wide azimuthally from the Japan station web's perspective,
+but any single column sees rays only from a narrow cone.
+
+Map figures: [docs/figs/japan_gpu_resolution/](figs/japan_gpu_resolution/) 
+(hits / azimuth / dip diversity / fully-resolved share per depth band + W–E
+coverage profile).
+Script: `4_plotting/analytic_resolution.py` (committed).
+
+### 5.5 Resolution-attack battery (optimizer-side test)
+
+To test whether the limit is (partially) optimizer-side, we re-ran the CB recovery
+three ways, same synthetic catalog, 15 iterations each, all local sources
+(swap recipe, 1 105 solver sources):
+
+| arm | change | obj start → end | pattern corr (20/60/100/140/180 km) |
+|---|---|---|---|
+| GD reference | — | 355,827 → 218 | ≈ 0 at every depth |
+| R1 BFGS | `optim_method: 1` | 372 → 182 | ≈ 0 (≤0.009) |
+| R2 no-Kdensity | `Kdensity_coe: 0.0` | 372 → 209 | ≈ 0 (≤0.013) |
+| R3 fine inv-grid | 15×16×17 inv nodes | 372 → **132** | ≈ 0 (≤0.011) |
+
+All four trajectories produce useful smooth models but none recovers the 2°
+cells — the limit is **not** the optimizer, inversion-grid density, or the
+density normalization; R3's better objective even highlights that fitting long
+wavelengths and recovering cells are orthogonal. The result stands: the blockage
+is identifiability from ray geometry.
+
+### 5.6 Claimed justifiable resolution of this work
+
+| zone | scale | confidence |
+|---|---|---|
+| crust 0–30 km, Honshu core | ~25–30 km (0.25°) | **high** (stations Nyquist-limited) |
+| mantle 30–100 km, az-covered sectors | ~60–90 km (0.6–0.8°) | **moderate** (Fresnel-limited) |
+| mantle 100–200 km | ≥ ~1° (long-wavelength only) | **low–moderate** (illumine diversity limited) |
+| azimuthal anisotropy, 120–190 km | depth-profile level claims only | **qualitative** (fabric direction + amplitude class) |
+
+Final model claims in this report are read through this envelope: for instance,
+the 150–200 km velocity uplift (§3) is stated as a **depth-profile feature**,
+not a localized body; the anisotropy layer (§4) as an amplitude-class and
+axis-style layer statement, not a mapped body.
+
 ---
 
 ## 6. Ray coverage and ray-path aperture change
