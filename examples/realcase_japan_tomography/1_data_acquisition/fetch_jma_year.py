@@ -19,10 +19,14 @@ Details:
 
 Usage:
   python fetch_jma_year.py --year 2020
+  python fetch_jma_year.py --years 2000 2026
 Outputs:
-  1_data_acquisition/jma_decks/dYYYYMM[.zip, a,b,c]
-  2_data_processing/src_rec_file_japan_year.dat  (merged, unfiltered-of-filtered)
-  2_data_processing/year_events_summary.csv
+  1_data_acquisition/jma_decks/dYYYYMM[.zip, a,b,c]  (pruned per year)
+  2_data_processing/src_rec_file_japan_<year-or-range>.dat
+
+Notes: deck zips are deleted right after each year is parsed to keep local
+storage bounded. Year catalog is written incrementally (one merged file for
+the whole requested range).
 """
 
 import argparse
@@ -31,6 +35,7 @@ import time
 import urllib.request
 import zipfile
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from parse_jma_arrival_data import (parse_station_list,
@@ -55,7 +60,13 @@ def fetch_month(year, month):
     if not zpath.exists() or zpath.stat().st_size < 1_000:
         url = f"{BASE}/d{ym}.zip"
         print(f"  fetch {url}", flush=True)
-        urllib.request.urlretrieve(url, zpath)
+        try:
+            urllib.request.urlretrieve(url, zpath)
+        except (HTTPError, URLError) as e:
+            print(f"  SKIP {ym}: {e}", flush=True)
+            zpath.unlink(missing_ok=True)
+            time.sleep(1.0)
+            return []
         time.sleep(1.0)
     with zipfile.ZipFile(zpath) as zf:
         zf.extractall(DECK_DIR)
@@ -74,9 +85,28 @@ def keep(event):
     return True
 
 
+def keep_region(event):
+    if not (MIN_LAT <= event["latitude"] <= MAX_LAT
+            and MIN_LON <= event["longitude"] <= MAX_LON):
+        return False
+    if event["depth"] > MAX_DEP:
+        return False
+    return True
+
+
+def wipe_decks():
+    if DECK_DIR.exists():
+        for p in DECK_DIR.iterdir():
+            if p.is_file():
+                p.unlink()
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--year", type=int, required=True)
+    ap.add_argument("--year", type=int, default=None,
+                    help="single year (legacy)")
+    ap.add_argument("--years", type=int, nargs=2, default=None,
+                    metavar=("Y_FROM", "Y_TO"), help="inclusive year range")
     ap.add_argument("--months", type=int, nargs="*",
                     default=list(range(1, 13)))
     args = ap.parse_args()
@@ -85,47 +115,49 @@ def main():
     station_coords = parse_station_list(stations_file)
     print(f"stations: {len(station_coords)}")
 
-    all_events = []
-    for m in args.months:
-        files = fetch_month(args.year, m)
-        events = parse_arrival_time_data(files, station_coords)
-        kept = [e for e in events if keep(e)]
-        print(f"  {args.year}-{m:02d}: parsed {len(events)}, kept {len(kept)}")
-        all_events.extend(kept)
+    years = ([args.year] if args.year else
+             list(range(args.years[0], args.years[1] + 1)))
+    tag = (f"{args.year}" if args.year else f"{args.years[0]}_{args.years[1]}")
+    out = OUT_DIR / f"src_rec_file_japan_{tag}.dat"
 
-    # sequential ids
-    all_events.sort(key=lambda e: e["origin_time"])
-    print(f"kept events total: {len(all_events)}")
-
-    # write merged file (same format as src_rec_file_japan_filtered.dat)
-    out = OUT_DIR / f"src_rec_file_japan_{args.year}.dat"
-    n_picks = 0
+    n_events_total = 0
+    n_picks_total = 0
     with open(out, "w") as f:
-        for i, e in enumerate(all_events):
-            ot = e["origin_time"]
-            sec = ot.second + ot.microsecond / 1e6
-            f.write(f"{i}  {ot.year}  {ot.month}  {ot.day}  {ot.hour}  "
-                    f"{ot.minute}  {sec:9.3f}  "
-                    f"{e['latitude']:12.6f}  {e['longitude']:12.6f}  "
-                    f"{e['depth']:9.3f}  {e['magnitude']:6.2f}  "
-                    f"{len(e['arrivals'])}  ev_{i:06d}  1.000\n")
-            for j, arr in enumerate(e["arrivals"]):
-                trav = arr["travel_time"]
-                if not (0.5 <= trav <= 120.0):
+        for y in years:
+            y_events = []
+            for m in args.months:
+                files = fetch_month(y, m)
+                if not files:
                     continue
-                f.write(f"{i}  {j}  {arr['station_code']}  "
-                        f"{arr['station_lat']:12.6f}  "
-                        f"{arr['station_lon']:12.6f}  "
-                        f"{0.0:8.2f}  P  {trav:12.4f}  1.000\n")
-                n_picks += 1
-    print(f"wrote {out}: events={len(all_events)}, arrivals={n_picks}")
+                events = parse_arrival_time_data(files, station_coords)
+                kept = [e for e in events if keep_region(e) and keep(e)]
+                print(f"  {y}-{m:02d}: parsed {len(events)}, kept {len(kept)}",
+                      flush=True)
+                y_events.extend(kept)
+            y_events.sort(key=lambda e: e["origin_time"])
+            for e in y_events:
+                good = [a for a in e["arrivals"]
+                        if 0.5 <= a["travel_time"] <= 120.0]
+                if not good:
+                    continue
+                i = n_events_total
+                ot = e["origin_time"]
+                sec = ot.second + ot.microsecond / 1e6
+                f.write(f"{i}  {ot.year}  {ot.month}  {ot.day}  {ot.hour}  "
+                        f"{ot.minute}  {sec:9.3f}  "
+                        f"{e['latitude']:12.6f}  {e['longitude']:12.6f}  "
+                        f"{e['depth']:9.3f}  {e['magnitude']:6.2f}  "
+                        f"{len(good)}  ev_{i:06d}  1.000\n")
+                for j, arr in enumerate(good):
+                    f.write(f"{i}  {j}  {arr['station_code']}  "
+                            f"{arr['station_lat']:12.6f}  "
+                            f"{arr['station_lon']:12.6f}  "
+                            f"{0.0:8.2f}  P  {arr['travel_time']:12.4f}  1.000\n")
+                n_picks_total += len(good)
+                n_events_total += 1
+            wipe_decks()
 
-    import csv
-    with open(OUT_DIR / f"year_events_summary_{args.year}.csv", "w",
-              newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["month", "kept_events"])
-        # per-month counts recoverable from event_o ts
+    print(f"wrote {out}: events={n_events_total}, arrivals={n_picks_total}")
 
 
 if __name__ == "__main__":

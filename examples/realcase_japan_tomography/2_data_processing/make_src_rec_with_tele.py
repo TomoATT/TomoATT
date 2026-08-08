@@ -26,17 +26,23 @@ Output:
   tele_station_summary_2020.csv             (tele receiver inventory)
 """
 
+import argparse
 import csv
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
-LOCAL_SRC_REC = SCRIPT_DIR / "src_rec_file_japan_2020_filtered.dat"
+_ap = argparse.ArgumentParser()
+_ap.add_argument("--local", default=str(SCRIPT_DIR / "src_rec_file_japan_2020_filtered.dat"))
+_ap.add_argument("--out", default=str(SCRIPT_DIR / "src_rec_file_japan_2020_tele.dat"))
+_ap.add_argument("--sta-out", default=str(SCRIPT_DIR / "tele_station_summary_2020.csv"))
+_args = _ap.parse_args()
+LOCAL_SRC_REC = Path(_args.local)
 TELE_CSV = (SCRIPT_DIR / ".." / "1_data_acquisition" /
             "isc_teleseismic" / "isc_tele_p_arrivals_2020.csv")
-OUT_FILE = SCRIPT_DIR / "src_rec_file_japan_2020_tele.dat"
-OUT_STA = SCRIPT_DIR / "tele_station_summary_2020.csv"
+OUT_FILE = Path(_args.out)
+OUT_STA = Path(_args.sta_out)
 
 DEFAULT_MAG = 5.5   # ISC rows with empty magnitude column get this nominal value
 

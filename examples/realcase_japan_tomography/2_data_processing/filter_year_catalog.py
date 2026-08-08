@@ -30,10 +30,17 @@ import sys
 from pathlib import Path
 from collections import defaultdict
 
+import argparse
+
 CASE = Path(__file__).parent.resolve().parent
-SRC = CASE / "2_data_processing" / "src_rec_file_japan_2020.dat"
-OUT = CASE / "2_data_processing" / "src_rec_file_japan_2020_filtered.dat"
-STATS = CASE / "2_data_processing" / "year_filter_stats.csv"
+p = argparse.ArgumentParser()
+p.add_argument("--in", dest="src", default=str(CASE / "2_data_processing" / "src_rec_file_japan_2020.dat"))
+p.add_argument("--out", dest="out", default=str(CASE / "2_data_processing" / "src_rec_file_japan_2020_filtered.dat"))
+p.add_argument("--stats", dest="stats", default=str(CASE / "2_data_processing" / "year_filter_stats.csv"))
+args = p.parse_args()
+SRC = Path(args.src)
+OUT = Path(args.out)
+STATS = Path(args.stats)
 DECKS = CASE / "1_data_acquisition" / "jma_decks"
 
 MIN_LAT, MAX_LAT = 24.0, 46.0
