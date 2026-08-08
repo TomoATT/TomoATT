@@ -1,0 +1,7 @@
+stage,events,arrivals
+after time/region/depth/picks,116319,1106099
+after dedupe + picks recheck,116319,1106099
+after station floor,116054,1102191
+after distance-window QC,115952,1100924
+unique stations,1553,
+stations kept,1441,

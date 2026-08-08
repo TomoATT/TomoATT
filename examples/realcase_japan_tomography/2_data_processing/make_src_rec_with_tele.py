@@ -18,12 +18,12 @@ differential time inversion (use_cs_time: true) is then applied to those
 blocks so that origin-time / outside-region path errors cancel.
 
 Inputs:
-  src_rec_file_japan_filtered.dat           (regional dataset)
+  src_rec_file_japan_2020_filtered.dat      (year-2020 JMA QCed dataset)
   ../1_data_acquisition/isc_teleseismic/isc_tele_p_arrivals_2020.csv
 
 Output:
-  src_rec_file_japan_tele.dat               (merged file)
-  tele_station_summary.csv                  (tele receiver inventory)
+  src_rec_file_japan_2020_tele.dat          (merged v3 catalog)
+  tele_station_summary_2020.csv             (tele receiver inventory)
 """
 
 import csv
@@ -32,11 +32,11 @@ from pathlib import Path
 from collections import defaultdict
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
-LOCAL_SRC_REC = SCRIPT_DIR / "src_rec_file_japan_filtered.dat"
+LOCAL_SRC_REC = SCRIPT_DIR / "src_rec_file_japan_2020_filtered.dat"
 TELE_CSV = (SCRIPT_DIR / ".." / "1_data_acquisition" /
             "isc_teleseismic" / "isc_tele_p_arrivals_2020.csv")
-OUT_FILE = SCRIPT_DIR / "src_rec_file_japan_tele.dat"
-OUT_STA = SCRIPT_DIR / "tele_station_summary.csv"
+OUT_FILE = SCRIPT_DIR / "src_rec_file_japan_2020_tele.dat"
+OUT_STA = SCRIPT_DIR / "tele_station_summary_2020.csv"
 
 DEFAULT_MAG = 5.5   # ISC rows with empty magnitude column get this nominal value
 
