@@ -137,7 +137,9 @@ def main():
             y_events.sort(key=lambda e: e["origin_time"])
             for e in y_events:
                 good = [a for a in e["arrivals"]
-                        if 0.5 <= a["travel_time"] <= 120.0]
+                        if 0.5 <= a["travel_time"] <= 120.0
+                        and (MIN_LAT <= a["station_lat"] <= MAX_LAT
+                             and MIN_LON <= a["station_lon"] <= MAX_LON)]
                 if not good:
                     continue
                 i = n_events_total

@@ -109,6 +109,15 @@ def main():
     stats.append(("after dedupe + picks recheck", len(out),
                   sum(len(e["recs"]) for e in out)))
 
+    # --- 2b: receiver in-region check ------------------------------------
+    for e in out:
+        e["recs"] = [r for r in e["recs"]
+                     if (MIN_LAT <= r[1] <= MAX_LAT
+                         and MIN_LON <= r[2] <= MAX_LON)]
+    out = [e for e in out if len(e["recs"]) >= MIN_PICKS_PER_EVENT]
+    stats.append(("after receiver region check", len(out),
+                  sum(len(e["recs"]) for e in out)))
+
     # --- 3: station floor -------------------------------------------------
     station_count = defaultdict(int)
     for e in out:

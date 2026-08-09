@@ -108,6 +108,10 @@ def build_tele_cs_blocks(events, max_azi_gap=30.0, max_dist_gap=5.0):
     return headers, blocks, station_set
 
 
+def in_box(la, lo):
+    return (24.0 <= la <= 46.0) and (122.0 <= lo <= 148.0)
+
+
 def main():
     # ---------------- load tele arrivals ----------------------------------
     events = defaultdict(list)   # ev_id -> list of pick dicts
@@ -118,6 +122,14 @@ def main():
     # ---------------- cs pairs for tele events ----------------------------
     _, blocks, station_set = build_tele_cs_blocks(
         events, max_azi_gap=30.0, max_dist_gap=5.0)
+
+    # keep only cs pairs whose BOTH receivers lie inside the study box —
+    # pairings against far stations (over-broad ISC pickups) leave
+    # out-of-region receivers that TomoATT rejects at validation.
+    for ev_id, sub in blocks.items():
+        mask = sub.apply(lambda r: in_box(r.stla1, r.stlo1)
+                                   and in_box(r.stla2, r.stlo2), axis=1)
+        blocks[ev_id] = sub[mask]
 
     # ---------------- write merged file -----------------------------------
     with open(LOCAL_SRC_REC) as fin, open(OUT_FILE, "w") as fout:
