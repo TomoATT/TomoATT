@@ -68,8 +68,8 @@ MIN_PICKS_PER_EV = 10  # keep teleseismic event only with >= this many picks
 # several agencies/channels (lower index = preferred)
 REPORTER_PREF = {"JMA": 0, "NIED": 1, "ISC": 2, "NEIC": 3, "GCMT": 4}
 
-OUT_CSV = OUT_DIR / "isc_tele_p_arrivals_2020.csv"
-OUT_EVENTS = OUT_DIR / "isc_tele_events_2020.csv"
+OUT_CSV = None   # set in main() from --year
+OUT_EVENTS = None
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +134,9 @@ def main():
     ap.add_argument("--year", type=int, default=2020)
     ap.add_argument("--min-mag", type=float, default=MIN_MAG)
     args = ap.parse_args()
+    global OUT_CSV, OUT_EVENTS
+    OUT_CSV = OUT_DIR / f"isc_tele_p_arrivals_{args.year}.csv"
+    OUT_EVENTS = OUT_DIR / f"isc_tele_events_{args.year}.csv"
 
     all_rows = []
     for (y0, m0, d0, y1, m1, d1) in month_chunks(args.year):

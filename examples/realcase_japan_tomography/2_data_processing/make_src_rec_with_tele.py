@@ -37,10 +37,11 @@ _ap = argparse.ArgumentParser()
 _ap.add_argument("--local", default=str(SCRIPT_DIR / "src_rec_file_japan_2020_filtered.dat"))
 _ap.add_argument("--out", default=str(SCRIPT_DIR / "src_rec_file_japan_2020_tele.dat"))
 _ap.add_argument("--sta-out", default=str(SCRIPT_DIR / "tele_station_summary_2020.csv"))
+_ap.add_argument("--tele", default=str(SCRIPT_DIR / ".." / "1_data_acquisition" /
+                                       "isc_teleseismic" / "isc_tele_p_arrivals_2020.csv"))
 _args = _ap.parse_args()
 LOCAL_SRC_REC = Path(_args.local)
-TELE_CSV = (SCRIPT_DIR / ".." / "1_data_acquisition" /
-            "isc_teleseismic" / "isc_tele_p_arrivals_2020.csv")
+TELE_CSV = Path(_args.tele)
 OUT_FILE = Path(_args.out)
 OUT_STA = Path(_args.sta_out)
 
