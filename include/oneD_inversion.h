@@ -94,7 +94,7 @@ private:
     void calculate_stencil_adj(const int&, const int&);
 
     void initialize_kernel_1d();
-    void calculate_kernel_1d();
+    void calculate_kernel_1d(InputParams&, int& );
 
     // "model_optimize_1dinv" subfunctions:
     void kernel_processing_1dinv(Grid&);
