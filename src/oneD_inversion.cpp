@@ -245,7 +245,7 @@ std::vector<CUSTOMREAL> OneDInversion::run_simulation_one_step_1dinv(InputParams
         }
 
         // calculate event sensitivity kernel
-        calculate_kernel_1d();
+        calculate_kernel_1d(IP, id_src_att);
     }
     // synchronize all processes
     synchronize_all_world();
@@ -1069,14 +1069,28 @@ void OneDInversion::initialize_kernel_1d() {
 }
 
 
-void OneDInversion::calculate_kernel_1d() {
+void OneDInversion::calculate_kernel_1d(InputParams& IP, int& id_src_att) {
+
+    // get the source r 
+    CUSTOMREAL src_r = IP.get_src_radius(id_src_att);
+    // get the source t
+    CUSTOMREAL src_t = _0_CR;      // for 1d inv, src_t is forced to be 0 
+
     for (int ir=0; ir<nr_1dinv; ir++){
         for (int it=0; it<nt_1dinv; it++){
 
-            // add mask? (currently no need)
+            // add mask? (currently no need) 
+            // (20260903: NEED! For some extreme case, the gradient of T will degenerate. leading to near-0 coe. Finally, causing infinite Ks_1dinv and Ks_density_1dinv at sources)
 
-            Ks_1dinv[ir]            += Tadj_1dinv[I2V_1DINV(it,ir)]         * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
-            Ks_density_1dinv[ir]    += Tadj_density_1dinv[I2V_1DINV(it,ir)] * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
+            // add mask
+            if ((std::abs(r_1dinv[ir] - src_r) >= dr_1dinv) ||
+                (std::abs(t_1dinv[it] - src_t) >= dt_1dinv)) {
+                Ks_1dinv[ir]            += Tadj_1dinv[I2V_1DINV(it,ir)]         * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
+                Ks_density_1dinv[ir]    += Tadj_density_1dinv[I2V_1DINV(it,ir)] * my_square(slowness_1dinv[I2V_1DINV(it,ir)]) * dt_1dinv * dr_1dinv;
+            } else {    // for the source point, we add mask
+                Ks_1dinv[ir]            += _0_CR;
+                Ks_density_1dinv[ir]    += _0_CR;
+            }
         }
     }
     
