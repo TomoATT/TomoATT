@@ -1607,7 +1607,7 @@ void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
         std::vector<int> tmp_src_id_list_unique;
 
         // at first, make a depth-unique source list in the main process from src_map_tele
-        if (proc_read_srcrec) {
+        if (proc_read_srcrec) {     // world rank == 0
 
             for (auto iter = src_map_all.begin(); iter != src_map_all.end(); iter++){
 
@@ -1620,7 +1620,8 @@ void prepare_src_map_for_2d_solver(std::map<int, SrcRecInfo>& src_map_all,
                 // check if there is no element in tmp_src_map_unique with the same iter->second.depth
                 bool if_unique = true;
                 for (auto iter2 = tmp_src_map_unique.begin(); iter2 != tmp_src_map_unique.end(); iter2++){
-                    if (iter2->second.dep == iter->second.dep){
+                    // check name
+                    if (get_2d_tt_depth_key(iter2->second.dep) == get_2d_tt_depth_key(iter->second.dep)){
                         if_unique = false;
                         break;
                     }

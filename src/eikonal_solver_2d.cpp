@@ -3,6 +3,11 @@
 void prepare_teleseismic_boundary_conditions(InputParams& IP, Grid& grid, IO_utils& io) {
     bool if_teleseismic_event_exists=false;
 
+    // create output directory for 2d solver
+    std::string dir_2d = output_dir+"/"+OUTPUT_DIR_2D;
+    create_output_dir(dir_2d);
+    synchronize_all_world();
+
     // 2D travel time fields vary only by the depth of the source.
     // So here we make another src_id2name list for dropping the sources
     // that have the same depth, in onder to reduce the number of 2D eikonal solver runs.
@@ -940,6 +945,7 @@ CUSTOMREAL interp2d(PlainGrid& pg, CUSTOMREAL t, CUSTOMREAL r) {
 }
 
 
+
 std::string get_2d_tt_filename(const std::string& dir_2d, Source& src) {
 
     std::string fname_2d_src;
@@ -948,14 +954,13 @@ std::string get_2d_tt_filename(const std::string& dir_2d, Source& src) {
 #ifdef USE_HDF5
         // add the depth of the source to the file name
         // to share the travel time field if sources have the same depth of hypocenter
-        auto str = std::to_string(src.get_src_dep());
-        fname_2d_src = dir_2d + "/2d_travel_time_field_dep_" + str.substr(0,str.find(".")+4) +".h5";
+        fname_2d_src = dir_2d + "/2d_travel_time_field_dep_" + get_2d_tt_depth_key(src.get_src_dep()) +".h5";
 #else
         std::cout << "HDF5 is not enabled. Please recompile with HDF5" << std::endl;
 #endif
     } else if (output_format == OUTPUT_FORMAT_ASCII) {
-        auto str = std::to_string(src.get_src_dep()); // use depth value of the source to the file name
-        fname_2d_src = dir_2d + "/2d_travel_time_field_dep_" + str.substr(0,str.find(".")+4) +".dat";
+        // use depth value of the source to the file name
+        fname_2d_src = dir_2d + "/2d_travel_time_field_dep_" + get_2d_tt_depth_key(src.get_src_dep()) +".dat";
     }
 
     return fname_2d_src;
@@ -970,11 +975,7 @@ void run_2d_solver(InputParams& IP, Source& src, IO_utils& io) {
     PlainGrid plain_grid(src,IP);
 
     // check if pre-calculated 2d travel time field exists
-
-    // create output directory for 2d solver
     std::string dir_2d = output_dir+"/"+OUTPUT_DIR_2D;
-    create_output_dir(dir_2d);
-
     std::string fname_2d_src = get_2d_tt_filename(dir_2d, src);
 
     if (is_file_exist(fname_2d_src.c_str())) {
@@ -985,7 +986,7 @@ void run_2d_solver(InputParams& IP, Source& src, IO_utils& io) {
         plain_grid.run_iteration_upwind(IP);
 
         // write out calculated 2D travel time field
-        io.write_2d_travel_time_field(plain_grid.T_2d, plain_grid.r_2d, plain_grid.t_2d, plain_grid.nr_2d, plain_grid.nt_2d, src.get_src_dep());
+        io.write_2d_travel_time_field(fname_2d_src, plain_grid.T_2d, plain_grid.r_2d, plain_grid.t_2d, plain_grid.nr_2d, plain_grid.nt_2d);
     }
 
  }
@@ -1000,8 +1001,6 @@ void load_2d_traveltime(InputParams& IP, Source& src, Grid& grid, IO_utils& io) 
 
         // output directory for 2d solver
         std::string dir_2d = output_dir+"/"+OUTPUT_DIR_2D;
-        //create_output_dir(dir_2d);
-
         std::string fname_2d_src = get_2d_tt_filename(dir_2d, src);
 
         if (is_file_exist(fname_2d_src.c_str())) {

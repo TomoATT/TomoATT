@@ -679,14 +679,12 @@ void IO_utils::write_1dinv_field(CUSTOMREAL* field_1dinv, CUSTOMREAL* r_1dinv, C
 }
 
 
-void IO_utils::write_2d_travel_time_field(CUSTOMREAL* T, CUSTOMREAL* r, CUSTOMREAL* t, int nr, int nt, CUSTOMREAL src_dep){
+void IO_utils::write_2d_travel_time_field(std::string& fname, CUSTOMREAL* T, CUSTOMREAL* r, CUSTOMREAL* t, int nr, int nt){
 
     if (myrank == 0) {
 
         if (output_format==OUTPUT_FORMAT_HDF5){
 #ifdef USE_HDF5
-            auto str = std::to_string(src_dep);
-            std::string fname = output_dir + "/" + OUTPUT_DIR_2D + "/2d_travel_time_field_dep_" +str.substr(0,str.find(".")+4)+".h5";
             // create and open h5 file
             file_id_2d  = H5Fcreate(fname.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 
@@ -710,8 +708,6 @@ void IO_utils::write_2d_travel_time_field(CUSTOMREAL* T, CUSTOMREAL* r, CUSTOMRE
 #endif
         } else if (output_format==OUTPUT_FORMAT_ASCII){
             // write out r t and T in ASCII
-            auto str = std::to_string(src_dep);
-            std::string fname = output_dir + "/" + OUTPUT_DIR_2D + "/2d_travel_time_field_dep_" +str.substr(0,str.find(".")+4)+".dat";
             std::ofstream fout(fname.c_str());
 
             // set precision

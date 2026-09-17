@@ -149,7 +149,7 @@ public:
     // void write_concerning_parameters(Grid&, int, InputParams&);
 
     // 2d traveltime field for teleseismic source
-    void write_2d_travel_time_field(CUSTOMREAL*, CUSTOMREAL*, CUSTOMREAL*, int, int, CUSTOMREAL);
+    void write_2d_travel_time_field(std::string&, CUSTOMREAL*, CUSTOMREAL*, CUSTOMREAL*, int, int);
     void h5_create_and_write_dataset_2d(std::string&, int, int*, int, CUSTOMREAL*);
     void read_2d_travel_time_field(std::string&, CUSTOMREAL*, int, int);
 
