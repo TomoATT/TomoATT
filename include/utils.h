@@ -80,6 +80,11 @@ inline void create_output_dir(std::string dir_path){
 
 }
 
+// depth key for 2d travel time field file
+inline std::string get_2d_tt_depth_key(CUSTOMREAL dep) {
+    auto str = std::to_string(dep);
+    return str.substr(0, str.find(".") + 4);
+}
 
 inline bool is_file_exist(const char* fileName)
 {
